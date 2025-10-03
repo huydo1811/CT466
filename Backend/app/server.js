@@ -10,6 +10,7 @@ import categoryRoutes from './routes/categoryRoutes.js';
 import actorRoutes from './routes/actorRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import authRoutes from './routes/authRoutes.js';
+import bannerRoutes from './routes/bannerRoutes.js';
 
 // Kết nối database
 connectDB();
@@ -33,6 +34,7 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/actors', actorRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/banners', bannerRoutes);
 
 // Route mặc định
 app.get('/', (req, res) => {
@@ -45,7 +47,8 @@ app.get('/', (req, res) => {
       categories: '/api/categories',
       actors: '/api/actors',
       users: '/api/users',
-      auth: '/api/auth'
+      auth: '/api/auth',
+      banners: '/api/banners'
     }
   });
 });
