@@ -1,18 +1,75 @@
-import express from "express";
-import dotenv from "dotenv";
-import connectDB from "./config/db.js";
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
 
 dotenv.config();
-const app = express();
-app.use(express.json());
 
-// Connect DB
+import connectDB from './config/db.js';
+import countryRoutes from './routes/countryRoutes.js';
+import categoryRoutes from './routes/categoryRoutes.js';
+import actorRoutes from './routes/actorRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+import authRoutes from './routes/authRoutes.js';
+
+// Kết nối database
 connectDB();
 
-// Test route
-app.get("/", (req, res) => {
-  res.send("Backend hệ thống quản lý phim đang chạy...");
+const app = express();
+
+// Middleware
+app.use(cors());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
+
+// Logging middleware
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path} - ${new Date().toISOString()}`);
+  next();
+});
+
+// Routes
+app.use('/api/countries', countryRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/actors', actorRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/auth', authRoutes);
+
+// Route mặc định
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Movie Streaming API đang hoạt động',
+    version: '1.0.0',
+    endpoints: {
+      countries: '/api/countries',
+      categories: '/api/categories',
+      actors: '/api/actors',
+      users: '/api/users',
+      auth: '/api/auth'
+    }
+  });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Error:', err.message);
+  res.status(500).json({
+    success: false,
+    message: err.message || 'Internal Server Error'
+  });
+});
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `Route ${req.originalUrl} not found`
+  });
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+app.listen(PORT, () => {
+  console.log(`Server đang chạy trên port ${PORT}`);
+  console.log(`API URL: http://localhost:${PORT}`);
+});
