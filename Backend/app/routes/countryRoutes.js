@@ -10,7 +10,7 @@ import {
 
 const router = express.Router();
 
-// Route tìm kiếm - phải đặt trước route /:id
+// Route tìm kiếm 
 router.get('/search', searchCountries);
 
 // CRUD routes

@@ -14,7 +14,7 @@ const router = express.Router();
 // Route tìm kiếm
 router.get('/search', searchCategories);
 
-// Route slug (phải đặt trước /:id)
+// Route slug
 router.get('/slug/:slug', getCategoryBySlug);
 
 // CRUD routes
