@@ -13,6 +13,7 @@ import authRoutes from './routes/authRoutes.js';
 import bannerRoutes from './routes/bannerRoutes.js';
 import movieRoutes from './routes/movieRoutes.js';
 import episodeRoutes from './routes/episodeRoute.js';
+import reviewRoutes from './routes/reviewRoutes.js';
 
 // Kết nối database
 connectDB();
@@ -39,6 +40,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/banners', bannerRoutes);
 app.use('/api/movies', movieRoutes);
 app.use('/api/episodes', episodeRoutes);
+app.use('/api/reviews', reviewRoutes);
 
 // Route mặc định
 app.get('/', (req, res) => {
@@ -54,7 +56,8 @@ app.get('/', (req, res) => {
       auth: '/api/auth',
       banners: '/api/banners',
       movies: '/api/movies',
-      episodes: '/api/episodes'
+      episodes: '/api/episodes',
+      reviews: '/api/reviews'
     }
   });
 });

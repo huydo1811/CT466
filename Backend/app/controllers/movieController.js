@@ -2,12 +2,12 @@ import movieService from '../services/movieService.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import mongoose from 'mongoose';
 
-// Helper function validate ObjectId
+// Helper validate ObjectId
 const isValidObjectId = (id) => {
   return mongoose.Types.ObjectId.isValid(id) && /^[0-9a-fA-F]{24}$/.test(id);
 };
 
-// Lấy tất cả phim với filters (Public + Admin)
+// Lấy tất cả phim với filters (Public)
 export const getAllMovies = asyncHandler(async (req, res) => {
   const options = {
     page: parseInt(req.query.page) || 1,
@@ -16,9 +16,7 @@ export const getAllMovies = asyncHandler(async (req, res) => {
     category: req.query.category,
     country: req.query.country,
     year: req.query.year ? parseInt(req.query.year) : undefined,
-    quality: req.query.quality,
     type: req.query.type,
-    status: req.query.status,
     sortBy: req.query.sortBy || 'createdAt',
     sortOrder: req.query.sortOrder === 'asc' ? 1 : -1,
     isPublished: req.query.isPublished !== undefined ? req.query.isPublished === 'true' : true
@@ -36,7 +34,6 @@ export const getAllMovies = asyncHandler(async (req, res) => {
       category: options.category,
       country: options.country,
       year: options.year,
-      quality: options.quality,
       type: options.type
     }
   });
@@ -75,7 +72,7 @@ export const getMovieById = asyncHandler(async (req, res) => {
   });
 });
 
-// Tạo phim mới (Admin only)
+// Tạo phim mới (Admin)
 export const createMovie = asyncHandler(async (req, res) => {
   const movieData = req.body;
   const userId = req.user._id;
@@ -89,11 +86,10 @@ export const createMovie = asyncHandler(async (req, res) => {
   });
 });
 
-// Cập nhật phim (Admin only)
+// Cập nhật phim (Admin)
 export const updateMovie = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const movieData = req.body;
-  const userId = req.user._id;
   
   if (!isValidObjectId(id)) {
     return res.status(400).json({
@@ -102,7 +98,7 @@ export const updateMovie = asyncHandler(async (req, res) => {
     });
   }
   
-  const movie = await movieService.updateMovie(id, movieData, userId);
+  const movie = await movieService.updateMovie(id, movieData);
   
   res.status(200).json({
     success: true,
@@ -111,7 +107,7 @@ export const updateMovie = asyncHandler(async (req, res) => {
   });
 });
 
-// Xóa phim (Admin only)
+// Xóa phim (Admin)
 export const deleteMovie = asyncHandler(async (req, res) => {
   const { id } = req.params;
   
@@ -130,7 +126,7 @@ export const deleteMovie = asyncHandler(async (req, res) => {
   });
 });
 
-// Toggle publish status (Admin only)
+// Toggle publish status (Admin)
 export const togglePublishStatus = asyncHandler(async (req, res) => {
   const { id } = req.params;
   
@@ -196,30 +192,6 @@ export const getHotMovies = asyncHandler(async (req, res) => {
   });
 });
 
-// Tăng view count (Public) - KHI USER XEM PHIM
-export const incrementView = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  
-  if (!isValidObjectId(id)) {
-    return res.status(400).json({
-      success: false,
-      message: 'ID phim không hợp lệ'
-    });
-  }
-  
-  const movie = await movieService.incrementView(id);
-  
-  res.status(200).json({
-    success: true,
-    message: 'Tăng view count thành công',
-    data: {
-      movieId: movie._id,
-      title: movie.title,
-      viewCount: movie.viewCount
-    }
-  });
-});
-
 // Tìm kiếm phim (Public)
 export const searchMovies = asyncHandler(async (req, res) => {
   const { q } = req.query;
@@ -238,7 +210,6 @@ export const searchMovies = asyncHandler(async (req, res) => {
     category: req.query.category,
     country: req.query.country,
     year: req.query.year ? parseInt(req.query.year) : undefined,
-    quality: req.query.quality,
     type: req.query.type
   };
   
@@ -250,17 +221,6 @@ export const searchMovies = asyncHandler(async (req, res) => {
     data: result.movies,
     pagination: result.pagination,
     searchQuery: q
-  });
-});
-
-// Lấy thống kê phim (Admin only)
-export const getMovieStats = asyncHandler(async (req, res) => {
-  const stats = await movieService.getMovieStats();
-  
-  res.status(200).json({
-    success: true,
-    message: 'Lấy thống kê phim thành công',
-    data: stats
   });
 });
 
@@ -292,5 +252,40 @@ export const getMoviesByCategory = asyncHandler(async (req, res) => {
     message: 'Lấy phim theo category thành công',
     data: result.movies,
     pagination: result.pagination
+  });
+});
+
+// Tăng view count (Public)
+export const incrementView = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  
+  if (!isValidObjectId(id)) {
+    return res.status(400).json({
+      success: false,
+      message: 'ID phim không hợp lệ'
+    });
+  }
+  
+  const movie = await movieService.incrementView(id);
+  
+  res.status(200).json({
+    success: true,
+    message: 'Tăng view count thành công',
+    data: {
+      movieId: movie._id,
+      title: movie.title,
+      viewCount: movie.viewCount
+    }
+  });
+});
+
+// Thống kê phim (Admin)
+export const getMovieStats = asyncHandler(async (req, res) => {
+  const stats = await movieService.getMovieStats();
+  
+  res.status(200).json({
+    success: true,
+    message: 'Lấy thống kê phim thành công',
+    data: stats
   });
 });
