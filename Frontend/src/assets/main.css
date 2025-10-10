@@ -1,35 +1,158 @@
-@import './base.css';
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
 
-#app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  font-weight: normal;
-}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
-a,
-.green {
-  text-decoration: none;
-  color: hsla(160, 100%, 37%, 1);
-  transition: 0.4s;
-  padding: 3px;
-}
 
-@media (hover: hover) {
-  a:hover {
-    background-color: hsla(160, 100%, 37%, 0.2);
-  }
-}
-
-@media (min-width: 1024px) {
+@layer base {
   body {
-    display: flex;
-    place-items: center;
+    @apply bg-dark-900 text-white font-sans antialiased;
   }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: #1a1a1a;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(to bottom, #E50914, #b8070f);
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(to bottom, #b8070f, #8b0000);
+  }
+}
 
-  #app {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    padding: 0 2rem;
+@layer components {
+  /* Buttons */
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium transition-all;
   }
+  
+  .btn-primary {
+    @apply btn bg-primary-500 hover:bg-primary-600 text-white;
+  }
+  
+  .btn-secondary {
+    @apply btn bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500 text-white shadow-lg hover:shadow-xl focus:ring-gray-500;
+  }
+  
+  .btn-outline {
+    @apply btn border border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white;
+  }
+  
+  /* Cards */
+  .card {
+    @apply bg-gradient-to-br from-dark-850 to-dark-800 rounded-2xl shadow-2xl border border-gray-700/50 p-6 backdrop-blur-sm hover:shadow-3xl transition-all duration-300;
+  }
+  
+  /* ❌ REMOVE group from @apply - Use in HTML directly */
+  .movie-card {
+    @apply relative cursor-pointer transform transition-all duration-500 hover:scale-110 hover:z-20;
+  }
+  
+  .hero-card {
+    @apply bg-gradient-to-br from-dark-850/90 to-dark-800/90 backdrop-blur-md rounded-3xl shadow-2xl border border-gray-700/30 p-8 hover:shadow-3xl transition-all duration-500;
+  }
+  
+  /* Layout */
+  .container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  
+  .section-title {
+    @apply text-4xl md:text-5xl font-bold text-gradient mb-4;
+  }
+  
+  .section-subtitle {
+    @apply text-xl text-gray-300 mb-8 leading-relaxed max-w-3xl;
+  }
+  
+  /* Text styles */
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary-500 to-red-600 bg-clip-text text-transparent;
+  }
+  
+  .text-gradient-gold {
+    @apply bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent;
+  }
+  
+  /* Animations */
+  .animate-bounce-slow {
+    animation: bounce 3s infinite;
+  }
+  
+  .animate-pulse-slow {
+    animation: pulse 3s infinite;
+  }
+  
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  /* Glassmorphism effect */
+  .glass {
+    @apply bg-white/5 backdrop-blur-md border border-white/10;
+  }
+  
+  .glass-dark {
+    @apply bg-black/20 backdrop-blur-md border border-white/5;
+  }
+}
+
+@layer utilities {
+  /* Custom shadows */
+  .shadow-3xl {
+    box-shadow: 0 35px 60px -12px rgba(229, 9, 20, 0.25);
+  }
+  
+  .shadow-glow {
+    box-shadow: 0 0 30px rgba(229, 9, 20, 0.3);
+  }
+  
+  /* Custom animations */
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-20px);
+    }
+  }
+  
+  @keyframes glow {
+    0%, 100% {
+      box-shadow: 0 0 20px rgba(229, 9, 20, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 40px rgba(229, 9, 20, 0.6);
+    }
+  }
+  
+  .animate-glow {
+    animation: glow 2s ease-in-out infinite;
+  }
+}
+
+/* Reset layout mặc định của Vite template */
+#app {
+  display: block;         /* bỏ grid 2 cột */
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: initial;
+}
+
+body {
+  display: block;         /* tránh place-items center nếu base.css có set */
 }

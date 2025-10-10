@@ -1,0 +1,1 @@
+<template><div class="min-h-[50vh] text-white">Actors page</div></template>

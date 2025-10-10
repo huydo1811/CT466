@@ -1,0 +1,1 @@
+<template><div class="text-white">Admin Dashboard</div></template>
