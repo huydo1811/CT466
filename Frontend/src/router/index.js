@@ -13,12 +13,15 @@ import NationalView from '@/views/NationalView.vue'
 import ActorsView from '@/views/ActorsView.vue'
 import LoginView from '@/views/LoginView.vue'
 import RegisterView from '@/views/RegisterView.vue'
+import MovieDetailView from '@/views/MovieDetailView.vue'
+import WatchMovieView from '@/views/WatchMovieView.vue'
 
 // Admin pages
 import AdminDashboard from '@/views/admin/AdminDashboard.vue'
 import AdminMovies from '@/views/admin/AdminMovies.vue'
 import AdminUsers from '@/views/admin/AdminUsers.vue'
 import AdminSettings from '@/views/admin/AdminSettings.vue'
+
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -36,7 +39,9 @@ const router = createRouter({
         { path: 'national/:slug', name: 'country', component: NationalView, props: true },
         { path: 'actors', name: 'actors', component: ActorsView },
         { path: 'login', name: 'login', component: LoginView },
-        { path: 'register', name: 'register', component: RegisterView }
+        { path: 'register', name: 'register', component: RegisterView },
+        { path: 'movies/:id', name: 'movie-detail', component: MovieDetailView, props: true },
+        { path: 'watch/:id', name: 'watch-movie', component: WatchMovieView, props: true }
       ]
     },
     {

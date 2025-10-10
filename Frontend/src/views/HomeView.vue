@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { RouterLink } from 'vue-router'
 
 // Featured movie data (sẽ fetch từ API sau)
 const featuredMovie = ref({
@@ -263,19 +264,25 @@ const editorCollections = ref([
 
           <!-- Action Buttons -->
           <div class="flex flex-col sm:flex-row gap-4">
-            <button class="btn-primary text-lg px-8 py-4 shadow-glow">
+            <RouterLink 
+              :to="{ name: 'movie-detail', params: { id: '1' } }" 
+              class="btn-primary text-lg px-8 py-4 shadow-glow"
+            >
               <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M8 5v14l11-7z"/>
               </svg>
               Xem ngay
-            </button>
+            </RouterLink>
             
-            <button class="btn-secondary text-lg px-8 py-4 glass">
+            <RouterLink 
+              :to="{ name: 'movie-detail', params: { id: '1' } }" 
+              class="btn-secondary text-lg px-8 py-4 glass"
+            >
               <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
               Thông tin thêm
-            </button>
+            </RouterLink>
             
             <button class="btn-outline text-lg px-8 py-4">
               <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -315,9 +322,10 @@ const editorCollections = ref([
 
         <!-- Movies Grid -->
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
-          <div 
+          <RouterLink
             v-for="movie in latestMovies" 
             :key="movie.id"
+            :to="{ name: 'movie-detail', params: { id: movie.id } }"
             class="movie-card group"
           >
             <!-- Movie Poster -->
@@ -359,7 +367,7 @@ const editorCollections = ref([
                 <span class="text-yellow-400 text-xs font-semibold">{{ movie.rating }}</span>
               </div>
             </div>
-          </div>
+          </RouterLink>
         </div>
       </div>
     </section>
@@ -382,9 +390,10 @@ const editorCollections = ref([
 
         <!-- Horizontal Scroll -->
         <div class="flex space-x-6 overflow-x-auto pb-4 scrollbar-hide">
-          <div 
+          <RouterLink 
             v-for="(movie, index) in trendingMovies" 
             :key="movie.id"
+            :to="{ name: 'movie-detail', params: { id: movie.id } }"
             class="movie-card group flex-shrink-0 relative"
           >
             <!-- Trending Number -->
@@ -418,7 +427,7 @@ const editorCollections = ref([
                 </div>
               </div>
             </div>
-          </div>
+          </RouterLink>
         </div>
       </div>
     </section>
@@ -441,7 +450,12 @@ const editorCollections = ref([
           </div>
         </div>
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-          <div v-for="(m,i) in rankedMovies" :key="m.id" class="movie-card group relative">
+          <RouterLink 
+            v-for="(m,i) in rankedMovies" 
+            :key="m.id"
+            :to="{ name: 'movie-detail', params: { id: m.id } }"
+            class="movie-card group relative"
+          >
             <div class="relative overflow-hidden rounded-xl aspect-[2/3] bg-gray-800">
               <img :src="m.poster" :alt="m.title" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
               <div class="absolute top-2 left-2 w-8 h-8 rounded-full bg-black/70 text-white text-sm font-bold grid place-items-center">{{ i+1 }}</div>
@@ -453,7 +467,7 @@ const editorCollections = ref([
                 </div>
               </div>
             </div>
-          </div>
+          </RouterLink>
         </div>
       </div>
     </section>
@@ -473,7 +487,12 @@ const editorCollections = ref([
           </div>
         </div>
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
-          <div v-for="m in categoryMovies" :key="m.id" class="movie-card group">
+          <RouterLink 
+            v-for="m in categoryMovies" 
+            :key="m.id"
+            :to="{ name: 'movie-detail', params: { id: m.id } }"
+            class="movie-card group"
+          >
             <div class="relative overflow-hidden rounded-xl aspect-[2/3] bg-gray-800">
               <img :src="m.poster" :alt="m.title" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
               <div class="absolute top-2 right-2 bg-black/70 px-2 py-1 rounded-lg">
@@ -484,7 +503,7 @@ const editorCollections = ref([
                 <div class="text-gray-300 text-xs">{{ m.year }}</div>
               </div>
             </div>
-          </div>
+          </RouterLink>
         </div>
       </div>
     </section>
