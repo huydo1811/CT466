@@ -14,6 +14,15 @@ const featuredMovie = ref({
   genres: ["Action", "Adventure", "Fantasy"]
 })
 
+const popularCategories = ref([
+  { id: 1, name: 'Hành động', slug: 'hanh-dong', count: 245, image: 'https://image.tmdb.org/t/p/w500/bOGkgRGdhrBYJSLpXaxhXVstddV.jpg' },
+  { id: 2, name: 'Tình cảm', slug: 'tinh-cam', count: 189, image: 'https://image.tmdb.org/t/p/w500/4rsomWxlqnHt3muGYK06auhOib6.jpg' },
+  { id: 3, name: 'Khoa học viễn tưởng', slug: 'khoa-hoc-vien-tuong', count: 167, image: 'https://image.tmdb.org/t/p/w500/zFR8amwiEKuLTHSI2JYpyeSuzQL.jpg' },
+  { id: 4, name: 'Kinh dị', slug: 'kinh-di', count: 156, image: 'https://image.tmdb.org/t/p/w500/7prYzufdIOy1KCTZKVWpjBFqqNr.jpg' },
+  { id: 5, name: 'Hài', slug: 'hai', count: 205, image: 'https://image.tmdb.org/t/p/w500/8kOWDBK6XlPUzckuHDo3wwVRFwt.jpg' },
+  { id: 6, name: 'Phiêu lưu', slug: 'phieu-luu', count: 178, image: 'https://image.tmdb.org/t/p/w500/dDlEmu3EZ0Pgg93K2SVNLCjCSvE.jpg' }
+])
+
 // Mock movies data
 const latestMovies = ref([
   {
@@ -508,7 +517,42 @@ const editorCollections = ref([
       </div>
     </section>
     
-    <!-- NEW: Continue Watching -->
+    <section class="py-20 bg-gradient-to-b from-dark-900 to-dark-800">
+      <div class="container">
+        <div class="flex items-center justify-between mb-12">
+          <div>
+            <h2 class="section-title">Khám phá thể loại</h2>
+            <p class="section-subtitle">Tìm phim yêu thích theo thể loại</p>
+          </div>
+          <RouterLink :to="{ name: 'categories' }" class="btn-outline">
+            Xem tất cả
+            <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+          </RouterLink>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
+          <RouterLink 
+            v-for="category in popularCategories" 
+            :key="category.id"
+            :to="{ name: 'movies', query: { category: category.slug } }"
+            class="relative rounded-xl overflow-hidden aspect-[3/2] group"
+          >
+            <img 
+              :src="category.image" 
+              :alt="category.name"
+              class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+            />
+            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent"></div>
+            <div class="absolute bottom-0 left-0 right-0 p-4">
+              <h3 class="text-white text-lg font-bold">{{ category.name }}</h3>
+              <p class="text-gray-300 text-sm">{{ category.count }} phim</p>
+            </div>
+          </RouterLink>
+        </div>
+      </div>
+    </section>
 
 
     <!-- NEW: Popular Actors (horizontal) -->

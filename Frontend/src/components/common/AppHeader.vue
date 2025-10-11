@@ -116,7 +116,7 @@ const countries = ref([
             <div class="absolute left-0 top-full w-56 rounded-xl border border-gray-800 bg-dark-900/95 backdrop-blur-md shadow-2xl opacity-0 scale-95 pointer-events-none transition duration-150 group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto z-50">
               <ul class="py-2 max-h-80 overflow-y-auto">
                 <li v-for="c in categories" :key="c.id">
-                  <RouterLink :to="{ name: 'category', params: { slug: c.slug } }" class="block px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white">
+                  <RouterLink :to="{ name: 'category-detail', params: { slug: c.slug } }" class="block px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white">
                     {{ c.name }}
                   </RouterLink>
                 </li>
@@ -265,7 +265,12 @@ const countries = ref([
           <RouterLink to="/series" class="mobile-nav-link">Phim bộ</RouterLink>
 
           <div class="text-gray-400 px-4 mt-2 text-xs uppercase">Thể loại</div>
-          <RouterLink v-for="c in categories" :key="c.id" :to="{ name: 'category', params: { slug: c.slug } }" class="block px-4 py-2 text-gray-300 hover:bg-gray-800 rounded-md">
+          <RouterLink 
+            v-for="c in categories" 
+            :key="c.id" 
+            :to="{ name: 'category-detail', params: { slug: c.slug } }" 
+            class="block px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white"
+          >
             {{ c.name }}
           </RouterLink>
 

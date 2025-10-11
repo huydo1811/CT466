@@ -2,7 +2,7 @@
   <div class="min-h-screen bg-gradient-to-br from-dark-900 via-dark-800 to-dark-900">
     <AppHeader />
     <main class="pt-20">
-      <RouterView />
+      <RouterView :key="$route.fullPath" />
     </main>
     <AppFooter />
   </div>
