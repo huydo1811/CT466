@@ -84,7 +84,7 @@ const movie = ref({
   ]
 })
 
-// Get movie function - sẽ sử dụng khi có API
+// Get movie function 
 // async function getMovie(id) {
 //   try {
 //     // const response = await fetch(`/api/movies/${id}`)
