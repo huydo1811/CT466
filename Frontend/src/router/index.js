@@ -11,6 +11,7 @@ import SeriesView from '@/views/SeriesView.vue'
 import CategoriesView from '@/views/CategoriesView.vue'
 import NationalView from '@/views/NationalView.vue'
 import ActorsView from '@/views/ActorsView.vue'
+import ActorsDetailView from '@/views/ActorDetailView.vue'
 import LoginView from '@/views/LoginView.vue'
 import RegisterView from '@/views/RegisterView.vue'
 import MovieDetailView from '@/views/MovieDetailView.vue'
@@ -38,6 +39,7 @@ const router = createRouter({
         { path: 'national', name: 'national', component: NationalView },
         { path: 'national/:slug', name: 'country', component: NationalView, props: true },
         { path: 'actors', name: 'actors', component: ActorsView },
+        { path: 'actors/:id', name: 'actor-detail', component: ActorsDetailView, props: true },
         { path: 'login', name: 'login', component: LoginView },
         { path: 'register', name: 'register', component: RegisterView },
         { path: 'movies/:id', name: 'movie-detail', component: MovieDetailView, props: true },
