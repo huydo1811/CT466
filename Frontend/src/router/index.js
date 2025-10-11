@@ -17,6 +17,7 @@ import LoginView from '@/views/LoginView.vue'
 import RegisterView from '@/views/RegisterView.vue'
 import MovieDetailView from '@/views/MovieDetailView.vue'
 import WatchMovieView from '@/views/WatchMovieView.vue'
+import ProfileView from '@/views/ProfileView.vue'
 
 // Admin pages
 import AdminDashboard from '@/views/admin/AdminDashboard.vue'
@@ -44,7 +45,8 @@ const router = createRouter({
         { path: 'login', name: 'login', component: LoginView },
         { path: 'register', name: 'register', component: RegisterView },
         { path: 'movies/:id', name: 'movie-detail', component: MovieDetailView, props: true },
-        { path: 'watch/:id', name: 'watch-movie', component: WatchMovieView, props: true }
+        { path: 'watch/:id', name: 'watch-movie', component: WatchMovieView, props: true },
+        { path: 'profile', name: 'profile', component: ProfileView }
       ]
     },
     {
