@@ -66,12 +66,17 @@ const categories = ref([
   { id: 4, name: 'Hài', slug: 'hai' }
 ])
 
-const countries = ref([
-  { id: 'us', name: 'Mỹ', slug: 'us' },
-  { id: 'kr', name: 'Hàn Quốc', slug: 'kr' },
-  { id: 'jp', name: 'Nhật Bản', slug: 'jp' },
-  { id: 'vn', name: 'Việt Nam', slug: 'vn' }
-])
+const countries = [
+  { id: 'us', name: 'Mỹ', slug: 'us', flag: 'https://flagcdn.com/w80/us.png' },
+  { id: 'kr', name: 'Hàn Quốc', slug: 'kr', flag: 'https://flagcdn.com/w80/kr.png' },
+  { id: 'jp', name: 'Nhật Bản', slug: 'jp', flag: 'https://flagcdn.com/w80/jp.png' },
+  { id: 'vn', name: 'Việt Nam', slug: 'vn', flag: 'https://flagcdn.com/w80/vn.png' },
+  { id: 'cn', name: 'Trung Quốc', slug: 'cn', flag: 'https://flagcdn.com/w80/cn.png' },
+  { id: 'tw', name: 'Đài Loan', slug: 'tw', flag: 'https://flagcdn.com/w80/tw.png' },
+  { id: 'th', name: 'Thái Lan', slug: 'th', flag: 'https://flagcdn.com/w80/th.png' },
+  { id: 'uk', name: 'Anh', slug: 'uk', flag: 'https://flagcdn.com/w80/gb.png' }
+]
+
 </script>
 
 <template>
@@ -133,11 +138,22 @@ const countries = ref([
               </svg>
               <div class="nav-underline"></div>
             </button>
+            
+            <!-- Panel -->
             <div class="absolute left-0 top-full w-56 rounded-xl border border-gray-800 bg-dark-900/95 backdrop-blur-md shadow-2xl opacity-0 scale-95 pointer-events-none transition duration-150 group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto z-50">
               <ul class="py-2 max-h-80 overflow-y-auto">
-                <li v-for="n in countries" :key="n.id">
-                  <RouterLink :to="{ name: 'country', params: { slug: n.slug } }" class="block px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white">
-                    {{ n.name }}
+                <li v-for="c in countries" :key="c.id">
+                  <RouterLink 
+                    :to="{ name: 'country', params: { slug: c.slug } }" 
+                    class="flex items-center px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white"
+                  >
+                    <img 
+                      v-if="c.flag" 
+                      :src="c.flag" 
+                      :alt="c.name" 
+                      class="w-5 h-3 mr-2 object-cover"
+                    />
+                    {{ c.name }}
                   </RouterLink>
                 </li>
               </ul>
@@ -275,9 +291,22 @@ const countries = ref([
           </RouterLink>
 
           <div class="text-gray-400 px-4 mt-3 text-xs uppercase">Quốc gia</div>
-          <RouterLink v-for="n in countries" :key="n.id" :to="{ name: 'country', params: { slug: n.slug } }" class="block px-4 py-2 text-gray-300 hover:bg-gray-800 rounded-md">
-            {{ n.name }}
-          </RouterLink>
+          <div class="grid grid-cols-2 gap-1">
+            <RouterLink 
+              v-for="n in countries" 
+              :key="n.id" 
+              :to="{ name: 'country', params: { slug: n.slug } }" 
+              class="flex items-center px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white rounded-md"
+            >
+              <img 
+                v-if="n.flag" 
+                :src="n.flag" 
+                :alt="n.name" 
+                class="w-4 h-3 mr-1.5 object-cover"
+              />
+              <span class="truncate">{{ n.name }}</span>
+            </RouterLink>
+          </div>
           
           <div class="flex space-x-3 mt-4 px-4">
             <RouterLink to="/login" class="btn-outline flex-1 text-center py-2 text-sm">Đăng nhập</RouterLink>
@@ -296,6 +325,10 @@ const countries = ref([
 .nav-link-active .nav-underline { @apply w-full; }
 .mobile-nav-link { @apply text-gray-300 hover:text-white py-2 px-4 rounded-lg hover:bg-gray-800 transition-all duration-200; }
 .animate-fade-in { animation: fadeIn 0.25s ease-out; }
+img.flag {
+  box-shadow: 0 0 1px rgba(0,0,0,0.5);
+  border-radius: 1px;
+}
 @keyframes fadeIn { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
 .text-gradient { @apply bg-gradient-to-r from-primary-500 to-red-600 bg-clip-text text-transparent; }
 </style>
