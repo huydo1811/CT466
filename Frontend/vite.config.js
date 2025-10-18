@@ -8,6 +8,12 @@ export default defineConfig({
   plugins: [
     vue()
   ],
+  server: {
+    allowedHosts: [
+      'localhost',
+      'movie.huyquang.site'
+    ]
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))

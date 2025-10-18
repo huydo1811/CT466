@@ -16,7 +16,7 @@ const featuredMovie = ref({
 
 const popularCategories = ref([
   { id: 1, name: 'Hành động', slug: 'hanh-dong', count: 245, image: 'https://image.tmdb.org/t/p/w500/bOGkgRGdhrBYJSLpXaxhXVstddV.jpg' },
-  { id: 2, name: 'Tình cảm', slug: 'tinh-cam', count: 189, image: 'https://image.tmdb.org/t/p/w500/4rsomWxlqnHt3muGYK06auhOib6.jpg' },
+  { id: 2, name: 'Tình cảm', slug: 'tinh-cam', count: 189, image: 'https://image.tmdb.org/t/p/w500/q719jXXEzOoYaps6babgKnONONX.jpg' },
   { id: 3, name: 'Khoa học viễn tưởng', slug: 'khoa-hoc-vien-tuong', count: 167, image: 'https://image.tmdb.org/t/p/w500/zFR8amwiEKuLTHSI2JYpyeSuzQL.jpg' },
   { id: 4, name: 'Kinh dị', slug: 'kinh-di', count: 156, image: 'https://image.tmdb.org/t/p/w500/7prYzufdIOy1KCTZKVWpjBFqqNr.jpg' },
   { id: 5, name: 'Hài', slug: 'hai', count: 205, image: 'https://image.tmdb.org/t/p/w500/8kOWDBK6XlPUzckuHDo3wwVRFwt.jpg' },
@@ -314,14 +314,14 @@ const editorCollections = ref([
     </section>
 
     <!-- Latest Movies Section -->
-    <section class="py-20 bg-gradient-to-b from-dark-900 to-dark-800">
+    <section class="py-16 bg-gradient-to-b from-dark-900 to-dark-800">
       <div class="container">
         <div class="flex items-center justify-between mb-12">
           <div>
-            <h2 class="section-title">Phim mới nhất</h2>
-            <p class="section-subtitle">Những bộ phim hot nhất hiện tại</p>
+            <h1 class="text-2xl sm:text-3xl font-semibold text-red-500">Phim mới nhất</h1>
+            <p class="text-sm text-gray-400">Những bộ phim hot nhất hiện tại</p>
           </div>
-          <button class="btn-outline">
+          <button class="btn-outline py-2 px-4 text-sm sm:text-base">
             Xem tất cả
             <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -329,8 +329,45 @@ const editorCollections = ref([
           </button>
         </div>
 
-        <!-- Movies Grid -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
+        <!-- Carousel cho mobile -->
+        <div class="flex space-x-4 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4 sm:hidden">
+          <div class="flex gap-4">
+            <RouterLink
+              v-for="movie in latestMovies" 
+              :key="movie.id"
+              :to="{ name: 'movie-detail', params: { id: movie.id } }"
+              class="movie-card group flex-shrink-0 w-40"
+            >
+              <div class="relative overflow-hidden rounded-xl aspect-[2/3] w-full bg-gray-800">
+                <img 
+                  :src="movie.poster"
+                  :alt="movie.title"
+                  class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  loading="lazy"
+                />
+                <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div class="absolute top-2 right-2 bg-black/70 backdrop-blur-sm px-2 py-1 rounded-lg">
+                  <span class="text-yellow-400 text-xs font-semibold">{{ movie.rating }}</span>
+                </div>
+                <div class="absolute bottom-0 left-0 right-0 p-3">
+                  <h3 class="text-white font-semibold text-xs mb-1 truncate">{{ movie.title }}</h3>
+                  <div class="flex items-center justify-between text-xs text-gray-300">
+                    <span>{{ movie.year }}</span>
+                    <span class="flex items-center">
+                      <svg class="w-3 h-3 text-yellow-400 mr-1" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                      </svg>
+                      {{ movie.rating }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </RouterLink>
+          </div>
+        </div>
+
+        <!-- Grid cho PC -->
+        <div class="hidden sm:grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
           <RouterLink
             v-for="movie in latestMovies" 
             :key="movie.id"
@@ -338,7 +375,7 @@ const editorCollections = ref([
             class="movie-card group"
           >
             <!-- Movie Poster -->
-            <div class="relative overflow-hidden rounded-xl aspect-[2/3] bg-gray-800">
+            <div class="relative overflow-hidden rounded-xl aspect-[2/3] w-48 bg-gray-800">
               <img 
                 :src="movie.poster"
                 :alt="movie.title"
@@ -382,14 +419,14 @@ const editorCollections = ref([
     </section>
 
     <!-- Trending Movies Section -->
-    <section class="py-20 bg-gradient-to-b from-dark-800 to-dark-900">
+    <section class="py-12 bg-gradient-to-b from-dark-800 to-dark-900">
       <div class="container">
         <div class="flex items-center justify-between mb-12">
           <div>
-            <h2 class="section-title">Xu hướng</h2>
-            <p class="section-subtitle">Phim đang được xem nhiều nhất</p>
+            <h1 class="text-2xl sm:text-3xl font-semibold text-red-500">Xu hướng</h1>
+            <p class="text-sm text-gray-400">Phim đang được xem nhiều nhất</p>
           </div>
-          <button class="btn-outline">
+          <button class="btn-outline py-2 px-4 text-sm sm:text-base">
             Xem tất cả
             <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -442,30 +479,56 @@ const editorCollections = ref([
     </section>
 
     <!-- Ranking: Tuần / Tháng -->
-    <section class="py-20 bg-gradient-to-b from-dark-900 to-dark-800">
+    <section class="py-12 bg-gradient-to-b from-dark-900 to-dark-800">
       <div class="container">
         <div class="flex items-center justify-between mb-8">
           <div>
-            <h2 class="section-title">Bảng xếp hạng</h2>
-            <p class="section-subtitle">Top phim theo tuần hoặc tháng</p>
+            <h1 class="text-2xl sm:text-3xl font-semibold text-red-500">Bảng xếp hạng</h1>
+            <p class="text-sm text-gray-400">Top phim theo tuần hoặc tháng</p>
           </div>
           <div class="inline-flex rounded-xl bg-gray-800/60 p-1 border border-gray-700">
             <button
-              :class="['px-4 py-2 rounded-lg text-sm', activePeriod==='week' ? 'bg-primary-600 text-white' : 'text-gray-300 hover:text-white']"
+              :class="['px-3 py-2 sm:px-4 sm:py-2 rounded-lg text-sm', activePeriod==='week' ? 'bg-primary-600 text-white' : 'text-gray-300 hover:text-white']"
               @click="activePeriod='week'">Tuần</button>
             <button
-              :class="['px-4 py-2 rounded-lg text-sm', activePeriod==='month' ? 'bg-primary-600 text-white' : 'text-gray-300 hover:text-white']"
+              :class="['px-3 py-2 sm:px-4 sm:py-2 rounded-lg text-sm', activePeriod==='month' ? 'bg-primary-600 text-white' : 'text-gray-300 hover:text-white']"
               @click="activePeriod='month'">Tháng</button>
           </div>
         </div>
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+        
+        <!-- Carousel cho mobile, grid cho PC -->
+        <div class="flex space-x-4 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4 sm:hidden">
+          <div class="flex gap-4">
+            <RouterLink 
+              v-for="(m,i) in rankedMovies" 
+              :key="m.id"
+              :to="{ name: 'movie-detail', params: { id: m.id } }"
+              class="movie-card group flex-shrink-0 relative w-48"
+            >
+              <div class="relative overflow-hidden rounded-xl aspect-[2/3] w-full bg-gray-800">
+                <img :src="m.poster" :alt="m.title" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" loading="lazy" />
+                <div class="absolute top-2 left-2 w-8 h-8 rounded-full bg-black/70 text-white text-sm font-bold grid place-items-center">{{ i+1 }}</div>
+                <div class="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 via-transparent to-transparent">
+                  <div class="text-white text-xs font-semibold truncate">{{ m.title }}</div>
+                  <div class="text-gray-300 text-xs flex justify-between">
+                    <span>{{ m.year }}</span>
+                    <span class="text-yellow-400">★ {{ m.rating }}</span>
+                  </div>
+                </div>
+              </div>
+            </RouterLink>
+          </div>
+        </div>
+        
+        <!-- Grid cho PC -->
+        <div class="hidden sm:grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
           <RouterLink 
             v-for="(m,i) in rankedMovies" 
             :key="m.id"
             :to="{ name: 'movie-detail', params: { id: m.id } }"
             class="movie-card group relative"
           >
-            <div class="relative overflow-hidden rounded-xl aspect-[2/3] bg-gray-800">
+            <div class="relative overflow-hidden rounded-xl aspect-[2/3] w-48 bg-gray-800">
               <img :src="m.poster" :alt="m.title" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
               <div class="absolute top-2 left-2 w-8 h-8 rounded-full bg-black/70 text-white text-sm font-bold grid place-items-center">{{ i+1 }}</div>
               <div class="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 via-transparent to-transparent">
@@ -482,27 +545,54 @@ const editorCollections = ref([
     </section>
     
     <!-- Explore by Category (Tabs) -->
-    <section class="py-20 bg-gradient-to-b from-dark-800 to-dark-900">
+    <section class="py-12 bg-gradient-to-b from-dark-800 to-dark-900">
       <div class="container">
         <div class="flex items-center justify-between mb-6">
-          <h2 class="section-title">Khám phá theo thể loại</h2>
-          <div class="flex flex-wrap gap-2">
-            <button
-              v-for="c in categoriesTab" :key="c.slug"
-              :class="['px-4 py-2 rounded-lg text-sm border', selectedCategory===c.slug ? 'bg-primary-600 border-primary-500 text-white' : 'border-gray-700 text-gray-300 hover:bg-gray-800']"
-              @click="selectedCategory=c.slug">
-              {{ c.name }}
-            </button>
+          <h1 class="text-2xl sm:text-3xl font-semibold text-red-500">Khám phá theo thể loại</h1>
+        </div>
+
+        <!-- Tabs chuyển xuống dưới h1 -->
+        <div class="flex flex-wrap gap-2 mb-6">
+          <button
+            v-for="c in categoriesTab" :key="c.slug"
+            :class="['px-4 py-2 rounded-lg text-sm border', selectedCategory===c.slug ? 'bg-primary-600 border-primary-500 text-white' : 'border-gray-700 text-gray-300 hover:bg-gray-800']"
+            @click="selectedCategory=c.slug">
+            {{ c.name }}
+          </button>
+        </div>
+
+        <!-- Carousel cho mobile -->
+        <div class="flex space-x-4 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4 sm:hidden">
+          <div class="flex gap-4">
+            <RouterLink 
+              v-for="m in categoryMovies" 
+              :key="m.id"
+              :to="{ name: 'movie-detail', params: { id: m.id } }"
+              class="movie-card group flex-shrink-0 w-40"
+            >
+              <div class="relative overflow-hidden rounded-xl aspect-[2/3] w-full bg-gray-800">
+                <img :src="m.poster" :alt="m.title" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" loading="lazy" />
+                <div class="absolute top-2 right-2 bg-black/70 px-2 py-1 rounded-lg">
+                  <span class="text-yellow-400 text-xs font-semibold">{{ m.rating }}</span>
+                </div>
+                <div class="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 via-transparent to-transparent">
+                  <div class="text-white text-sm font-semibold truncate">{{ m.title }}</div>
+                  <div class="text-gray-300 text-xs">{{ m.year }}</div>
+                </div>
+              </div>
+            </RouterLink>
           </div>
         </div>
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
+
+        <!-- Grid cho PC -->
+        <div class="hidden sm:grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
           <RouterLink 
             v-for="m in categoryMovies" 
             :key="m.id"
             :to="{ name: 'movie-detail', params: { id: m.id } }"
             class="movie-card group"
           >
-            <div class="relative overflow-hidden rounded-xl aspect-[2/3] bg-gray-800">
+            <div class="relative overflow-hidden rounded-xl aspect-[2/3] w-48 bg-gray-800">
               <img :src="m.poster" :alt="m.title" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
               <div class="absolute top-2 right-2 bg-black/70 px-2 py-1 rounded-lg">
                 <span class="text-yellow-400 text-xs font-semibold">{{ m.rating }}</span>
@@ -517,14 +607,14 @@ const editorCollections = ref([
       </div>
     </section>
     
-    <section class="py-20 bg-gradient-to-b from-dark-900 to-dark-800">
+    <section class="py-12 bg-gradient-to-b from-dark-900 to-dark-800">
       <div class="container">
         <div class="flex items-center justify-between mb-12">
           <div>
-            <h2 class="section-title">Khám phá thể loại</h2>
-            <p class="section-subtitle">Tìm phim yêu thích theo thể loại</p>
+            <h1 class="text-2xl sm:text-3xl font-semibold text-red-500">Khám phá thể loại</h1>
+            <p class="text-sm text-gray-400">Tìm phim yêu thích theo thể loại</p>
           </div>
-          <RouterLink :to="{ name: 'categories' }" class="btn-outline">
+          <RouterLink :to="{ name: 'categories' }" class="btn-outline py-2 px-4 text-sm sm:text-base">
             Xem tất cả
             <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -532,13 +622,13 @@ const editorCollections = ref([
           </RouterLink>
         </div>
 
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
-          <RouterLink 
-            v-for="category in popularCategories" 
-            :key="category.id"
-            :to="{ name: 'movies', query: { category: category.slug } }"
-            class="relative rounded-xl overflow-hidden aspect-[3/2] group"
-          >
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
+            <RouterLink 
+              v-for="category in popularCategories" 
+              :key="category.id"
+              :to="{ name: 'movies', query: { category: category.slug } }"
+              class="relative rounded-xl overflow-hidden aspect-[2/3] w-40 group"
+            >
             <img 
               :src="category.image" 
               :alt="category.name"
@@ -556,12 +646,12 @@ const editorCollections = ref([
 
 
     <!-- NEW: Popular Actors (horizontal) -->
-    <section class="py-20 bg-gradient-to-b from-dark-800 to-dark-900">
+    <section class="py-12 bg-gradient-to-b from-dark-800 to-dark-900">
       <div class="container">
         <div class="mb-8 flex items-center justify-between">
           <div>
-            <h2 class="section-title">Diễn viên nổi bật</h2>
-            <p class="section-subtitle">Theo dõi các gương mặt được yêu thích</p>
+            <h1 class="text-2xl sm:text-3xl font-semibold text-red-500">Diễn viên nổi bật</h1>
+            <p class="text-sm text-gray-400">Theo dõi các gương mặt được yêu thích</p>
           </div>
         </div>
         <div class="flex gap-6 overflow-x-auto pb-2 scrollbar-hide">
@@ -576,11 +666,11 @@ const editorCollections = ref([
     </section>
 
     <!-- NEW: Editor Collections -->
-    <section class="py-20 bg-gradient-to-b from-dark-900 to-dark-800">
+    <section class="py-12 bg-gradient-to-b from-dark-900 to-dark-800">
       <div class="container">
         <div class="mb-8">
-          <h2 class="section-title">Bộ sưu tập đề xuất</h2>
-          <p class="section-subtitle">Chủ đề do biên tập viên tuyển chọn</p>
+          <h1 class="text-2xl sm:text-3xl font-semibold text-red-500">Bộ sưu tập đề xuất</h1>
+          <p class="text-sm text-gray-400">Chủ đề do biên tập viên tuyển chọn</p>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <div v-for="c in editorCollections" :key="c.id" class="relative group rounded-2xl overflow-hidden border border-gray-800">

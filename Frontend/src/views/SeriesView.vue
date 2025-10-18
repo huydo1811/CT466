@@ -12,41 +12,42 @@
 
     <div class="container mx-auto px-4">
       <!-- Sort and results info -->
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
-        <div class="text-gray-300">
-          Hiển thị <span class="text-white font-medium">{{ (currentPage - 1) * seriesPerPage + 1 }}-{{ Math.min(currentPage * seriesPerPage, totalSeries) }}</span> 
-          trên <span class="text-white font-medium">{{ totalSeries }}</span> phim
-        </div>
-        
-        <div class="flex items-center gap-2">
-          <!-- Nút filter mới -->
-          <button 
-            @click="showFilters = !showFilters" 
-            class="flex items-center bg-dark-800 text-white border border-gray-700 rounded-lg px-3 py-2 hover:bg-dark-700 transition"
-          >
-            <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-            </svg>
-            Bộ lọc
-            <span v-if="hasActiveFilters" class="ml-2 w-2 h-2 rounded-full bg-primary-500"></span>
-          </button>
-          
-          <span class="text-gray-400 whitespace-nowrap">Sắp xếp:</span>
-          <select 
-            v-model="sortBy" 
-            @change="applySorting"
-            class="bg-dark-800 text-white border border-gray-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-primary-500"
-          >
-            <option value="latest">Mới nhất</option>
-            <option value="oldest">Cũ nhất</option>
-            <option value="nameAZ">Tên A-Z</option>
-            <option value="nameZA">Tên Z-A</option>
-            <option value="rating">Đánh giá cao nhất</option>
-            <option value="popularity">Phổ biến nhất</option>
-            <option value="episodes">Số tập nhiều nhất</option>
-          </select>
-        </div>
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+      <div class="text-gray-300">
+        Hiển thị <span class="text-white font-medium">{{ (currentPage - 1) * seriesPerPage + 1 }}-{{ Math.min(currentPage * seriesPerPage, totalSeries) }}</span> 
+        trên <span class="text-white font-medium">{{ totalSeries }}</span> phim
       </div>
+      
+      <div class="flex items-center gap-2">
+        <!-- Nút filter giữ icon, nhỏ trên mobile -->
+        <button 
+          @click="showFilters = !showFilters" 
+          class="text-sm sm:text-base px-2 py-1 sm:px-3 sm:py-2 flex items-center bg-dark-800 text-white border border-gray-700 rounded-lg hover:bg-dark-700 transition"
+        >
+          <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+          </svg>
+          Bộ lọc
+          <span v-if="hasActiveFilters" class="ml-2 w-2 h-2 rounded-full bg-primary-500"></span>
+        </button>
+        
+        <span class="text-gray-400 whitespace-nowrap">Sắp xếp:</span>
+        <!-- Select nhỏ hơn -->
+        <select 
+          v-model="sortBy" 
+          @change="applySorting"
+          class="text-sm sm:text-base px-2 py-1 sm:px-3 sm:py-2 bg-dark-800 text-white border border-gray-700 rounded-lg focus:ring-1 focus:ring-primary-500"
+        >
+          <option value="latest">Mới nhất</option>
+          <option value="oldest">Cũ nhất</option>
+          <option value="nameAZ">Tên A-Z</option>
+          <option value="nameZA">Tên Z-A</option>
+          <option value="rating">Đánh giá cao nhất</option>
+          <option value="popularity">Phổ biến nhất</option>
+          <option value="episodes">Số tập nhiều nhất</option>
+        </select>
+      </div>
+    </div>
 
       <!-- Filter Modal/Offcanvas -->
       <div 

@@ -144,9 +144,8 @@
   }
 }
 
-/* Reset layout mặc định của Vite template */
 #app {
-  display: block;         /* bỏ grid 2 cột */
+  display: block;        
   max-width: 100%;
   margin: 0;
   padding: 0;
@@ -154,5 +153,5 @@
 }
 
 body {
-  display: block;         /* tránh place-items center nếu base.css có set */
+  display: block;         
 }

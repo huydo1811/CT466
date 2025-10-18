@@ -2,12 +2,20 @@
 import { RouterLink } from 'vue-router'
 import { ref, watch, onMounted, onUnmounted } from 'vue'
 
-const isMobile = ref(false)
+// phân biệt: isMobileView = có phải màn nhỏ; mobileOpen = menu mobile đang mở
+const isMobileView = ref(false)
+const mobileOpen = ref(false)
 const searchActive = ref(false)
 const searchQuery = ref('')
 const searchResults = ref([])
 const showResults = ref(false)
 
+// ref cho container nav để detect click outside
+const navRef = ref(null)
+
+// Thay vì 1 searchRef chung, dùng 2 ref riêng
+const searchRefDesktop = ref(null)
+const searchRefMobile = ref(null)
 
 // Fake search results
 watch(searchQuery, (query) => {
@@ -39,22 +47,44 @@ function handleSearch(e) {
   }
 }
 
-// Thêm refs và listeners
-const searchRef = ref(null)
-
 // Close search results when clicking outside
 function handleClickOutside(e) {
-  if (searchRef.value && !searchRef.value.contains(e.target)) {
+  // dùng composedPath để robust hơn
+  const path = e.composedPath ? e.composedPath() : (e.path || []);
+
+  // kiểm tra click bên trong nav
+  const clickedInsideNav = navRef.value && (navRef.value.contains(e.target) || path.includes(navRef.value))
+
+  // kiểm tra click trong bất kỳ search box nào
+  const clickedInsideSearchDesktop = searchRefDesktop.value && (searchRefDesktop.value.contains(e.target) || path.includes(searchRefDesktop.value))
+  const clickedInsideSearchMobile = searchRefMobile.value && (searchRefMobile.value.contains(e.target) || path.includes(searchRefMobile.value))
+  const clickedInsideSearch = clickedInsideSearchDesktop || clickedInsideSearchMobile
+
+  if (!clickedInsideSearch) {
     showResults.value = false
   }
+
+  if (!clickedInsideNav && mobileOpen.value) {
+    mobileOpen.value = false
+  }
+}
+
+// Check mobile view
+function checkMobileView() {
+  isMobileView.value = window.innerWidth < 1024
+  // nếu chuyển sang desktop thì đóng menu mobile
+  if (!isMobileView.value) mobileOpen.value = false
 }
 
 // Add and remove event listeners
 onMounted(() => {
+  checkMobileView()
+  window.addEventListener('resize', checkMobileView)
   document.addEventListener('click', handleClickOutside)
 })
 
 onUnmounted(() => {
+  window.removeEventListener('resize', checkMobileView)
   document.removeEventListener('click', handleClickOutside)
 })
 
@@ -81,7 +111,7 @@ const countries = [
 
 <template>
   <header class="fixed top-0 w-full z-50 bg-dark-900/95 backdrop-blur-md border-b border-gray-800/50">
-    <nav class="container mx-auto px-4 py-4">
+    <nav ref="navRef" class="container mx-auto px-4 py-4">
       <div class="flex items-center">
         <!-- Logo (left) -->
         <RouterLink to="/" class="flex items-center space-x-3 group flex-shrink-0 transform -translate-x-2">
@@ -93,6 +123,20 @@ const countries = [
             <span class="text-gray-400 text-xs block">Xem phim cực chill</span>
           </div>
         </RouterLink>
+
+        <!-- Mobile Menu Toggle Button -->
+        <button 
+          @click="mobileOpen = !mobileOpen" 
+          class="ml-auto lg:hidden rounded-lg p-2 text-gray-400 hover:text-white hover:bg-gray-800/50 transition-colors"
+          aria-label="Toggle menu"
+        >
+          <svg v-if="!mobileOpen" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+          <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
 
         <!-- Desktop Nav (center) -->
         <div class="hidden lg:flex items-center mx-auto space-x-6 pl-2">
@@ -168,7 +212,8 @@ const countries = [
         <!-- Search & Actions (right) -->
         <div class="hidden lg:flex items-center space-x-3 ml-auto">
           <!-- Search Bar -->
-          <div ref="searchRef" class="relative w-60">
+          <!-- Desktop Search: ref -> searchRefDesktop -->
+          <div ref="searchRefDesktop" class="relative w-60">
             <div class="flex items-center">
               <input
                 v-model="searchQuery"
@@ -215,17 +260,15 @@ const countries = [
             </div>
           </div>
 
+          <!-- Login/Register Buttons -->
           <RouterLink to="/login" class="btn-outline px-4 py-2 text-sm">Đăng nhập</RouterLink>
           <RouterLink to="/register" class="btn-primary px-4 py-2 text-sm">Đăng ký</RouterLink>
         </div>
 
-        <!-- Rest of mobile stuff -->
-        <!-- ...existing mobile code... -->
       </div>
       
-      <!-- Mobile Search (full-width, under logo) -->
       <div class="lg:hidden mt-2">
-        <div ref="searchRef" class="relative">
+        <div ref="searchRefMobile" class="relative">
           <div class="flex items-center">
             <input
               v-model="searchQuery"
@@ -274,21 +317,22 @@ const countries = [
       </div>
       
       <!-- Mobile Menu -->
-      <div v-show="isMobile" class="lg:hidden mt-4 pb-4 border-t border-gray-800 animate-fade-in">
+      <!-- Mobile Menu: remove duplicate ref (không gán navRef ở đây) -->
+      <div v-show="mobileOpen" class="lg:hidden mt-4 pb-4 border-t border-gray-800 animate-fade-in">
         <div class="flex flex-col space-y-2 pt-4">
-          <RouterLink to="/" exact-active-class="nav-link-active" class="mobile-nav-link">Trang chủ</RouterLink>
-          <RouterLink to="/movies" class="mobile-nav-link">Phim điện ảnh</RouterLink>
-          <RouterLink to="/series" class="mobile-nav-link">Phim bộ</RouterLink>
+          <RouterLink to="/" exact-active-class="nav-link-active" class="mobile-nav-link" @click="mobileOpen = false">Trang chủ</RouterLink>
+          <RouterLink to="/movies" class="mobile-nav-link" @click="mobileOpen = false">Phim điện ảnh</RouterLink>
+          <RouterLink to="/series" class="mobile-nav-link" @click="mobileOpen = false">Phim bộ</RouterLink>
 
           <div class="text-gray-400 px-4 mt-2 text-xs uppercase">Thể loại</div>
           <RouterLink 
             v-for="c in categories" 
             :key="c.id" 
             :to="{ name: 'category-detail', params: { slug: c.slug } }" 
-            class="block px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white"
-          >
-            {{ c.name }}
-          </RouterLink>
+            class="block px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white" @click="mobileOpen = false"
+           >
+             {{ c.name }}
+           </RouterLink>
 
           <div class="text-gray-400 px-4 mt-3 text-xs uppercase">Quốc gia</div>
           <div class="grid grid-cols-2 gap-1">
@@ -296,8 +340,8 @@ const countries = [
               v-for="n in countries" 
               :key="n.id" 
               :to="{ name: 'country', params: { slug: n.slug } }" 
-              class="flex items-center px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white rounded-md"
-            >
+              class="flex items-center px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white rounded-md" @click="mobileOpen = false"
+           >
               <img 
                 v-if="n.flag" 
                 :src="n.flag" 
@@ -309,9 +353,9 @@ const countries = [
           </div>
           
           <div class="flex space-x-3 mt-4 px-4">
-            <RouterLink to="/login" class="btn-outline flex-1 text-center py-2 text-sm">Đăng nhập</RouterLink>
-            <RouterLink to="/register" class="btn-primary flex-1 text-center py-2 text-sm">Đăng ký</RouterLink>
-          </div>
+            <RouterLink to="/login" class="btn-outline flex-1 text-center py-2 text-sm" @click="mobileOpen = false">Đăng nhập</RouterLink>
+            <RouterLink to="/register" class="btn-primary flex-1 text-center py-2 text-sm" @click="mobileOpen = false">Đăng ký</RouterLink>
+         </div>
         </div>
       </div>
     </nav>
