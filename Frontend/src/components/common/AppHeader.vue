@@ -317,7 +317,6 @@ const countries = [
       </div>
       
       <!-- Mobile Menu -->
-      <!-- Mobile Menu: remove duplicate ref (không gán navRef ở đây) -->
       <div v-show="mobileOpen" class="lg:hidden mt-4 pb-4 border-t border-gray-800 animate-fade-in">
         <div class="flex flex-col space-y-2 pt-4">
           <RouterLink to="/" exact-active-class="nav-link-active" class="mobile-nav-link" @click="mobileOpen = false">Trang chủ</RouterLink>
@@ -350,6 +349,7 @@ const countries = [
               />
               <span class="truncate">{{ n.name }}</span>
             </RouterLink>
+            <RouterLink to="/actors" class="mobile-nav-link" @click="mobileOpen = false">Diễn viên</RouterLink>
           </div>
           
           <div class="flex space-x-3 mt-4 px-4">
