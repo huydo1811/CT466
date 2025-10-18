@@ -109,290 +109,236 @@
         </div>
         
         <!-- Tab Content -->
-        <div class="p-6">
-          <!-- Personal Information Tab -->
-          <div v-if="activeTab === 'personal'" class="animate-fadeIn">
-            <h2 class="text-xl font-semibold text-white mb-6">Thông tin cá nhân</h2>
-            
-            <form @submit.prevent="updateProfile" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="col-span-1">
-                <label class="block text-sm font-medium text-gray-400 mb-1">Họ tên</label>
-                <input 
-                  v-model="form.name" 
-                  type="text" 
-                  class="w-full bg-dark-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  placeholder="Họ tên của bạn"
-                />
-              </div>
-              
-              <div class="col-span-1">
-                <label class="block text-sm font-medium text-gray-400 mb-1">Email</label>
-                <input 
-                  v-model="form.email" 
-                  type="email" 
-                  class="w-full bg-dark-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  placeholder="Email của bạn"
-                  disabled
-                />
-                <p class="mt-1 text-xs text-gray-500">Email không thể thay đổi.</p>
-              </div>
-              
-              <div class="col-span-1">
-                <label class="block text-sm font-medium text-gray-400 mb-1">Số điện thoại</label>
-                <input 
-                  v-model="form.phone" 
-                  type="text" 
-                  class="w-full bg-dark-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  placeholder="Số điện thoại"
-                />
-              </div>
-              
-              <div class="col-span-1">
-                <label class="block text-sm font-medium text-gray-400 mb-1">Ngày sinh</label>
-                <input 
-                  v-model="form.birthdate" 
-                  type="date" 
-                  class="w-full bg-dark-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-              
-              <div class="col-span-2">
-                <label class="block text-sm font-medium text-gray-400 mb-1">Giới thiệu</label>
-                <textarea 
-                  v-model="form.bio" 
-                  rows="4"
-                  class="w-full bg-dark-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  placeholder="Viết đôi điều về bản thân..."
-                ></textarea>
-              </div>
-              
-              <div class="col-span-2">
-                <div class="flex items-center justify-between">
-                  <button 
-                    type="submit" 
-                    class="btn-primary px-6 py-3"
-                    :disabled="isUpdating"
-                  >
-                    <span v-if="isUpdating">Đang cập nhật...</span>
-                    <span v-else>Cập nhật thông tin</span>
-                  </button>
-                  
-                  <button 
-                    type="button" 
-                    class="text-gray-400 hover:text-white"
-                    @click="resetForm"
-                  >
-                    Hủy thay đổi
-                  </button>
-                </div>
-              </div>
-            </form>
-            
-            <!-- Change Password Section -->
-            <div class="mt-12 pt-8 border-t border-gray-700">
-              <h2 class="text-xl font-semibold text-white mb-6">Thay đổi mật khẩu</h2>
-              
-              <form @submit.prevent="updatePassword" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="col-span-1">
-                  <label class="block text-sm font-medium text-gray-400 mb-1">Mật khẩu hiện tại</label>
-                  <input 
-                    v-model="passwordForm.current" 
-                    type="password" 
-                    class="w-full bg-dark-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="Nhập mật khẩu hiện tại"
-                  />
-                </div>
-                
-                <div class="col-span-1"></div>
-                
-                <div class="col-span-1">
-                  <label class="block text-sm font-medium text-gray-400 mb-1">Mật khẩu mới</label>
-                  <div class="relative">
-                    <input 
-                      v-model="passwordForm.new" 
-                      :type="showPassword ? 'text' : 'password'"
-                      class="w-full bg-dark-800 border border-gray-700 rounded-lg px-4 py-3 text-white pr-10 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="Nhập mật khẩu mới"
-                    />
-                    <button 
-                      type="button" 
-                      @click="showPassword = !showPassword"
-                      class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300 focus:outline-none"
-                    >
-                      <svg v-if="showPassword" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
-                      </svg>
-                      <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-                
-                <div class="col-span-1">
-                  <label class="block text-sm font-medium text-gray-400 mb-1">Xác nhận mật khẩu mới</label>
-                  <input 
-                    v-model="passwordForm.confirm" 
-                    type="password" 
-                    class="w-full bg-dark-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="Nhập lại mật khẩu mới"
-                  />
-                </div>
-                
-                <div class="col-span-2">
-                  <button 
-                    type="submit" 
-                    class="btn-primary px-6 py-3"
-                    :disabled="isUpdatingPassword"
-                  >
-                    <span v-if="isUpdatingPassword">Đang cập nhật...</span>
-                    <span v-else>Thay đổi mật khẩu</span>
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
+<!-- Tab Content -->
+<div class="p-4 sm:p-6">
+  <!-- Personal Information Tab -->
+  <div v-if="activeTab === 'personal'" class="animate-fadeIn">
+    <h2 class="text-lg sm:text-xl font-semibold text-white mb-4 sm:mb-6">Thông tin cá nhân</h2>
+    
+    <form @submit.prevent="updateProfile" class="grid grid-cols-1 gap-4 sm:gap-6">
+      <div class="col-span-1">
+        <label class="block text-sm font-medium text-gray-400 mb-1">Họ tên</label>
+        <input 
+          v-model="form.name" 
+          type="text" 
+          class="w-full bg-dark-800 border border-gray-700 rounded-lg px-3 py-2 sm:px-4 sm:py-3 text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          placeholder="Họ tên của bạn"
+        />
+      </div>
+      
+      <div class="col-span-1">
+        <label class="block text-sm font-medium text-gray-400 mb-1">Email</label>
+        <input 
+          v-model="form.email" 
+          type="email" 
+          class="w-full bg-dark-800 border border-gray-700 rounded-lg px-3 py-2 sm:px-4 sm:py-3 text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          placeholder="Email của bạn"
+          disabled
+        />
+        <p class="mt-1 text-xs text-gray-500">Email không thể thay đổi.</p>
+      </div>
+      
+      <div class="col-span-1">
+        <label class="block text-sm font-medium text-gray-400 mb-1">Số điện thoại</label>
+        <input 
+          v-model="form.phone" 
+          type="text" 
+          class="w-full bg-dark-800 border border-gray-700 rounded-lg px-3 py-2 sm:px-4 sm:py-3 text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          placeholder="Số điện thoại"
+        />
+      </div>
+      
+      <div class="col-span-1">
+        <label class="block text-sm font-medium text-gray-400 mb-1">Ngày sinh</label>
+        <input 
+          v-model="form.birthdate" 
+          type="date" 
+          class="w-full bg-dark-800 border border-gray-700 rounded-lg px-3 py-2 sm:px-4 sm:py-3 text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+        />
+      </div>
+      
+      <div class="col-span-1">
+        <label class="block text-sm font-medium text-gray-400 mb-1">Giới thiệu</label>
+        <textarea 
+          v-model="form.bio" 
+          rows="3" sm:rows="4"
+          class="w-full bg-dark-800 border border-gray-700 rounded-lg px-3 py-2 sm:px-4 sm:py-3 text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          placeholder="Viết đôi điều về bản thân..."
+        ></textarea>
+      </div>
+      
+      <div class="col-span-1">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <button 
+            type="submit" 
+            class="btn-primary px-4 py-2 sm:px-6 sm:py-3"
+            :disabled="isUpdating"
+          >
+            <span v-if="isUpdating">Đang cập nhật...</span>
+            <span v-else>Cập nhật thông tin</span>
+          </button>
           
-          <!-- Watch History Tab -->
-          <div v-if="activeTab === 'history'" class="animate-fadeIn">
-            <div class="flex items-center justify-between mb-6">
-              <h2 class="text-xl font-semibold text-white">Lịch sử xem phim</h2>
-              <button class="text-gray-400 hover:text-white text-sm flex items-center" @click="clearHistory">
-                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-                Xóa lịch sử
-              </button>
-            </div>
-            
-            <div v-if="watchHistory.length > 0">
-              <div v-for="item in watchHistory" :key="item.id" class="flex items-center py-4 border-b border-gray-700">
-                <div class="w-16 h-24 rounded overflow-hidden flex-shrink-0">
-                  <img :src="item.poster" :alt="item.title" class="w-full h-full object-cover" />
-                </div>
-                
-                <div class="ml-4 flex-1">
-                  <RouterLink :to="{ name: 'movie-detail', params: { id: item.id } }" class="text-white hover:text-primary-500 font-medium">
-                    {{ item.title }}
-                  </RouterLink>
-                  <div class="text-sm text-gray-500 mb-2">
-                    <span>{{ item.year }}</span>
-                    <span class="mx-1">•</span>
-                    <span>{{ item.duration }}</span>
-                  </div>
-                  
-                  <div class="flex items-center justify-between">
-                    <div class="flex items-center text-sm">
-                      <span class="text-gray-400 mr-2">Đã xem:</span>
-                      <span class="text-gray-300">{{ formatDate(item.watchedAt) }}</span>
-                    </div>
-                    
-                    <div class="flex items-center">
-                      <RouterLink :to="{ name: 'watch-movie', params: { id: item.id } }" class="text-sm text-primary-500 hover:text-primary-400 mr-4">
-                        <span class="flex items-center">
-                          <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
-                          </svg>
-                          Xem lại
-                        </span>
-                      </RouterLink>
-                      
-                      <button @click="removeFromHistory(item.id)" class="text-gray-500 hover:text-gray-300">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                  
-                  <!-- Progress Bar -->
-                  <div class="mt-2 bg-dark-900 h-1 rounded-full overflow-hidden">
-                    <div 
-                      class="bg-primary-500 h-full" 
-                      :style="{ width: `${item.progress}%` }"
-                    ></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div v-else class="text-center py-12 bg-dark-900/50 rounded-xl border border-gray-800">
-              <svg class="w-16 h-16 text-gray-700 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-              <h3 class="text-gray-400 text-lg font-medium mb-2">Chưa có lịch sử xem</h3>
-              <p class="text-gray-600 max-w-md mx-auto mb-6">Bạn chưa xem phim nào. Hãy khám phá bộ sưu tập phim của chúng tôi.</p>
-              <RouterLink to="/" class="btn-primary px-6 py-2">
-                Khám phá phim
-              </RouterLink>
-            </div>
-          </div>
-          
-          <!-- Favorites Tab -->
-          <div v-if="activeTab === 'favorites'" class="animate-fadeIn">
-            <div class="flex items-center justify-between mb-6">
-              <h2 class="text-xl font-semibold text-white">Phim yêu thích</h2>
-            </div>
-            
-            <div v-if="favorites.length > 0" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
-              <div v-for="movie in favorites" :key="movie.id" class="movie-card group relative">
-                <div class="relative overflow-hidden rounded-xl aspect-[2/3] bg-gray-800">
-                  <img 
-                    :src="movie.poster" 
-                    :alt="movie.title" 
-                    class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                  />
-                  <div class="absolute top-2 right-2 bg-black/70 backdrop-blur-sm px-2 py-1 rounded-lg">
-                    <span class="text-yellow-400 text-xs font-semibold">{{ movie.rating }}</span>
-                  </div>
-                  <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-end">
-                    <div class="p-4 w-full">
-                      <RouterLink 
-                        :to="{ name: 'movie-detail', params: { id: movie.id } }" 
-                        class="w-full py-2 bg-primary-600 hover:bg-primary-700 rounded-lg text-white text-sm transition block text-center"
-                      >
-                        Xem chi tiết
-                      </RouterLink>
-                    </div>
-                  </div>
-
-                  <!-- Remove from favorites button -->
-                  <button 
-                    @click="removeFromFavorites(movie.id)" 
-                    class="absolute top-2 left-2 w-8 h-8 rounded-full bg-black/70 backdrop-blur-sm flex items-center justify-center text-red-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
-                    </svg>
-                  </button>
-                </div>
-                <div class="mt-2">
-                  <h3 class="text-white font-medium truncate cursor-pointer hover:text-primary-500" @click="router.push({ name: 'movie-detail', params: { id: movie.id } })">
-                    {{ movie.title }}
-                  </h3>
-                  <div class="flex items-center justify-between">
-                    <p class="text-gray-400 text-sm">{{ movie.year }}</p>
-                    <div class="text-xs text-gray-500">
-                      {{ movie.categories[0] }}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div v-else class="text-center py-12 bg-dark-900/50 rounded-xl border border-gray-800">
-              <svg class="w-16 h-16 text-gray-700 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-              </svg>
-              <h3 class="text-gray-400 text-lg font-medium mb-2">Chưa có phim yêu thích</h3>
-              <p class="text-gray-600 max-w-md mx-auto mb-6">Bạn chưa thêm phim nào vào danh sách yêu thích. Hãy khám phá và đánh dấu những bộ phim bạn yêu thích.</p>
-              <RouterLink to="/" class="btn-primary px-6 py-2">
-                Khám phá phim
-              </RouterLink>
-            </div>
+          <button 
+            type="button" 
+            class="text-gray-400 hover:text-white text-sm"
+            @click="resetForm"
+          >
+            Hủy thay đổi
+          </button>
+        </div>
+      </div>
+    </form>
+    
+    <!-- Change Password Section -->
+    <div class="mt-8 sm:mt-12 pt-6 sm:pt-8 border-t border-gray-700">
+      <h2 class="text-lg sm:text-xl font-semibold text-white mb-4 sm:mb-6">Thay đổi mật khẩu</h2>
+      
+      <form @submit.prevent="updatePassword" class="grid grid-cols-1 gap-4 sm:gap-6">
+        <!-- ... giữ nguyên form password, thêm responsive padding ... -->
+        <div class="col-span-1">
+          <label class="block text-sm font-medium text-gray-400 mb-1">Mật khẩu hiện tại</label>
+          <input 
+            v-model="passwordForm.current" 
+            type="password" 
+            class="w-full bg-dark-800 border border-gray-700 rounded-lg px-3 py-2 sm:px-4 sm:py-3 text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            placeholder="Nhập mật khẩu hiện tại"
+          />
+        </div>
+        
+        <div class="col-span-1">
+          <label class="block text-sm font-medium text-gray-400 mb-1">Mật khẩu mới</label>
+          <div class="relative">
+            <input 
+              v-model="passwordForm.new" 
+              :type="showPassword ? 'text' : 'password'"
+              class="w-full bg-dark-800 border border-gray-700 rounded-lg px-3 py-2 sm:px-4 sm:py-3 text-white pr-10 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              placeholder="Nhập mật khẩu mới"
+            />
+            <!-- ... giữ nguyên toggle password ... -->
           </div>
         </div>
+        
+        <div class="col-span-1">
+          <label class="block text-sm font-medium text-gray-400 mb-1">Xác nhận mật khẩu mới</label>
+          <input 
+            v-model="passwordForm.confirm" 
+            type="password" 
+            class="w-full bg-dark-800 border border-gray-700 rounded-lg px-3 py-2 sm:px-4 sm:py-3 text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            placeholder="Nhập lại mật khẩu mới"
+          />
+        </div>
+        
+        <div class="col-span-1">
+          <button 
+            type="submit" 
+            class="btn-primary px-4 py-2 sm:px-6 sm:py-3"
+            :disabled="isUpdatingPassword"
+          >
+            <span v-if="isUpdatingPassword">Đang cập nhật...</span>
+            <span v-else>Thay đổi mật khẩu</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  <!-- Watch History Tab -->
+  <div v-if="activeTab === 'history'" class="animate-fadeIn">
+    <div class="flex items-center justify-between mb-4 sm:mb-6">
+      <h2 class="text-lg sm:text-xl font-semibold text-white">Lịch sử xem phim</h2>
+      <button class="text-gray-400 hover:text-white text-xs sm:text-sm flex items-center" @click="clearHistory">
+        <svg class="w-3 h-3 sm:w-4 sm:h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        </svg>
+        Xóa lịch sử
+      </button>
+    </div>
+    
+    <div v-if="watchHistory.length > 0">
+      <div v-for="item in watchHistory" :key="item.id" class="flex items-center py-3 sm:py-4 border-b border-gray-700">
+        <div class="w-12 h-18 sm:w-16 sm:h-24 rounded overflow-hidden flex-shrink-0">
+          <img :src="item.poster" :alt="item.title" class="w-full h-full object-cover" />
+        </div>
+        
+        <div class="ml-3 sm:ml-4 flex-1">
+          <RouterLink :to="{ name: 'movie-detail', params: { id: item.id } }" class="text-white hover:text-primary-500 font-medium text-sm sm:text-base">
+            {{ item.title }}
+          </RouterLink>
+          <div class="text-xs sm:text-sm text-gray-500 mb-1 sm:mb-2">
+            <span>{{ item.year }}</span>
+            <span class="mx-1">•</span>
+            <span>{{ item.duration }}</span>
+          </div>
+          
+          <div class="flex items-center justify-between">
+            <div class="flex items-center text-xs sm:text-sm">
+              <span class="text-gray-400 mr-1 sm:mr-2">Đã xem:</span>
+              <span class="text-gray-300">{{ formatDate(item.watchedAt) }}</span>
+            </div>
+            
+            <div class="flex items-center">
+              <RouterLink :to="{ name: 'watch-movie', params: { id: item.id } }" class="text-xs sm:text-sm text-primary-500 hover:text-primary-400 mr-2 sm:mr-4">
+                <span class="flex items-center">
+                  <svg class="w-3 h-3 sm:w-4 sm:h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+                  </svg>
+                  Xem lại
+                </span>
+              </RouterLink>
+              
+              <button @click="removeFromHistory(item.id)" class="text-gray-500 hover:text-gray-300">
+                <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          
+          <!-- Progress Bar -->
+          <div class="mt-1 sm:mt-2 bg-dark-900 h-1 rounded-full overflow-hidden">
+            <div 
+              class="bg-primary-500 h-full" 
+              :style="{ width: `${item.progress}%` }"
+            ></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div v-else class="text-center py-8 sm:py-12 bg-dark-900/50 rounded-xl border border-gray-800">
+      <svg class="w-12 h-12 sm:w-16 sm:h-16 text-gray-700 mx-auto mb-3 sm:mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+      </svg>
+      <h3 class="text-gray-400 text-base sm:text-lg font-medium mb-2">Chưa có lịch sử xem</h3>
+      <p class="text-gray-600 max-w-md mx-auto mb-4 sm:mb-6 text-sm sm:text-base">Bạn chưa xem phim nào. Hãy khám phá bộ sưu tập phim của chúng tôi.</p>
+      <RouterLink to="/" class="btn-primary px-4 py-2 sm:px-6 sm:py-2">
+        Khám phá phim
+      </RouterLink>
+    </div>
+  </div>
+  
+  <!-- Favorites Tab -->
+  <div v-if="activeTab === 'favorites'" class="animate-fadeIn">
+    <div class="flex items-center justify-between mb-4 sm:mb-6">
+      <h2 class="text-lg sm:text-xl font-semibold text-white">Phim yêu thích</h2>
+    </div>
+    
+    <div v-if="favorites.length > 0" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-5">
+      <!-- ... giữ nguyên grid favorites ... -->
+    </div>
+    
+    <div v-else class="text-center py-8 sm:py-12 bg-dark-900/50 rounded-xl border border-gray-800">
+      <svg class="w-12 h-12 sm:w-16 sm:h-16 text-gray-700 mx-auto mb-3 sm:mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+      </svg>
+      <h3 class="text-gray-400 text-base sm:text-lg font-medium mb-2">Chưa có phim yêu thích</h3>
+      <p class="text-gray-600 max-w-md mx-auto mb-4 sm:mb-6 text-sm sm:text-base">Bạn chưa thêm phim nào vào danh sách yêu thích. Hãy khám phá và đánh dấu những bộ phim bạn yêu thích.</p>
+      <RouterLink to="/" class="btn-primary px-4 py-2 sm:px-6 sm:py-2">
+        Khám phá phim
+      </RouterLink>
+    </div>
+  </div>
+</div>
       </div>
     </div>
     
@@ -670,9 +616,6 @@ function clearHistory() {
 }
 
 // Favorites management
-function removeFromFavorites(id) {
-  favorites.value = favorites.value.filter(item => item.id !== id)
-}
 
 
 async function deleteAccount() {
