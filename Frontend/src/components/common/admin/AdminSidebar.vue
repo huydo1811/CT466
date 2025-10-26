@@ -1,30 +1,30 @@
 <template>
   <aside
     :class="[
-      'bg-gradient-to-b from-[#0f0f10] via-[#151518] to-[#1a1a1f] border-r border-[#2b2b35] transition-all duration-500 ease-in-out shadow-2xl backdrop-blur-sm',
-      open ? 'w-72' : 'w-20',
-      // fixed so sidebar stays in place while main content scrolls
-      'fixed top-0 left-0 h-screen z-40'
+      'fixed top-0 left-0 h-screen z-50 bg-gradient-to-b from-[#0f0f10] via-[#151518] to-[#1a1a1f] border-r border-[#2b2b35] transition-all duration-500 ease-in-out shadow-2xl backdrop-blur-sm',
+      open ? 'w-72' : 'w-20'
     ]"
   >
     <!-- Logo -->
     <div
-      class="flex items-center justify-center h-16 px-4 bg-gradient-to-r from-[#E50914] via-[#d90f3f] to-[#b00020] shadow-lg rounded-br-2xl"
+      class="flex items-center justify-center h-20 px-4 bg-gradient-to-r from-[#E50914] via-[#d90f3f] to-[#b00020] shadow-lg rounded-br-2xl"
     >
       <div class="flex items-center space-x-3">
         <div
           class="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-sm"
         >
           <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+            <path
+              d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+            />
           </svg>
         </div>
         <span v-if="open" class="text-2xl font-bold text-white tracking-wide">ChillFilm</span>
       </div>
     </div>
 
-    <!-- Navigation: scrollable independent of page -->
-    <nav class="mt-0 px-4 space-y-1 h-[calc(100vh-4rem)] overflow-y-auto pr-2 pt-4">
+    <!-- Navigation -->
+    <nav class="mt-8 px-4 space-y-1">
       <RouterLink
         v-for="item in navigation"
         :key="item.name"

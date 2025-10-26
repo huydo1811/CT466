@@ -21,13 +21,22 @@ import ProfileView from '@/views/ProfileView.vue'
 
 // Admin pages
 import AdminDashboard from '@/views/admin/AdminDashboard.vue'
+//Movie
 import AdminMovies from '@/views/admin/movies/AdminMovies.vue'
-import AdminUsers from '@/views/admin/AdminUsers.vue'
-import AdminSettings from '@/views/admin/AdminSettings.vue'
 import AddMovie from '@/views/admin/movies/AddMovie.vue'
 import EditMovie from '@/views/admin/movies/EditMovie.vue'
 import MovieDetail from '@/views/admin/movies/MovieDetail.vue'
+//Series
 import AdminSeries from '@/views/admin/series/AdminSeries.vue'
+import AddSeries from '@/views/admin/series/AddSeries.vue'
+import AddEpisode from '@/views/admin/series/AddEpisode.vue'
+import EditSeries from '@/views/admin/series/EditSeries.vue'
+import SeriesDetail from '@/views/admin/series/SeriesDetail.vue'
+
+import AdminUsers from '@/views/admin/AdminUsers.vue'
+import AdminSettings from '@/views/admin/AdminSettings.vue'
+
+
 
 
 const router = createRouter({
@@ -63,7 +72,11 @@ const router = createRouter({
         { path: 'movies/edit/:id', name: 'admin.movies.edit', component: EditMovie },
         { path: 'movies/:id', name: 'admin.movies.detail', component: MovieDetail },        { path: 'users', name: 'admin.users', component: AdminUsers },
         { path: 'settings', name: 'admin.settings', component: AdminSettings },
-        { path: 'series', name: 'admin.series', component: AdminSeries }
+        { path: 'series', name: 'admin.series', component: AdminSeries },
+        { path: 'series/add', name: 'admin.series.add', component: AddSeries },
+        { path: 'series/add-episode', name: 'admin.series.addEpisode', component: AddEpisode },
+        { path: 'series/edit/:id', name: 'admin.series.edit', component: EditSeries },
+        { path: 'series/:id', name: 'admin.series.detail', component: SeriesDetail }
       ]
     },
     { path: '/:pathMatch(.*)*', redirect: { name: 'home' } }
