@@ -2,29 +2,29 @@
   <aside
     :class="[
       'bg-gradient-to-b from-[#0f0f10] via-[#151518] to-[#1a1a1f] border-r border-[#2b2b35] transition-all duration-500 ease-in-out shadow-2xl backdrop-blur-sm',
-      open ? 'w-72' : 'w-20'
+      open ? 'w-72' : 'w-20',
+      // fixed so sidebar stays in place while main content scrolls
+      'fixed top-0 left-0 h-screen z-40'
     ]"
   >
     <!-- Logo -->
     <div
-      class="flex items-center justify-center h-20 px-4 bg-gradient-to-r from-[#E50914] via-[#d90f3f] to-[#b00020] shadow-lg rounded-br-2xl"
+      class="flex items-center justify-center h-16 px-4 bg-gradient-to-r from-[#E50914] via-[#d90f3f] to-[#b00020] shadow-lg rounded-br-2xl"
     >
       <div class="flex items-center space-x-3">
         <div
           class="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-sm"
         >
           <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
-            <path
-              d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-            />
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
           </svg>
         </div>
         <span v-if="open" class="text-2xl font-bold text-white tracking-wide">ChillFilm</span>
       </div>
     </div>
 
-    <!-- Navigation -->
-    <nav class="mt-10 px-4 space-y-1">
+    <!-- Navigation: scrollable independent of page -->
+    <nav class="mt-0 px-4 space-y-1 h-[calc(100vh-4rem)] overflow-y-auto pr-2 pt-4">
       <RouterLink
         v-for="item in navigation"
         :key="item.name"
@@ -40,21 +40,6 @@
         <span v-if="open" class="transition-opacity duration-300">{{ item.name }}</span>
       </RouterLink>
     </nav>
-
-    <!-- User info -->
-    <div class="absolute bottom-0 left-0 right-0 p-5 border-t border-[#2b2b35] bg-[#111113]">
-      <div class="flex items-center space-x-3">
-        <div
-          class="w-10 h-10 bg-gradient-to-br from-[#E50914] to-[#ff304f] rounded-full flex items-center justify-center shadow-md shadow-[#E50914]/30"
-        >
-          <span class="text-white text-sm font-bold">A</span>
-        </div>
-        <div v-if="open" class="text-sm">
-          <p class="text-white font-semibold">Admin User</p>
-          <p class="text-gray-500 text-xs">Administrator</p>
-        </div>
-      </div>
-    </div>
   </aside>
 </template>
 
@@ -78,10 +63,17 @@ const navigation = [
     </svg>`,
   },
   {
-    name: "Phim",
+    name: "Phim điện ảnh",
     href: "/admin/movies",
     icon: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
       <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+    </svg>`,
+  },
+    {
+    name: "Phim bộ",
+    href: "/admin/series",
+    icon: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
     </svg>`,
   },
   {
@@ -134,5 +126,6 @@ const navigation = [
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
     </svg>`,
   },
+
 ];
 </script>

@@ -21,9 +21,13 @@ import ProfileView from '@/views/ProfileView.vue'
 
 // Admin pages
 import AdminDashboard from '@/views/admin/AdminDashboard.vue'
-import AdminMovies from '@/views/admin/AdminMovies.vue'
+import AdminMovies from '@/views/admin/movies/AdminMovies.vue'
 import AdminUsers from '@/views/admin/AdminUsers.vue'
 import AdminSettings from '@/views/admin/AdminSettings.vue'
+import AddMovie from '@/views/admin/movies/AddMovie.vue'
+import EditMovie from '@/views/admin/movies/EditMovie.vue'
+import MovieDetail from '@/views/admin/movies/MovieDetail.vue'
+import AdminSeries from '@/views/admin/series/AdminSeries.vue'
 
 
 const router = createRouter({
@@ -55,8 +59,11 @@ const router = createRouter({
       children: [
         { path: '', name: 'admin.dashboard', component: AdminDashboard },
         { path: 'movies', name: 'admin.movies', component: AdminMovies },
-        { path: 'users', name: 'admin.users', component: AdminUsers },
-        { path: 'settings', name: 'admin.settings', component: AdminSettings }
+        { path: 'movies/add', name: 'admin.movies.add', component: AddMovie },
+        { path: 'movies/edit/:id', name: 'admin.movies.edit', component: EditMovie },
+        { path: 'movies/:id', name: 'admin.movies.detail', component: MovieDetail },        { path: 'users', name: 'admin.users', component: AdminUsers },
+        { path: 'settings', name: 'admin.settings', component: AdminSettings },
+        { path: 'series', name: 'admin.series', component: AdminSeries }
       ]
     },
     { path: '/:pathMatch(.*)*', redirect: { name: 'home' } }

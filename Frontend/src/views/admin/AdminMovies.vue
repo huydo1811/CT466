@@ -1,1 +1,0 @@
-<template><div class="text-white">Admin Movies</div></template>

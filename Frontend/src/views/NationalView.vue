@@ -332,7 +332,7 @@ function getCountryInfo() {
   const foundCountry = countries.find(c => c.slug === countrySlug.value)
   if (foundCountry) {
     country.value = foundCountry
-    document.title = `Phim ${foundCountry.name} - Tên website của bạn`
+    document.title = `Phim ${foundCountry.name}`
   } else {
     // Nếu không tìm thấy quốc gia, chuyển về trang chủ
     router.replace('/')

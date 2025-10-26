@@ -213,7 +213,7 @@ function getCategoryInfo() {
   if (category) {
     categoryName.value = category.name
     categoryId.value = category.id
-    document.title = `Phim ${category.name} - Tên website của bạn`
+    document.title = `Phim ${category.name}`
   } else {
     // Xử lý khi không tìm thấy thể loại
     router.replace('/categories')

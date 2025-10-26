@@ -1,0 +1,264 @@
+<script setup>
+import { ref, onMounted, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+
+const route = useRoute()
+const router = useRouter()
+const id = route.params.id
+
+const movie = ref(null)
+const loading = ref(true)
+const error = ref(null)
+const showTrailer = ref(false)
+
+const mockMovie = (idVal = id) => ({
+  id: idVal ?? 'demo-1',
+  title: 'Avengers: Endgame (Demo)',
+  description: 'Đây là dữ liệu demo phục vụ giao diện. Thay bằng dữ liệu thực khi backend sẵn sàng.',
+  poster: '',
+  trailer: 'https://www.youtube.com/embed/TCGx7qf2Yxc',
+  video: '',
+  categoryNames: ['Hành động', 'Khoa học viễn tưởng'],
+  countryName: 'Mỹ',
+  releaseDate: '2019-04-26',
+  year: 2019,
+  duration: 181,
+  director: 'Anthony & Joe Russo',
+  cast: [{ id: 'a1', name: 'Robert Downey Jr.' }, { id: 'a2', name: 'Chris Evans' }],
+  type: 'movie',
+  isPublished: true,
+  isFeatured: false,
+  isHot: false,
+  episodes: []
+})
+
+const USE_MOCK = true
+
+const fetchMovie = async () => {
+  if (USE_MOCK) {
+    error.value = null
+    movie.value = mockMovie()
+    loading.value = false
+    return
+  }
+
+  loading.value = true
+  error.value = null
+  try {
+    const res = await fetch(`/api/admin/movies/${id}`)
+    // read raw text first to avoid JSON parse errors when server returns HTML (index/404 page)
+    const text = await res.text()
+    const contentType = res.headers.get('content-type') || ''
+
+    if (contentType.includes('application/json')) {
+      let data = null
+      try {
+        data = JSON.parse(text)
+      } catch {
+        throw new Error('Invalid JSON response from server')
+      }
+      if (!res.ok) throw new Error(data?.message || `Fetch failed: ${res.status}`)
+      // normalize fields
+      movie.value = {
+        id: data.id ?? data._id ?? id,
+        title: data.title ?? '',
+        description: data.description ?? '',
+        poster: data.poster ?? data.posterUrl ?? '',
+        trailer: data.trailer ?? '',
+        video: data.video ?? data.videoUrl ?? '',
+        categoryNames: (data.categories || []).map(c => (c.name ?? c)),
+        countryName: (data.country?.name ?? data.country) || '',
+        releaseDate: data.releaseDate ? (data.releaseDate.split?.('T')[0] || data.releaseDate) : '',
+        year: data.year ?? '',
+        duration: data.duration ?? '',
+        director: data.director ?? '',
+        cast: (data.cast || data.actors || []).map(a => (typeof a === 'string' ? { id: a, name: a } : (a.name ? { id: a.id ?? a._id, name: a.name } : a))),
+        type: data.type ?? 'movie',
+        isPublished: !!data.isPublished,
+        isFeatured: !!data.isFeatured,
+        isHot: !!data.isHot,
+        episodes: data.episodes ?? []
+      }
+    } else {
+      // server returned HTML / not JSON (e.g. backend not running or 404 page). Use mock data for UI demo.
+      console.warn('Non-JSON response from API; using mock demo data. Response preview:', text?.slice?.(0, 300))
+      error.value = 'Backend unavailable — showing demo data (UI only)'
+      movie.value = mockMovie()
+    }
+  } catch (err) {
+    console.warn('Fetch movie failed, using mock data:', err)
+    error.value = 'Backend unavailable — showing demo data (UI only)'
+    movie.value = mockMovie()
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  if (USE_MOCK) {
+    error.value = null
+    movie.value = mockMovie()
+    loading.value = false
+  } else {
+    fetchMovie()
+  }
+})
+
+const posterSrc = computed(() => movie.value?.poster || '/placeholder-portrait.png')
+
+// convert common youtube links to embed url, otherwise return raw trailer
+const trailerEmbed = computed(() => {
+  const t = movie.value?.trailer || ''
+  if (!t) return ''
+  try {
+    const u = new URL(t, window.location.href)
+    if (u.hostname.includes('youtube.com')) {
+      const v = u.searchParams.get('v')
+      if (v) return `https://www.youtube.com/embed/${v}`
+      if (u.pathname.includes('/embed/')) return u.href
+    }
+    if (u.hostname.includes('youtu.be')) {
+      const vid = u.pathname.slice(1)
+      if (vid) return `https://www.youtube.com/embed/${vid}`
+    }
+  } catch (err) {
+    console.warn('Invalid trailer URL:', t, err)
+  }
+  return t
+})
+
+const goEdit = () => {
+  if (!movie.value?.id) return
+  router.push(`/admin/movies/edit/${movie.value.id}`)
+}
+const goBack = () => router.push('/admin/movies')
+
+const handleDelete = async () => {
+  if (!movie.value?.id) { alert('Phim chưa được tải'); return }
+  if (!confirm('Bạn có chắc muốn xóa phim này?')) return
+  try {
+    const res = await fetch(`/api/admin/movies/${movie.value.id}`, { method: 'DELETE' })
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '')
+      throw new Error(txt || 'Xóa thất bại')
+    }
+    alert('Xóa thành công')
+    router.push('/admin/movies')
+  } catch (err) {
+    console.error(err)
+    alert('Xóa thất bại: ' + (err.message || ''))
+  }
+}
+
+</script>
+
+<template>
+  <div class="space-y-6 animate-fade-in">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold text-white" v-if="!loading">{{ movie?.title }}</h1>
+        <div v-if="!loading" class="text-slate-400 mt-1">
+          <span v-if="movie?.categoryNames?.length">{{ movie.categoryNames.join(',') }} • </span>
+          {{ movie?.countryName }} • {{ movie?.releaseDate || movie?.year }}
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-2">
+        <button @click="goBack" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded">Quay lại</button>
+        <button @click="goEdit" class="px-3 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded">Sửa</button>
+        <button @click="handleDelete" class="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded">Xóa</button>
+      </div>
+    </div>
+
+    <div v-if="loading" class="text-slate-400">Đang tải thông tin phim...</div>
+    <div v-else-if="error" class="text-red-400">{{ error }}</div>
+    <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="md:col-span-1 bg-slate-800/40 p-4 rounded-lg border border-slate-700">
+        <img :src="posterSrc" alt="poster" class="w-full h-72 object-cover rounded-md shadow-md" />
+        <div class="mt-4 space-y-3">
+          <div class="flex flex-wrap gap-2">
+            <span class="px-2 py-1 bg-slate-700 text-slate-200 text-xs rounded">Thời lượng: {{ movie.duration }} phút</span>
+            <span class="px-2 py-1 bg-slate-700 text-slate-200 text-xs rounded">Loại: {{ movie.type === 'movie' ? 'Phim điện ảnh' : 'Series' }}</span>
+            <span v-if="movie.isFeatured" class="px-2 py-1 bg-amber-700 text-amber-100 text-xs rounded">Nổi bật</span>
+            <span v-if="movie.isHot" class="px-2 py-1 bg-red-700 text-red-100 text-xs rounded">Hot</span>
+          </div>
+
+          <div>
+            <h4 class="text-sm text-slate-300 mb-2">Diễn viên</h4>
+            <div class="flex flex-wrap gap-2">
+              <span v-for="a in movie.cast" :key="a.id" class="px-3 py-1 bg-slate-700/60 text-white rounded-full text-sm">
+                {{ a.name }}
+              </span>
+            </div>
+          </div>
+
+          <div class="mt-3">
+            <button v-if="movie.trailer" @click="showTrailer = true" class="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded">Xem trailer</button>
+            <a v-else class="block text-xs text-slate-400 mt-1">Không có trailer</a>
+          </div>
+
+          <div v-if="movie.video" class="mt-3 text-sm text-slate-300">
+            <div>File phim:</div>
+            <a :href="movie.video" target="_blank" class="text-blue-400 hover:underline break-all">{{ movie.video }}</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="md:col-span-2 bg-slate-800/40 p-6 rounded-lg border border-slate-700">
+        <h3 class="text-lg font-semibold text-white mb-2">Mô tả</h3>
+        <p class="text-slate-300 leading-relaxed whitespace-pre-line">{{ movie.description }}</p>
+
+        <div v-if="movie.type === 'series' && movie.episodes?.length" class="mt-6">
+          <h4 class="text-white font-medium mb-2">Danh sách tập</h4>
+          <ul class="space-y-2">
+            <li v-for="ep in movie.episodes" :key="ep.id" class="p-3 bg-slate-700/30 rounded flex justify-between items-center">
+              <div>
+                <div class="text-sm text-white font-medium">S{{ ep.season }} · Tập {{ ep.episodeNumber }} — {{ ep.title }}</div>
+                <div class="text-xs text-slate-300">Thời lượng: {{ ep.duration }} phút</div>
+              </div>
+              <div>
+                <button @click="$router.push(`/admin/episodes/edit/${ep.id}`)" class="text-blue-400 hover:text-blue-300">Sửa</button>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="mt-6">
+          <h4 class="text-sm text-slate-300 mb-2">Thông tin khác</h4>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-slate-300">
+            <div><strong>Đạo diễn:</strong> {{ movie.director }}</div>
+            <div><strong>Quốc gia:</strong> {{ movie.countryName }}</div>
+            <div><strong>Thể loại:</strong> <span v-if="movie.categoryNames?.length">{{ movie.categoryNames.join(', ') }}</span></div>
+            <div><strong>Ngày phát hành:</strong> {{ movie.releaseDate || movie.year }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Trailer modal -->
+    <div v-if="showTrailer" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+      <div class="bg-slate-900 rounded-lg max-w-4xl w-full mx-4 overflow-hidden">
+        <div class="flex justify-between items-center p-3 border-b border-slate-700">
+          <div class="text-white font-medium">Trailer</div>
+          <button @click="showTrailer = false" class="text-slate-300 px-3 py-1 hover:text-white">Đóng</button>
+        </div>
+        <div class="w-full aspect-video">
+          <iframe
+            v-if="trailerEmbed"
+            :src="trailerEmbed"
+            class="w-full h-full"
+            frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen
+          ></iframe>
+          <div v-else class="p-6 text-slate-300">Không thể phát trailer.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+@keyframes fade-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.animate-fade-in { animation: fade-in .25s ease-out; }
+</style>
