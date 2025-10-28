@@ -1,7 +1,11 @@
 <script setup>
-import { ref,  computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 const router = useRouter()
+
+const page = ref(1)
+const perPage = ref(10)
+
 // Mock movies (Movie model fields used: id, title)
 const movies = ref([
   { id: 'm1', title: 'Breaking Bad' },
@@ -81,6 +85,17 @@ const filteredEpisodes = computed(() => {
   return filtered
 })
 
+// pagination computed based on filteredEpisodes
+const total = computed(() => filteredEpisodes.value.length)
+const pages = computed(() => Math.max(1, Math.ceil(total.value / perPage.value)))
+const pagedEpisodes = computed(() => {
+  const start = (page.value - 1) * perPage.value
+  return filteredEpisodes.value.slice(start, start + perPage.value)
+})
+
+// reset page when filters/search change
+watch([searchQuery, selectedMovie, selectedSeason], () => { page.value = 1 })
+
 const uniqueSeries = computed(() => {
   return movies.value.map(m => ({ id: m.id, title: m.title }))
 })
@@ -114,7 +129,6 @@ const handleDeleteEpisode = (episode) => {
   }
 }
 
-// thêm hàm xem chi tiết
 const handleViewEpisode = (episode) => {
   router.push(`/admin/series/${episode.id}`)
 }
@@ -133,28 +147,29 @@ const handleAddEpisode = () => {
     <!-- Page Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h1 class="text-3xl font-bold text-white mb-2">Quản lý tập phim</h1>
+        <h1 class="text-3xl font-bold text-white mb-2">Quản lý phim bộ</h1>
       </div>
       <div class="mt-4 sm:mt-0 flex items-center gap-3">
-        <button 
-          @click="handleAddSeries"
-          class="btn-primary px-6 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
-        >
-          <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          Thêm bộ mới
-        </button>
-        <button 
-          @click="handleAddEpisode"
-          class="btn-primary px-6 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
-        >
-          <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          Thêm tập mới
-        </button>
-      </div>
+      <button 
+        @click="handleAddSeries"
+        class="btn-primary px-3 py-2 sm:px-6 sm:py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 text-sm sm:text-base"
+      >
+        <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+        </svg>
+        Thêm bộ mới
+      </button>
+
+      <button 
+        @click="handleAddEpisode"
+        class="btn-primary px-3 py-2 sm:px-6 sm:py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 text-sm sm:text-base"
+      >
+        <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+        </svg>
+        Thêm tập mới
+      </button>
+    </div>
       
     </div>
 
@@ -210,7 +225,7 @@ const handleAddEpisode = () => {
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-700/50">
-            <tr v-for="episode in filteredEpisodes" :key="episode.id" class="hover:bg-slate-700/30 transition-colors">
+            <tr v-for="episode in pagedEpisodes" :key="episode.id" class="hover:bg-slate-700/30 transition-colors">
               <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{{ getMovieTitle(episode.movieId) }}</td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-300">Mùa {{ episode.season }}</td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{{ episode.episodeNumber }}</td>
@@ -227,7 +242,7 @@ const handleAddEpisode = () => {
                     <!-- nút xem chi tiết -->
                     <button
                       @click="handleViewEpisode(episode)"
-                      class="text-slate-300 hover:text-white transition-colors"
+                      class="text-blue-400 hover:text-blue-300 transition-colors"
                       title="Xem chi tiết"
                     >
                       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -238,7 +253,7 @@ const handleAddEpisode = () => {
 
                     <button 
                       @click="handleEditEpisode(episode)"
-                      class="text-blue-400 hover:text-blue-300 transition-colors"
+                      class="text-yellow-400 hover:text-yellow-300 transition-colors"
                       title="Sửa"
                     >
                       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -261,6 +276,20 @@ const handleAddEpisode = () => {
               <td colspan="9" class="px-6 py-6 text-center text-slate-400">Không có tập nào</td>
             </tr>
           </tbody>
+         <tfoot>
+            <tr>
+              <td colspan="8" class="px-6 py-3 bg-slate-900/40">
+                <div class="flex items-center justify-between">
+                  <div class="text-slate-400 text-sm">Tổng: {{ total }}</div>
+                  <div class="flex items-center gap-2">
+                    <button :disabled="page<=1" @click="page = Math.max(1, page-1)" class="px-2 py-1 bg-slate-800 rounded disabled:opacity-50">Prev</button>
+                    <div class="px-3 py-1 bg-slate-800 rounded text-slate-200">{{ page }} / {{ pages }}</div>
+                    <button :disabled="page>=pages" @click="page = Math.min(pages, page+1)" class="px-2 py-1 bg-slate-800 rounded disabled:opacity-50">Next</button>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </tfoot>
         </table>
       </div>
     </div>

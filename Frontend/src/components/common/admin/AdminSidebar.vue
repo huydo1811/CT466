@@ -1,57 +1,88 @@
 <template>
+  <!-- Mobile backdrop -->
+  <div
+    v-if="mobileOpen"
+    @click="closeMobile"
+    class="md:hidden fixed inset-0 z-40 bg-black/50"
+    aria-hidden="true"
+  ></div>
+
   <aside
-    :class="[
-      'fixed top-0 left-0 h-screen z-50 bg-gradient-to-b from-[#0f0f10] via-[#151518] to-[#1a1a1f] border-r border-[#2b2b35] transition-all duration-500 ease-in-out shadow-2xl backdrop-blur-sm',
-      open ? 'w-72' : 'w-20'
+    role="navigation"
+    aria-label="Admin sidebar"
+    :class="[ 
+      'bg-[#0f0f10] border-r border-[#2b2b35]',
+      'fixed top-0 left-0 h-screen z-50 transform transition-transform duration-200 ease-out',
+      mobileOpen ? 'translate-x-0 w-64' : '-translate-x-full w-64',
+      open ? 'md:translate-x-0 md:w-64' : 'md:translate-x-0 md:w-20'
     ]"
   >
+
     <!-- Logo -->
-    <div
-      class="flex items-center justify-center h-20 px-4 bg-gradient-to-r from-[#E50914] via-[#d90f3f] to-[#b00020] shadow-lg rounded-br-2xl"
-    >
+    <div class="flex items-center justify-center h-16 px-4 bg-[#E50914]">
       <div class="flex items-center space-x-3">
-        <div
-          class="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-sm"
-        >
-          <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+        <div class="w-8 h-8 bg-white/10 rounded flex items-center justify-center">
+          <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
             <path
               d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
             />
           </svg>
         </div>
-        <span v-if="open" class="text-2xl font-bold text-white tracking-wide">ChillFilm</span>
+        <span v-if="open" class="text-xl font-bold text-white">ChillFilm</span>
       </div>
     </div>
 
     <!-- Navigation -->
-    <nav class="mt-8 px-4 space-y-1">
-      <RouterLink
-        v-for="item in navigation"
-        :key="item.name"
-        :to="item.href"
-        :class="[
-          'group flex items-center px-4 py-3 text-xl font-semibold rounded-lg transition-all duration-300 ease-in-out hover:bg-[#2b2b35] hover:text-white hover:shadow-lg hover:scale-105',
-          $route.path === item.href
-            ? 'bg-[#E50914]/20 text-[#E50914] border-l-4 border-[#E50914] shadow-md shadow-[#E50914]/20'
-            : 'text-gray-400'
-        ]"
+    <nav class="mt-3 px-3 space-y-1 h-[calc(100vh-4rem)] overflow-y-auto">
+    <RouterLink
+      v-for="item in navigation"
+      :key="item.name"
+      :to="item.href"
+      :class="[
+        'flex items-center px-3 py-2 text-[1.4rem] font-semibold rounded-md select-none group',
+        'transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform',
+        $route.path === item.href
+          ? 'bg-[#E50914]/30 text-[#E50914]'
+          : 'text-gray-400 hover:text-white hover:bg-[#1b1b1e]'
+      ]"
+    >
+      <div
+        class="w-6 h-6 mr-3 flex-shrink-0 transition-transform duration-300 group-hover:scale-110"
+        v-html="item.icon"
+      ></div>
+      <span
+        v-if="open"
+        class="transition-all duration-300 group-hover:scale-[1.07] group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-[#E50914] group-hover:to-[#ff4d4d]"
       >
-        <div class="w-5 h-5 mr-3 flex-shrink-0" v-html="item.icon"></div>
-        <span v-if="open" class="transition-opacity duration-300">{{ item.name }}</span>
-      </RouterLink>
+        {{ item.name }}
+      </span>
+    </RouterLink>
     </nav>
   </aside>
 </template>
 
 <script setup>
 import { RouterLink, useRoute } from "vue-router";
-import { defineProps } from "vue";
+import { defineProps, defineEmits, watch } from "vue";
 
 defineProps({
   open: Boolean,
+  mobileOpen: Boolean
 });
 
+const emit = defineEmits(["update:open", "update:mobile-open"]);
 const $route = useRoute();
+
+const closeMobile = () => {
+  emit("update:mobile-open", false);
+};
+
+watch(
+  () => $route.fullPath,
+  () => {
+    closeMobile(); 
+  }
+);
 
 const navigation = [
   {
@@ -129,3 +160,9 @@ const navigation = [
 
 ];
 </script>
+
+<style scoped>
+aside {
+  will-change: transform;
+}
+</style>

@@ -33,6 +33,12 @@ import AddEpisode from '@/views/admin/series/AddEpisode.vue'
 import EditSeries from '@/views/admin/series/EditSeries.vue'
 import SeriesDetail from '@/views/admin/series/SeriesDetail.vue'
 
+//Country
+import AdminCountries from '@/views/admin/countries/AdminCountries.vue'
+
+//Actor
+import AdminActors from '@/views/admin/actors/AdminActors.vue'
+
 import AdminUsers from '@/views/admin/AdminUsers.vue'
 import AdminSettings from '@/views/admin/AdminSettings.vue'
 
@@ -76,7 +82,9 @@ const router = createRouter({
         { path: 'series/add', name: 'admin.series.add', component: AddSeries },
         { path: 'series/add-episode', name: 'admin.series.addEpisode', component: AddEpisode },
         { path: 'series/edit/:id', name: 'admin.series.edit', component: EditSeries },
-        { path: 'series/:id', name: 'admin.series.detail', component: SeriesDetail }
+        { path: 'series/:id', name: 'admin.series.detail', component: SeriesDetail },
+        { path: 'countries', name: 'admin.countries', component: AdminCountries },
+        { path: 'actors', name: 'admin.actors', component: AdminActors }
       ]
     },
     { path: '/:pathMatch(.*)*', redirect: { name: 'home' } }

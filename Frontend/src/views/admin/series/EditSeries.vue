@@ -315,10 +315,25 @@ const cancel = () => router.back()
               <li v-for="ep in episodes" :key="ep.id" class="flex items-center justify-between p-2 bg-slate-800 rounded">
                 <div class="text-sm text-slate-200">{{ 'S' + ep.season + ' · T' + ep.episodeNumber + ' — ' + ep.title }}</div>
                 <div class="flex items-center gap-3">
-                  <button @click="openEditEpisode(ep)" class="text-yellow-300 hover:text-yellow-200">Sửa</button>
-                  <button v-if="ep.videoUrl" @click.prevent="() => window.open(ep.videoUrl, '_blank')" class="text-blue-400 hover:underline">Xem</button>
-                  <button @click="deleteEpisode(ep)" class="text-red-400 hover:text-red-300">Xóa</button>
-                </div>
+                  <button @click="openEditEpisode(ep)" class="text-yellow-300 hover:text-yellow-200 p-2 rounded transition-colors" title="Sửa">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+
+                  <button v-if="ep.videoUrl" @click.prevent="() => window.open(ep.videoUrl, '_blank')" class="text-blue-400 hover:text-blue-300 p-2 rounded transition-colors" title="Xem">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5s8.268 2.943 9.542 7c-1.274 4.057-5.065 7-9.542 7s-8.268-2.943-9.542-7z" />
+                    </svg>
+                  </button>
+
+                  <button @click="deleteEpisode(ep)" class="text-red-400 hover:text-red-300 p-2 rounded transition-colors" title="Xóa">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 4h4m-7 0h10a1 1 0 011 1v0a1 1 0 01-1 1H6a1 1 0 01-1-1v0a1 1 0 011-1z" />
+                    </svg>
+                  </button>                </div>
               </li>
               <li v-if="episodes.length === 0" class="text-slate-400 text-sm">Chưa có tập nào</li>
             </ul>

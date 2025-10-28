@@ -3,9 +3,9 @@
     class="bg-gradient-to-r from-[#0f0f10] to-[#1a1a1f] border-b border-[#2b2b35] sticky top-0 z-40 shadow-xl"
   >
     <div class="flex items-center justify-between px-6 py-4">
-      <!-- Nút mở sidebar -->
+      <!-- Nút mở sidebar trên mobile -->
       <button
-        @click="$emit('toggle-sidebar')"
+        @click="$emit('toggle-mobile')"
         class="md:hidden p-2 rounded-lg text-gray-400 hover:text-white hover:bg-[#2b2b35] transition-colors"
       >
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -154,21 +154,21 @@ const handleDelete = async () => {
 
 <template>
   <div class="space-y-6 animate-fade-in">
-    <div class="flex items-center justify-between">
-      <div>
-        <h1 class="text-2xl font-bold text-white" v-if="!loading">{{ movie?.title }}</h1>
-        <div v-if="!loading" class="text-slate-400 mt-1">
-          <span v-if="movie?.categoryNames?.length">{{ movie.categoryNames.join(',') }} • </span>
-          {{ movie?.countryName }} • {{ movie?.releaseDate || movie?.year }}
-        </div>
-      </div>
-
-      <div class="flex items-center space-x-2">
-        <button @click="goBack" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded">Quay lại</button>
-        <button @click="goEdit" class="px-3 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded">Sửa</button>
-        <button @click="handleDelete" class="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded">Xóa</button>
-      </div>
+<div class="flex flex-col md:flex-row items-start md:items-center justify-between">
+  <div>
+    <h1 class="text-2xl font-bold text-white" v-if="!loading">{{ movie?.title }}</h1>
+    <div v-if="!loading" class="text-slate-400 mt-1">
+      <span v-if="movie?.categoryNames?.length">{{ movie.categoryNames.join(',') }} • </span>
+      {{ movie?.countryName }} • {{ movie?.releaseDate || movie?.year }}
     </div>
+  </div>
+
+  <div class="flex items-center space-x-2 mt-3 md:mt-0">
+    <button @click="goBack" class="px-2 py-1 md:px-3 md:py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded text-sm md:text-base">Quay lại</button>
+    <button @click="goEdit" class="px-2 py-1 md:px-3 md:py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded text-sm md:text-base">Sửa</button>
+    <button @click="handleDelete" class="px-2 py-1 md:px-3 md:py-2 bg-red-600 hover:bg-red-700 text-white rounded text-sm md:text-base">Xóa</button>
+  </div>
+</div>
 
     <div v-if="loading" class="text-slate-400">Đang tải thông tin phim...</div>
     <div v-else-if="error" class="text-red-400">{{ error }}</div>

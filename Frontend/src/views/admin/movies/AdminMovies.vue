@@ -1,8 +1,26 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
+const page = ref(1)
+const perPage = ref(8)
+
+const filteredMovies = computed(() => {
+  return movies.value.filter(m => {
+    const q = (searchQuery.value || '').toLowerCase().trim()
+    if (q && !m.title.toLowerCase().includes(q)) return false
+    if (selectedCategory.value && m.category !== selectedCategory.value) return false
+    if (selectedCountry.value && m.country !== selectedCountry.value) return false
+    return true
+  })
+})
+const total = computed(() => filteredMovies.value.length)
+const pages = computed(() => Math.max(1, Math.ceil(total.value / perPage.value)))
+const pagedMovies = computed(() => {
+  const start = (page.value - 1) * perPage.value
+  return filteredMovies.value.slice(start, start + perPage.value)
+})
 
 // Mock data - chỉ phim điện ảnh
 const movies = ref([
@@ -92,7 +110,7 @@ const formatNumber = (num) => {
     <!-- Page Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h1 class="text-3xl font-bold text-white mb-2">Quản lý phim</h1>
+        <h1 class="text-3xl font-bold text-white mb-2">Quản lý phim điện ảnh</h1>
         <p class="text-slate-400">Quản lý tất cả phim trong hệ thống</p>
       </div>
       <div class="mt-4 sm:mt-0">
@@ -170,7 +188,7 @@ const formatNumber = (num) => {
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-700/50">
-            <tr v-for="movie in movies" :key="movie.id" class="hover:bg-slate-700/30 transition-colors">
+            <tr v-for="movie in pagedMovies" :key="movie.id" class="hover:bg-slate-700/30 transition-colors">              
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm font-medium text-white">{{ movie.title }}</div>
                 <div class="text-sm text-slate-400">{{ movie.createdAt }}</div>
@@ -191,7 +209,7 @@ const formatNumber = (num) => {
                   <!-- nút xem chi tiết -->
                   <button
                     @click="handleViewMovie(movie)"
-                    class="text-slate-300 hover:text-white transition-colors"
+                    class="text-blue-400 hover:text-blue-300 transition-colors"
                     title="Xem chi tiết"
                   >
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -202,7 +220,7 @@ const formatNumber = (num) => {
 
                   <button 
                     @click="handleEditMovie(movie)"
-                    class="text-blue-400 hover:text-blue-300 transition-colors"
+                    class="text-yellow-400 hover:text-yellow-300 transition-colors"
                     title="Sửa"
                   >
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -222,6 +240,20 @@ const formatNumber = (num) => {
               </td>
             </tr>
           </tbody>
+         <tfoot>
+            <tr>
+              <td colspan="8" class="px-6 py-3 bg-slate-900/40">
+                <div class="flex items-center justify-between">
+                  <div class="text-slate-400 text-sm">Tổng: {{ total }}</div>
+                  <div class="flex items-center gap-2">
+                    <button :disabled="page<=1" @click="page = Math.max(1, page-1)" class="px-2 py-1 bg-slate-800 rounded disabled:opacity-50">Prev</button>
+                    <div class="px-3 py-1 bg-slate-800 rounded text-slate-200">{{ page }} / {{ pages }}</div>
+                    <button :disabled="page>=pages" @click="page = Math.min(pages, page+1)" class="px-2 py-1 bg-slate-800 rounded disabled:opacity-50">Next</button>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </tfoot>
         </table>
       </div>
     </div>

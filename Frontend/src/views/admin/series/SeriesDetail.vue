@@ -75,18 +75,18 @@ const formatDate = (d) => { if (!d) return '-' ; const dt = new Date(d); if (isN
 </script>
 
 <template>
-  <div class="space-y-6 p-6 animate-fade-in">
-    <div class="flex items-start justify-between">
+  <div class="space-y-6 p-2 animate-fade-in">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between">
       <div>
         <h1 class="text-3xl font-bold text-white">{{ series?.title }} <span v-if="series" class="text-slate-400 text-lg">({{ series.year }})</span></h1>
         <div class="text-slate-400 mt-2">{{ series?.categories?.join(', ') }}</div>
       </div>
 
-      <div class="flex items-center gap-3">
-        <button @click="handleBack" class="px-4 py-2 bg-slate-700 rounded text-white">Quay lại</button>
-        <button @click="handleEdit" class="px-4 py-2 bg-yellow-600 rounded text-white">Sửa</button>
-        <button @click="handleAddEpisode" class="px-4 py-2 bg-blue-600 rounded text-white">Thêm tập</button>
-        <button @click="handleDeleteSeries" class="px-4 py-2 bg-red-500 rounded text-white">Xóa</button>
+      <div class="mt-3 sm:mt-0 flex flex-wrap items-center gap-2">
+        <button @click="handleBack" class="px-3 py-2 bg-slate-700 rounded text-white text-sm">Quay lại</button>
+        <button @click="handleEdit" class="px-3 py-2 bg-yellow-600 rounded text-white text-sm">Sửa</button>
+        <button @click="handleAddEpisode" class="px-3 py-2 bg-blue-600 rounded text-white text-sm">Thêm tập</button>
+        <button @click="handleDeleteSeries" class="px-3 py-2 bg-red-500 rounded text-white text-sm">Xóa</button>
       </div>
     </div>
 
@@ -163,9 +163,28 @@ const formatDate = (d) => { if (!d) return '-' ; const dt = new Date(d); if (isN
                     <td class="px-4 py-3 text-slate-300">{{ formatDate(ep.airDate) }}</td>
                     <td class="px-4 py-3">
                       <div class="flex items-center gap-3">
-                        <button @click="() => openVideo(ep)" class="p-2 rounded hover:bg-slate-700/30 text-blue-400" title="Xem video">Xem</button>
-                        <button @click="() => router.push(`/admin/episodes/edit/${ep.id}`)" class="p-2 rounded hover:bg-yellow-700/10 text-yellow-300" title="Sửa">Sửa</button>
-                        <button @click="() => { if(confirm('Xóa tập này?')) { series.episodes = series.episodes.filter(x => x.id !== ep.id) } }" class="p-2 rounded hover:bg-red-700/10 text-red-400" title="Xóa">Xóa</button>
+                        <button @click="openVideo(ep)" class="text-blue-400 hover:text-blue-300 p-2 rounded transition-colors" title="Xem chi tiết">
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5s8.268 2.943 9.542 7c-1.274 4.057-5.065 7-9.542 7s-8.268-2.943-9.542-7z" />
+                          </svg>
+                        </button>
+
+                        <button @click="() => router.push(`/admin/episodes/edit/${ep.id}`)" class="text-yellow-300 hover:text-yellow-200 p-2 rounded transition-colors" title="Sửa">
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+
+                        <button
+                          @click="confirm('Xóa tập này?') && (series.episodes = series.episodes.filter(x => x.id !== ep.id))"
+                          class="text-red-400 hover:text-red-300 p-2 rounded transition-colors"
+                          title="Xóa"
+                        >
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
                       </div>
                     </td>
                   </tr>
