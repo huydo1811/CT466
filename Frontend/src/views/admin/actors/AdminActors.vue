@@ -1,8 +1,8 @@
 <template>
-  <div class="space-y-6 animate-fade-in p-4">
+  <div class="space-y-6 animate-fade-in p-2">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-            <h2 class="text-2xl font-bold text-white">Diễn viên</h2>
+            <h2 class="text-3xl font-bold text-white">Diễn viên</h2>
             <p class="text-slate-400 text-sm mt-1">
             Quản lý diễn viên — thêm, sửa, xóa và tải ảnh.
             </p>

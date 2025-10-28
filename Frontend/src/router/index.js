@@ -39,7 +39,14 @@ import AdminCountries from '@/views/admin/countries/AdminCountries.vue'
 //Actor
 import AdminActors from '@/views/admin/actors/AdminActors.vue'
 
-import AdminUsers from '@/views/admin/AdminUsers.vue'
+//Category
+import AdminCategories from '@/views/admin/categories/AdminCategories.vue'
+
+//User
+import AdminUsers from '@/views/admin/users/AdminUsers.vue'
+import AddUser from '@/views/admin/users/AddUser.vue'
+import EditUser from '@/views/admin/users/EditUser.vue'
+
 import AdminSettings from '@/views/admin/AdminSettings.vue'
 
 
@@ -84,7 +91,11 @@ const router = createRouter({
         { path: 'series/edit/:id', name: 'admin.series.edit', component: EditSeries },
         { path: 'series/:id', name: 'admin.series.detail', component: SeriesDetail },
         { path: 'countries', name: 'admin.countries', component: AdminCountries },
-        { path: 'actors', name: 'admin.actors', component: AdminActors }
+        { path: 'actors', name: 'admin.actors', component: AdminActors },
+        { path: 'categories', name: 'admin.categories', component: AdminCategories },
+        { path: 'users', name: 'admin.users', component: AdminUsers },
+        { path: 'users/add', name: 'admin.users.add', component: AddUser },
+        { path: 'users/edit/:id', name: 'admin.users.edit', component: EditUser }
       ]
     },
     { path: '/:pathMatch(.*)*', redirect: { name: 'home' } }

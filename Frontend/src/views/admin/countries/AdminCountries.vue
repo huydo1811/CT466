@@ -113,7 +113,7 @@ const remove = (c) => {
 </script>
 
 <template>
-  <div class="space-y-6 animate-fade-in p-4">
+  <div class="space-y-6 animate-fade-in p-2">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
       <div>
         <h2 class="text-3xl font-bold text-white">Quốc gia</h2>
