@@ -1,1 +1,0 @@
-<template><div class="text-white">Admin Settings</div></template>

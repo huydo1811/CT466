@@ -26,7 +26,7 @@
       </div>
 
       <!-- Menu người dùng -->
-      <div class="relative">
+      <div ref="menuRef" class="relative">
         <button
           @click="userMenuOpen = !userMenuOpen"
           class="flex items-center space-x-3 p-2 rounded-lg bg-[#18181c] text-gray-400 hover:text-white hover:bg-[#2b2b35] transition-colors"
@@ -53,21 +53,16 @@
           class="absolute right-0 mt-2 w-48 bg-[#18181c] border border-[#2b2b35] rounded-lg shadow-xl py-2 z-50"
         >
           <RouterLink
-            to="/profile"
-            class="block px-4 py-2 text-sm text-gray-300 hover:bg-[#2b2b35] hover:text-white"
+            to="/admin/profile"
+            @click="userMenuOpen = false"
+            class="block px-4 py-2 text-lg text-gray-300 hover:bg-[#2b2b35] hover:text-white"
           >
             Hồ sơ cá nhân
           </RouterLink>
-          <RouterLink
-            to="/settings"
-            class="block px-4 py-2 text-sm text-gray-300 hover:bg-[#2b2b35] hover:text-white"
-          >
-            Cài đặt
-          </RouterLink>
           <hr class="border-[#2b2b35] my-1" />
           <button
-            @click="logout"
-            class="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-[#2b2b35] hover:text-white"
+            @click="() => { userMenuOpen = false; logout() }"
+            class="block w-full text-left px-4 py-2 text-lg text-gray-300 hover:bg-[#2b2b35] hover:text-white"
           >
             Đăng xuất
           </button>
@@ -78,20 +73,32 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
-import { RouterLink } from "vue-router";
+import { ref, onMounted, onBeforeUnmount, watch } from "vue";
+import { RouterLink, useRoute } from "vue-router";
 
 const userMenuOpen = ref(false);
+const menuRef = ref(null);
+const route = useRoute();
 
 const logout = () => {
+  userMenuOpen.value = false;
   console.log("Đăng xuất...");
 };
 
+const onDocumentClick = (e) => {
+  if (!menuRef.value) return;
+  if (!menuRef.value.contains(e.target)) userMenuOpen.value = false;
+};
+
 onMounted(() => {
-  document.addEventListener("click", (e) => {
-    if (!e.target.closest(".relative")) {
-      userMenuOpen.value = false;
-    }
-  });
+  document.addEventListener("click", onDocumentClick);
+});
+onBeforeUnmount(() => {
+  document.removeEventListener("click", onDocumentClick);
+});
+
+// close when route changes (safer if navigation happens programmatically)
+watch(() => route.fullPath, () => {
+  userMenuOpen.value = false;
 });
 </script>

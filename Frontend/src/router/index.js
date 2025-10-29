@@ -47,7 +47,18 @@ import AdminUsers from '@/views/admin/users/AdminUsers.vue'
 import AddUser from '@/views/admin/users/AddUser.vue'
 import EditUser from '@/views/admin/users/EditUser.vue'
 
-import AdminSettings from '@/views/admin/AdminSettings.vue'
+//Banner
+import AdminBanners from '@/views/admin/banners/AdminBanners.vue'
+
+
+//Comment
+import AdminComments from '@/views/admin/comments/AdminComments.vue'
+
+//Setting
+import AdminSettings from '@/views/admin/setting/AdminSettings.vue'
+
+//Profile
+import AdminProfile from '@/views/admin/profile/AdminProfile.vue'
 
 
 
@@ -95,7 +106,10 @@ const router = createRouter({
         { path: 'categories', name: 'admin.categories', component: AdminCategories },
         { path: 'users', name: 'admin.users', component: AdminUsers },
         { path: 'users/add', name: 'admin.users.add', component: AddUser },
-        { path: 'users/edit/:id', name: 'admin.users.edit', component: EditUser }
+        { path: 'users/edit/:id', name: 'admin.users.edit', component: EditUser },
+        { path: 'banners', name: 'admin.banners', component: AdminBanners },
+        { path: 'comments', name: 'admin.comments', component: AdminComments },
+        { path: 'profile', name: 'admin.profile', component: AdminProfile }
       ]
     },
     { path: '/:pathMatch(.*)*', redirect: { name: 'home' } }
