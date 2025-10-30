@@ -18,6 +18,10 @@ import RegisterView from '@/views/RegisterView.vue'
 import MovieDetailView from '@/views/MovieDetailView.vue'
 import WatchMovieView from '@/views/WatchMovieView.vue'
 import ProfileView from '@/views/ProfileView.vue'
+import ContactView from '@/views/ContactView.vue'
+import FAQView from '@/views/FAQview.vue'
+import PolicyView from '@/views/PolicyView.vue'
+import TermsView from '@/views/TermsView.vue'
 
 // Admin pages
 import AdminDashboard from '@/views/admin/AdminDashboard.vue'
@@ -32,6 +36,7 @@ import AddSeries from '@/views/admin/series/AddSeries.vue'
 import AddEpisode from '@/views/admin/series/AddEpisode.vue'
 import EditSeries from '@/views/admin/series/EditSeries.vue'
 import SeriesDetail from '@/views/admin/series/SeriesDetail.vue'
+
 
 //Country
 import AdminCountries from '@/views/admin/countries/AdminCountries.vue'
@@ -83,7 +88,11 @@ const router = createRouter({
         { path: 'register', name: 'register', component: RegisterView },
         { path: 'movies/:id', name: 'movie-detail', component: MovieDetailView, props: true },
         { path: 'watch/:id', name: 'watch-movie', component: WatchMovieView, props: true },
-        { path: 'profile', name: 'profile', component: ProfileView }
+        { path: 'profile', name: 'profile', component: ProfileView },
+        { path: 'contact', name: 'contact', component: ContactView },
+        { path: 'faq', name: 'faq', component: FAQView },
+        { path: 'policy', name: 'policy', component: PolicyView },
+        { path: 'terms', name: 'terms', component: TermsView }
       ]
     },
     {

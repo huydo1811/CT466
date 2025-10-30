@@ -14,19 +14,18 @@
         <div>
           <h4 class="font-semibold text-white mb-4">Danh mục</h4>
           <ul class="space-y-2 text-gray-400">
-            <li><a href="#" class="hover:text-white transition-colors">Phim lẻ</a></li>
-            <li><a href="#" class="hover:text-white transition-colors">Phim bộ</a></li>
-            <li><a href="#" class="hover:text-white transition-colors">Hoạt hình</a></li>
-            <li><a href="#" class="hover:text-white transition-colors">Tài liệu</a></li>
+            <li><RouterLink to="/movies" class="hover:text-white transition-colors">Phim điện ảnh</RouterLink></li>
+            <li><RouterLink to="/series" class="hover:text-white transition-colors">Phim bộ</RouterLink></li>
+            <li><RouterLink to="/animation" class="hover:text-white transition-colors">Hoạt hình</RouterLink></li>
           </ul>
         </div>
         <div>
           <h4 class="font-semibold text-white mb-4">Hỗ trợ</h4>
           <ul class="space-y-2 text-gray-400">
-            <li><a href="#" class="hover:text-white transition-colors">Liên hệ</a></li>
-            <li><a href="#" class="hover:text-white transition-colors">FAQ</a></li>
-            <li><a href="#" class="hover:text-white transition-colors">Chính sách</a></li>
-            <li><a href="#" class="hover:text-white transition-colors">Điều khoản</a></li>
+            <li><RouterLink to="/contact" class="hover:text-white transition-colors">Liên hệ</RouterLink></li>
+            <li><RouterLink to="/faq" class="hover:text-white transition-colors">FAQ-Hỏi đáp</RouterLink></li>
+            <li><RouterLink to="/policy" class="hover:text-white transition-colors">Chính sách</RouterLink></li>
+            <li><RouterLink to="/terms" class="hover:text-white transition-colors">Điều khoản</RouterLink></li>
           </ul>
         </div>
       </div>
@@ -36,3 +35,7 @@
     </div>
   </footer>
 </template>
+
+<script setup>
+import { RouterLink } from 'vue-router'
+</script>

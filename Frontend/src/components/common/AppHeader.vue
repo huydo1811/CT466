@@ -113,14 +113,14 @@ const countries = [
   <header class="fixed top-0 w-full z-50 bg-dark-900/95 backdrop-blur-md border-b border-gray-800/50">
     <nav ref="navRef" class="container mx-auto px-4 py-4">
       <div class="flex items-center">
-        <!-- Logo (left) -->
+        <!-- 'Logo' (left) -->
         <RouterLink to="/" class="flex items-center space-x-3 group flex-shrink-0 transform -translate-x-2">
           <div class="w-10 h-10 bg-gradient-to-br from-primary-500 to-red-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition">
             <span class="text-white font-bold text-xl">C</span>
           </div>
-          <div class="leading-tight hidden sm:block">
-            <span class="text-2xl font-bold text-gradient">ChillFilm</span>
-            <span class="text-gray-400 text-xs block">Xem phim cực chill</span>
+          <div class="leading-tight ml-2">
+            <span class="text-lg sm:text-2xl font-bold text-gradient">ChillFilm</span>
+            <span class="text-gray-400 text-xs hidden sm:block">Xem phim cực chill</span>
           </div>
         </RouterLink>
 
