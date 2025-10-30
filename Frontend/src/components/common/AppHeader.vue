@@ -1,6 +1,8 @@
 <script setup>
 import { RouterLink } from 'vue-router'
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
 // phân biệt: isMobileView = có phải màn nhỏ; mobileOpen = menu mobile đang mở
 const isMobileView = ref(false)
@@ -49,13 +51,9 @@ function handleSearch(e) {
 
 // Close search results when clicking outside
 function handleClickOutside(e) {
-  // dùng composedPath để robust hơn
   const path = e.composedPath ? e.composedPath() : (e.path || []);
-
-  // kiểm tra click bên trong nav
   const clickedInsideNav = navRef.value && (navRef.value.contains(e.target) || path.includes(navRef.value))
 
-  // kiểm tra click trong bất kỳ search box nào
   const clickedInsideSearchDesktop = searchRefDesktop.value && (searchRefDesktop.value.contains(e.target) || path.includes(searchRefDesktop.value))
   const clickedInsideSearchMobile = searchRefMobile.value && (searchRefMobile.value.contains(e.target) || path.includes(searchRefMobile.value))
   const clickedInsideSearch = clickedInsideSearchDesktop || clickedInsideSearchMobile
@@ -67,6 +65,10 @@ function handleClickOutside(e) {
   if (!clickedInsideNav && mobileOpen.value) {
     mobileOpen.value = false
   }
+
+  // close profile menu if click outside
+  const clickedInsideProfile = path.includes(profileBtnRef?.value)
+  if (!clickedInsideProfile) showProfileMenu.value = false
 }
 
 // Check mobile view
@@ -107,13 +109,35 @@ const countries = [
   { id: 'uk', name: 'Anh', slug: 'uk', flag: 'https://flagcdn.com/w80/gb.png' }
 ]
 
+const router = useRouter()
+const auth = useAuthStore()
+const showProfileMenu = ref(false)
+
+// profile button ref
+const profileBtnRef = ref(null)
+
+function goToProfile() {
+  showProfileMenu.value = false
+  router.push('/profile')
+}
+
+function logout() {
+  auth.logout()
+  showProfileMenu.value = false
+  router.push('/')
+}
+
+// computed name/initial for avatar
+const userInitial = computed(() => {
+  const name = auth.user?.fullName || auth.user?.name || auth.user?.username || ''
+  return name ? name.trim().charAt(0).toUpperCase() : 'C'
+})
 </script>
 
 <template>
   <header class="fixed top-0 w-full z-50 bg-dark-900/95 backdrop-blur-md border-b border-gray-800/50">
     <nav ref="navRef" class="container mx-auto px-4 py-4">
       <div class="flex items-center">
-        <!-- 'Logo' (left) -->
         <RouterLink to="/" class="flex items-center space-x-3 group flex-shrink-0 transform -translate-x-2">
           <div class="w-10 h-10 bg-gradient-to-br from-primary-500 to-red-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition">
             <span class="text-white font-bold text-xl">C</span>
@@ -260,9 +284,29 @@ const countries = [
             </div>
           </div>
 
-          <!-- Login/Register Buttons -->
-          <RouterLink to="/login" class="btn-outline px-4 py-2 text-sm">Đăng nhập</RouterLink>
-          <RouterLink to="/register" class="btn-primary px-4 py-2 text-sm">Đăng ký</RouterLink>
+          <!-- Auth area -->
+          <div v-if="!auth.isAuthenticated" class="flex items-center gap-4">
+            <RouterLink to="/login" class="btn-outline px-4 py-2 text-sm">Đăng nhập</RouterLink>
+            <RouterLink to="/register" class="btn-primary px-4 py-2 text-sm">Đăng ký</RouterLink>
+          </div>
+
+          <div v-else class="relative">
+            <button
+              ref="profileBtnRef"
+              @click="showProfileMenu = !showProfileMenu"
+              class="bg-gray-800/40 hover:bg-gray-800 p-1.5 rounded-full"
+              aria-label="Profile menu"
+            >
+              <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-red-600 flex items-center justify-center text-white font-semibold">
+                {{ userInitial }}
+              </div>
+            </button>
+
+            <div v-show="showProfileMenu" class="absolute right-0 mt-2 w-44 bg-dark-800/95 border border-gray-700 rounded-xl shadow-lg z-50">
+              <button @click="goToProfile" class="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-gray-800/60">Hồ sơ cá nhân</button>
+              <button @click="logout" class="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-gray-800/60">Đăng xuất</button>
+            </div>
+          </div>
         </div>
 
       </div>
@@ -316,46 +360,59 @@ const countries = [
         </div>
       </div>
       
-      <!-- Mobile Menu -->
-      <div v-show="mobileOpen" class="lg:hidden mt-4 pb-4 border-t border-gray-800 animate-fade-in">
-        <div class="flex flex-col space-y-2 pt-4">
-          <RouterLink to="/" exact-active-class="nav-link-active" class="mobile-nav-link" @click="mobileOpen = false">Trang chủ</RouterLink>
-          <RouterLink to="/movies" class="mobile-nav-link" @click="mobileOpen = false">Phim điện ảnh</RouterLink>
-          <RouterLink to="/series" class="mobile-nav-link" @click="mobileOpen = false">Phim bộ</RouterLink>
+      <!-- Mobile Menu (overlay, scrollable) -->
+      <div
+        v-show="mobileOpen"
+        class="lg:hidden absolute left-0 right-0 top-full mt-0 z-40"
+      >
+        <div
+          class="bg-dark-900/95 border-t border-gray-800 p-4 max-h-[calc(100vh-64px)] overflow-y-auto rounded-b-xl shadow-xl"
+          style="-webkit-overflow-scrolling: touch;"
+        >
+          <div class="flex flex-col space-y-2">
+            <RouterLink to="/" exact-active-class="nav-link-active" class="mobile-nav-link" @click="mobileOpen = false">Trang chủ</RouterLink>
+            <RouterLink to="/movies" class="mobile-nav-link" @click="mobileOpen = false">Phim điện ảnh</RouterLink>
+            <RouterLink to="/series" class="mobile-nav-link" @click="mobileOpen = false">Phim bộ</RouterLink>
 
-          <div class="text-gray-400 px-4 mt-2 text-xs uppercase">Thể loại</div>
-          <RouterLink 
-            v-for="c in categories" 
-            :key="c.id" 
-            :to="{ name: 'category-detail', params: { slug: c.slug } }" 
-            class="block px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white" @click="mobileOpen = false"
-           >
-             {{ c.name }}
-           </RouterLink>
-
-          <div class="text-gray-400 px-4 mt-3 text-xs uppercase">Quốc gia</div>
-          <div class="grid grid-cols-2 gap-1">
-            <RouterLink 
-              v-for="n in countries" 
-              :key="n.id" 
-              :to="{ name: 'country', params: { slug: n.slug } }" 
-              class="flex items-center px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white rounded-md" @click="mobileOpen = false"
-           >
-              <img 
-                v-if="n.flag" 
-                :src="n.flag" 
-                :alt="n.name" 
-                class="w-4 h-3 mr-1.5 object-cover"
-              />
-              <span class="truncate">{{ n.name }}</span>
+            <div class="text-gray-400 px-4 mt-2 text-xs uppercase">Thể loại</div>
+            <RouterLink
+              v-for="c in categories"
+              :key="c.id"
+              :to="{ name: 'category-detail', params: { slug: c.slug } }"
+              class="block px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white"
+              @click="mobileOpen = false"
+            >
+              {{ c.name }}
             </RouterLink>
-            <RouterLink to="/actors" class="mobile-nav-link" @click="mobileOpen = false">Diễn viên</RouterLink>
+
+            <div class="text-gray-400 px-4 mt-3 text-xs uppercase">Quốc gia</div>
+            <div class="grid grid-cols-2 gap-1">
+              <RouterLink
+                v-for="n in countries"
+                :key="n.id"
+                :to="{ name: 'country', params: { slug: n.slug } }"
+                class="flex items-center px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white rounded-md"
+                @click="mobileOpen = false"
+              >
+                <img
+                  v-if="n.flag"
+                  :src="n.flag"
+                  :alt="n.name"
+                  class="w-4 h-3 mr-1.5 object-cover"
+                />
+                <span class="truncate">{{ n.name }}</span>
+              </RouterLink>
+              <RouterLink to="/actors" class="mobile-nav-link" @click="mobileOpen = false">Diễn viên</RouterLink>
+            </div>
+
+            <div class="flex space-x-3 mt-4 px-4">
+              <RouterLink v-if="!auth.isAuthenticated" to="/login" class="btn-outline flex-1 text-center py-2 text-sm" @click="mobileOpen = false">Đăng nhập</RouterLink>
+              <RouterLink v-if="!auth.isAuthenticated" to="/register" class="btn-primary flex-1 text-center py-2 text-sm" @click="mobileOpen = false">Đăng ký</RouterLink>
+
+              <button v-if="auth.isAuthenticated" @click="goToProfile" class="btn-outline flex-1 text-center py-2 text-sm">Hồ sơ</button>
+              <button v-if="auth.isAuthenticated" @click="logout" class="btn-primary flex-1 text-center py-2 text-sm">Đăng xuất</button>
+            </div>
           </div>
-          
-          <div class="flex space-x-3 mt-4 px-4">
-            <RouterLink to="/login" class="btn-outline flex-1 text-center py-2 text-sm" @click="mobileOpen = false">Đăng nhập</RouterLink>
-            <RouterLink to="/register" class="btn-primary flex-1 text-center py-2 text-sm" @click="mobileOpen = false">Đăng ký</RouterLink>
-         </div>
         </div>
       </div>
     </nav>
