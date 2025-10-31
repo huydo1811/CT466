@@ -1,4 +1,5 @@
-import authService from '../services/authService.js';
+import User from '../models/User.js';
+import * as authService from '../services/authService.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 // Đăng ký
@@ -63,36 +64,38 @@ export const getProfile = asyncHandler(async (req, res) => {
 
 // Update profile
 export const updateProfile = asyncHandler(async (req, res) => {
-  const { fullName, email } = req.body;
+  const { fullName, email, avatar } = req.body;
+  const userId = req.user?.id || req.user?._id;
+  if (!userId) {
+    return res.status(400).json({ success: false, message: 'Không xác định được user' });
+  }
 
   const user = await User.findByIdAndUpdate(
-    req.user.id,
-    { fullName, email },
+    userId,
+    { fullName, email, avatar },
     { new: true, runValidators: true }
-  );
+  ).select('-passwordHash -passwordResetToken -passwordResetExpires');
 
-  res.status(200).json({
-    success: true,
-    message: 'Cập nhật thông tin thành công',
-    data: user
-  });
+  if (!user) {
+    return res.status(404).json({ success: false, message: 'User không tồn tại' });
+  }
+
+  return res.json({ success: true, data: { user } });
 });
 
 // Change password
 export const changePassword = asyncHandler(async (req, res) => {
   const { currentPassword, newPassword } = req.body;
-
   if (!currentPassword || !newPassword) {
-    return res.status(400).json({
-      success: false,
-      message: 'Mật khẩu hiện tại và mật khẩu mới là bắt buộc'
-    });
+    return res.status(400).json({ success: false, message: 'Mật khẩu hiện tại và mật khẩu mới là bắt buộc' });
   }
 
-  await authService.changePassword(req.user.id, currentPassword, newPassword);
+  const userId = req.user?.id || req.user?._id;
+  if (!userId) {
+    return res.status(400).json({ success: false, message: 'Không xác định được user' });
+  }
 
-  res.status(200).json({
-    success: true,
-    message: 'Đổi mật khẩu thành công'
-  });
+  await authService.changePassword(userId, currentPassword, newPassword);
+
+  return res.json({ success: true, message: 'Đổi mật khẩu thành công' });
 });

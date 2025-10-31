@@ -303,8 +303,8 @@ const userInitial = computed(() => {
             </button>
 
             <div v-show="showProfileMenu" class="absolute right-0 mt-2 w-44 bg-dark-800/95 border border-gray-700 rounded-xl shadow-lg z-50">
-              <button @click="goToProfile" class="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-gray-800/60">Hồ sơ cá nhân</button>
-              <button @click="logout" class="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-gray-800/60">Đăng xuất</button>
+              <button @click="goToProfile" class="w-full text-left px-4 py-2  text-slate-200 text-lg hover:bg-gray-800/60">Hồ sơ cá nhân</button>
+              <button @click="logout" class="w-full text-left px-4 py-2  text-slate-200 text-lg hover:bg-gray-800/60">Đăng xuất</button>
             </div>
           </div>
         </div>
