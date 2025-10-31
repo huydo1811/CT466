@@ -1,115 +1,120 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import api from '@/services/api'
 
 
-// mock data / toggle to false to hook API later
-const USE_MOCK = true
-
+// always use real backend
 const countries = ref([])
-const loading = ref(true)
+const loading = ref(false)
 const q = ref('')
 const page = ref(1)
-const perPage = ref(12)
+const perPage = ref(10)
 
-// modal / form
 const showModal = ref(false)
 const editing = ref(false)
-const form = ref({
-  id: null,
-  name: '',
-  code: '',
-  slug: '',
-  flag: '' // data URL or remote url
-})
+const form = ref({ id: null, name: '', code: '', slug: '', flag: '', isActive: true, flagFile: null })
 
-// simple pagination
-const total = computed(() => countries.value.length)
-const pages = computed(() => Math.max(1, Math.ceil(total.value / perPage.value)))
-const paged = computed(() => {
-  const list = filtered.value
-  const start = (page.value - 1) * perPage.value
-  return list.slice(start, start + perPage.value)
-})
-
-// search filter
-const filtered = computed(() => {
-  if (!q.value) return countries.value
-  const t = q.value.toLowerCase().trim()
-  return countries.value.filter(c => (c.name || '').toLowerCase().includes(t) || (c.code || '').toLowerCase().includes(t))
-})
-
-// mock loader
-const mockCountries = () => ([
-  { id: 'c1', name: 'United States', code: 'US', slug: 'united-states', flag: 'https://flagcdn.com/us.svg', createdAt: '2020-01-01', isActive: true },
-  { id: 'c2', name: 'Vietnam', code: 'VN', slug: 'vietnam', flag: 'https://flagcdn.com/vn.svg', createdAt: '2020-05-10', isActive: true },
-  { id: 'c3', name: 'Japan', code: 'JP', slug: 'japan', flag: 'https://flagcdn.com/jp.svg', createdAt: '2021-03-20', isActive: true },
-])
+const total = computed(() => countries.value?.totalItems ?? countries.value.length ?? 0)
+const pages = computed(() => Math.max(1, Math.ceil((countries.value?.totalItems ?? countries.value.length ?? 0) / perPage.value)))
+const paged = computed(() => countries.value?.items ?? countries.value)
 
 const fetchCountries = async () => {
   loading.value = true
   try {
-    if (USE_MOCK) {
-      countries.value = mockCountries()
-    } else {
-      const res = await fetch('/api/admin/countries')
-      if (!res.ok) throw new Error('Fetch failed')
-      countries.value = await res.json()
-    }
+    const res = await api.get('/countries', { params: { page: page.value, limit: perPage.value, search: q.value } })
+    const body = res?.data || {}
+    // expected: { success, data: [..], pagination: { totalItems, totalPages, page } }
+    const arr = body.data || body.countries || []
+    countries.value = { items: (arr || []).map(it => ({ ...it, id: it._id || it.id })), totalItems: body.pagination?.totalItems ?? (arr || []).length }
   } catch (err) {
-    console.warn('Load countries failed:', err)
-    countries.value = []
+    console.error('fetchCountries error', err)
+    countries.value = { items: [], totalItems: 0 }
   } finally {
     loading.value = false
   }
 }
 
 onMounted(fetchCountries)
+watch([page], () => { fetchCountries() })
 
-// modal helpers
+const onSearch = () => { page.value = 1; fetchCountries() }
+
 const openAdd = () => {
   editing.value = false
-  form.value = { id: null, name: '', code: '', slug: '', flag: '' }
+  form.value = { id: null, name: '', code: '', slug: '', flag: '', isActive: true, flagFile: null }
   showModal.value = true
 }
 const openEdit = (c) => {
   editing.value = true
-  form.value = { ...c }
+  form.value = { id: c.id || c._id, name: c.name || '', code: c.code || '', slug: c.slug || '', flag: c.flag || '', isActive: !!c.isActive, flagFile: null }
   showModal.value = true
 }
 const closeModal = () => { showModal.value = false }
 
-// simple slugify
-const slugify = (s='') => s.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'')
+const slugify = (s = '') => s.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
 
-// file -> dataURL
 const handleFile = (e) => {
   const f = e.target.files?.[0]
   if (!f) return
+  form.value.flagFile = f
   const reader = new FileReader()
   reader.onload = () => { form.value.flag = reader.result }
   reader.readAsDataURL(f)
 }
 
-const save = () => {
+const save = async () => {
   if (!form.value.name) { alert('Nhập tên quốc gia'); return }
   if (!form.value.code) { alert('Nhập mã (ISO)'); return }
   form.value.slug = form.value.slug || slugify(form.value.name)
-  if (editing.value) {
-    const idx = countries.value.findIndex(x => x.id === form.value.id)
-    if (idx >= 0) countries.value.splice(idx, 1, { ...form.value })
-    else countries.value.unshift({ ...form.value })
-  } else {
-    const id = 'c' + Date.now()
-    countries.value.unshift({ id, createdAt: new Date().toISOString().slice(0,10), isActive: true, ...form.value })
+
+  try {
+    if (editing.value && form.value.id) {
+      if (form.value.flagFile) {
+        const fd = new FormData()
+        fd.append('name', form.value.name)
+        fd.append('code', form.value.code)
+        fd.append('slug', form.value.slug)
+        fd.append('isActive', String(!!form.value.isActive))
+        fd.append('flag', form.value.flagFile)
+        await api.put(`/countries/${form.value.id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      } else {
+        await api.put(`/countries/${form.value.id}`, { name: form.value.name, code: form.value.code, slug: form.value.slug, isActive: form.value.isActive, flag: form.value.flag })
+      }
+    } else {
+      if (form.value.flagFile) {
+        const fd = new FormData()
+        fd.append('name', form.value.name)
+        fd.append('code', form.value.code)
+        fd.append('slug', form.value.slug)
+        fd.append('isActive', String(!!form.value.isActive))
+        fd.append('flag', form.value.flagFile)
+        await api.post('/countries', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      } else {
+        await api.post('/countries', { name: form.value.name, code: form.value.code, slug: form.value.slug, isActive: form.value.isActive, flag: form.value.flag })
+      }
+    }
+
+    closeModal()
+    fetchCountries()
+  } catch (err) {
+    console.error('save country error', err)
+    alert(err?.response?.data?.message || 'Lưu thất bại')
   }
-  closeModal()
 }
 
-const remove = (c) => {
+const remove = async (c) => {
   if (!confirm(`Xóa quốc gia "${c.name}"?`)) return
-  countries.value = countries.value.filter(x => x.id !== c.id)
+  try {
+    await api.delete(`/countries/${c.id || c._id}`)
+    await fetchCountries()
+  } catch (err) {
+    console.error('delete country error', err)
+    alert(err?.response?.data?.message || 'Xóa thất bại')
+  }
 }
 
+const prev = () => { if (page.value > 1) { page.value-- } }
+const next = () => { page.value = Math.min(pages.value, page.value + 1) }
 </script>
 
 <template>
@@ -120,20 +125,15 @@ const remove = (c) => {
         <p class="text-slate-400 text-sm mt-1">Quản lý danh sách quốc gia — thêm, sửa, xóa và tải ảnh lá cờ.</p>
       </div>
 
-        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
-            <input
-                v-model="q"
-                placeholder="Tìm kiếm tên hoặc mã..."
-                class="px-3 py-2 rounded bg-slate-800 border border-slate-700 text-slate-200 focus:outline-none w-full sm:w-auto"
-            />
-            <button
-                @click="openAdd"
-                class="px-2.5 py-1.5 text-sm bg-emerald-600 hover:bg-emerald-700 text-white rounded 
-                    sm:px-3 sm:py-2 sm:text-sm 
-                    md:px-4 md:py-2.5 md:text-base">
-                Thêm quốc gia
-            </button>
-        </div>
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+        <input
+          v-model="q"
+          @keydown.enter="onSearch"
+          placeholder="Tìm kiếm tên hoặc mã..."
+          class="px-3 py-2 rounded bg-slate-800 border border-slate-700 text-slate-200 focus:outline-none w-full sm:w-auto"
+        />
+        <button @click="openAdd" class="px-2.5 py-1.5 text-lg bg-emerald-600 hover:bg-emerald-700 text-white rounded">Thêm quốc gia</button>
+      </div>
     </div>
 
     <div class="bg-slate-800/50 border border-slate-700/40 rounded-xl shadow overflow-hidden">
@@ -152,11 +152,11 @@ const remove = (c) => {
             <tr v-if="loading">
               <td colspan="5" class="px-4 py-6 text-slate-400">Đang tải...</td>
             </tr>
-            <tr v-else-if="!filtered.length">
+            <tr v-else-if="!paged.length">
               <td colspan="5" class="px-4 py-6 text-slate-400">Không có kết quả.</td>
             </tr>
 
-            <tr v-for="c in paged" :key="c.id" class="hover:bg-slate-700/20">
+            <tr v-for="c in paged" :key="c.id || c._id" class="hover:bg-slate-700/20">
               <td class="px-4 py-3">
                 <div class="font-medium text-white">{{ c.name }}</div>
                 <div class="text-xs text-slate-400 mt-1">Slug: {{ c.slug }}</div>
@@ -170,14 +170,12 @@ const remove = (c) => {
               </td>
               <td class="px-4 py-3 text-center">
                 <div class="flex items-center justify-center gap-2">
-                  <button @click="openEdit(c)" class="text-yellow-300 hover:text-yellow-200 p-2 rounded" title="Sửa">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                  </button>
-                  <button @click="remove(c)" class="text-red-400 hover:text-red-300 p-2 rounded" title="Xóa">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <button @click="openEdit(c)" class="text-yellow-300 hover:text-yellow-200 p-2 rounded" title="Sửa">                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg></button>
+                  <button @click="remove(c)" class="text-red-400 hover:text-red-300 p-2 rounded" title="Xóa"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>                 
-                  </button>
+                    </svg></button>
                 </div>
               </td>
             </tr>
@@ -185,18 +183,17 @@ const remove = (c) => {
         </table>
       </div>
 
-      <!-- pagination -->
       <div class="flex items-center justify-between px-4 py-3 bg-slate-900/40">
         <div class="text-slate-400 text-sm">Tổng: {{ total }}</div>
         <div class="flex items-center gap-2">
-          <button :disabled="page<=1" @click="page = Math.max(1, page-1)" class="px-2 py-1 bg-slate-800 rounded disabled:opacity-50">Prev</button>
+          <button :disabled="page<=1" @click="prev" class="px-2 py-1 bg-slate-800 rounded disabled:opacity-50">Prev</button>
           <div class="px-3 py-1 bg-slate-800 rounded text-slate-200">{{ page }} / {{ pages }}</div>
-          <button :disabled="page>=pages" @click="page = Math.min(pages, page+1)" class="px-2 py-1 bg-slate-800 rounded disabled:opacity-50">Next</button>
+          <button :disabled="page>=pages" @click="next" class="px-2 py-1 bg-slate-800 rounded disabled:opacity-50">Next</button>
         </div>
       </div>
     </div>
 
-    <!-- modal -->
+    <!-- modal (unchanged) -->
     <div v-if="showModal" class="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/50 p-4">
       <div class="w-full max-w-2xl bg-slate-900 rounded-lg border border-slate-700 overflow-hidden">
         <div class="flex items-center justify-between px-4 py-3 border-b border-slate-700">

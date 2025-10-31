@@ -1,128 +1,95 @@
 import Country from '../models/Country.js';
+import fs from 'fs';
+import path from 'path';
 
-class CountryService {
-  // Lấy tất cả quốc gia
-  async getAllCountries(options = {}) {
-    try {
-      const { page = 1, limit = 10, search = '' } = options;
-      
-      // Tạo query tìm kiếm
-      const query = search 
-        ? { name: { $regex: search, $options: 'i' } }
-        : {};
+const uploadsDir = path.join(process.cwd(), 'uploads', 'countries');
 
-      // Pagination
-      const skip = (page - 1) * limit;
-      
-      const countries = await Country.find(query)
-        .sort({ name: 1 })
-        .skip(skip)
-        .limit(Number(limit));
-
-      const total = await Country.countDocuments(query);
-
-      return {
-        countries,
-        pagination: {
-          currentPage: Number(page),
-          totalPages: Math.ceil(total / limit),
-          totalItems: total,
-          itemsPerPage: Number(limit)
-        }
-      };
-    } catch (error) {
-      throw new Error(`Lỗi khi lấy danh sách quốc gia: ${error.message}`);
-    }
+const getAllCountries = async ({ page = 1, limit = 20, search } = {}) => {
+  const p = Math.max(1, parseInt(page, 10) || 1);
+  const l = Math.max(1, parseInt(limit, 10) || 20);
+  const filter = {};
+  if (search) {
+    const re = new RegExp(search, 'i');
+    filter.$or = [{ name: re }, { code: re }, { slug: re }];
   }
 
-  // Lấy quốc gia theo ID
-  async getCountryById(id) {
-    try {
-      const country = await Country.findById(id);
-      if (!country) {
-        throw new Error('Không tìm thấy quốc gia');
-      }
-      return country;
-    } catch (error) {
-      throw new Error(`Lỗi khi lấy thông tin quốc gia: ${error.message}`);
-    }
+  const totalItems = await Country.countDocuments(filter);
+  const countries = await Country.find(filter)
+    .sort({ createdAt: -1 })
+    .skip((p - 1) * l)
+    .limit(l)
+    .lean();
+
+  const pagination = {
+    totalItems,
+    totalPages: Math.max(1, Math.ceil(totalItems / l)),
+    page: p,
+    limit: l
+  };
+
+  return { countries, pagination };
+};
+
+const getCountryById = async (id) => {
+  return Country.findById(id).lean();
+};
+
+const createCountry = async (data) => {
+  // data.flag expected to be public URL or empty
+  const country = await Country.create(data);
+  return country;
+};
+
+const _deleteFileIfLocal = (flagUrl) => {
+  if (!flagUrl) return;
+  try {
+    // detect local uploads path segment
+    const segment = '/uploads/countries/';
+    const idx = flagUrl.indexOf(segment);
+    if (idx === -1) return;
+    const filename = flagUrl.slice(idx + segment.length);
+    const fp = path.join(uploadsDir, filename);
+    if (fs.existsSync(fp)) fs.unlinkSync(fp);
+  } catch (err) {
+    // swallow errors but log
+    console.warn('delete file error', err);
+  }
+};
+
+const updateCountry = async (id, data) => {
+  const existing = await Country.findById(id).lean();
+  if (!existing) throw new Error('Country not found');
+
+  // if incoming data has flag that is a new uploaded URL (starts with http and contains /uploads/countries/)
+  if (data.flag && existing.flag && data.flag !== existing.flag) {
+    _deleteFileIfLocal(existing.flag);
   }
 
-  // Tạo quốc gia mới
-  async createCountry(countryData) {
-    try {
-      // Kiểm tra tên quốc gia đã tồn tại
-      const existingCountry = await Country.findOne({ 
-        name: { $regex: `^${countryData.name}$`, $options: 'i' } 
-      });
-      
-      if (existingCountry) {
-        throw new Error('Tên quốc gia đã tồn tại');
-      }
+  const updated = await Country.findByIdAndUpdate(id, data, { new: true, runValidators: true });
+  return updated;
+};
 
-      const country = await Country.create(countryData);
-      return country;
-    } catch (error) {
-      throw new Error(`Lỗi khi tạo quốc gia: ${error.message}`);
-    }
-  }
+const deleteCountry = async (id) => {
+  const existing = await Country.findById(id);
+  if (!existing) throw new Error('Country not found');
 
-  // Cập nhật quốc gia
-  async updateCountry(id, updateData) {
-    try {
-      // Kiểm tra tên quốc gia đã tồn tại (ngoại trừ quốc gia hiện tại)
-      if (updateData.name) {
-        const existingCountry = await Country.findOne({ 
-          name: { $regex: `^${updateData.name}$`, $options: 'i' },
-          _id: { $ne: id }
-        });
-        
-        if (existingCountry) {
-          throw new Error('Tên quốc gia đã tồn tại');
-        }
-      }
+  // delete file if stored locally
+  if (existing.flag) _deleteFileIfLocal(existing.flag);
 
-      const country = await Country.findByIdAndUpdate(
-        id,
-        updateData,
-        { new: true, runValidators: true }
-      );
+  await Country.findByIdAndDelete(id);
+  return true;
+};
 
-      if (!country) {
-        throw new Error('Không tìm thấy quốc gia');
-      }
+const searchCountries = async (q) => {
+  const re = new RegExp(q, 'i');
+  return Country.find({ $or: [{ name: re }, { code: re }, { slug: re }] }).limit(50).lean();
+};
 
-      return country;
-    } catch (error) {
-      throw new Error(`Lỗi khi cập nhật quốc gia: ${error.message}`);
-    }
-  }
-
-  // Xóa quốc gia
-  async deleteCountry(id) {
-    try {
-      const country = await Country.findByIdAndDelete(id);
-      if (!country) {
-        throw new Error('Không tìm thấy quốc gia');
-      }
-      return country;
-    } catch (error) {
-      throw new Error(`Lỗi khi xóa quốc gia: ${error.message}`);
-    }
-  }
-
-  // Tìm kiếm quốc gia theo tên
-  async searchCountries(searchTerm) {
-    try {
-      const countries = await Country.find({
-        name: { $regex: searchTerm, $options: 'i' }
-      }).sort({ name: 1 });
-
-      return countries;
-    } catch (error) {
-      throw new Error(`Lỗi khi tìm kiếm quốc gia: ${error.message}`);
-    }
-  }
-}
-
-export default new CountryService();
+export default {
+  getAllCountries,
+  getCountryById,
+  createCountry,
+  updateCountry,
+  deleteCountry,
+  searchCountries
+};

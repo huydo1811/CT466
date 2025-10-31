@@ -1,6 +1,14 @@
 import countryService from '../services/countryService.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
+// helper to build public URL for uploaded file
+const buildFlagUrl = (req, file) => {
+  if (!file) return undefined;
+  // assuming server serves /uploads static as above
+  const url = `${req.protocol}://${req.get('host')}/uploads/countries/${file.filename}`;
+  return url;
+}
+
 // Lấy tất cả quốc gia
 export const getAllCountries = asyncHandler(async (req, res) => {
   const { page, limit, search } = req.query;
@@ -32,6 +40,10 @@ export const getCountryById = asyncHandler(async (req, res) => {
 
 // Tạo quốc gia mới
 export const createCountry = asyncHandler(async (req, res) => {
+  // if file uploaded, set flag url
+  if (req.file) {
+    req.body.flag = buildFlagUrl(req, req.file);
+  }
   const country = await countryService.createCountry(req.body);
 
   res.status(201).json({
@@ -43,6 +55,9 @@ export const createCountry = asyncHandler(async (req, res) => {
 
 // Cập nhật quốc gia
 export const updateCountry = asyncHandler(async (req, res) => {
+  if (req.file) {
+    req.body.flag = buildFlagUrl(req, req.file);
+  }
   const country = await countryService.updateCountry(req.params.id, req.body);
 
   res.status(200).json({
