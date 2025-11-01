@@ -67,11 +67,19 @@ export const incrementEpisodeView = asyncHandler(async (req, res) => {
 
 // Tạo episode mới (Admin only)
 export const createEpisode = asyncHandler(async (req, res) => {
-  const episodeData = req.body;
-  const userId = req.user._id;
-  
+  const episodeData = { ...req.body };
+  const userId = req.user && req.user._id;
+
+  // map uploaded files -> urls
+  if (req.files?.thumbnail?.[0]) {
+    episodeData.thumbnail = `/uploads/episodes/${req.files.thumbnail[0].filename}`;
+  }
+  if (req.files?.video?.[0]) {
+    episodeData.videoUrl = `/uploads/episodes/${req.files.video[0].filename}`;
+  }
+
   const episode = await episodeService.createEpisode(episodeData, userId);
-  
+
   res.status(201).json({
     success: true,
     message: 'Tạo episode thành công',
@@ -102,18 +110,19 @@ export const getEpisodeById = asyncHandler(async (req, res) => {
 // Cập nhật episode (Admin only)
 export const updateEpisode = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const episodeData = req.body;
-  const userId = req.user._id;
-  
-  if (!isValidObjectId(id)) {
-    return res.status(400).json({
-      success: false,
-      message: 'ID episode không hợp lệ'
-    });
+  const episodeData = { ...req.body };
+  const userId = req.user && req.user._id;
+
+  // map uploaded files -> urls (will trigger deletion of old files in service)
+  if (req.files?.thumbnail?.[0]) {
+    episodeData.thumbnail = `/uploads/episodes/${req.files.thumbnail[0].filename}`;
   }
-  
+  if (req.files?.video?.[0]) {
+    episodeData.videoUrl = `/uploads/episodes/${req.files.video[0].filename}`;
+  }
+
   const episode = await episodeService.updateEpisode(id, episodeData, userId);
-  
+
   res.status(200).json({
     success: true,
     message: 'Cập nhật episode thành công',
@@ -124,18 +133,24 @@ export const updateEpisode = asyncHandler(async (req, res) => {
 // Xóa episode (Admin only)
 export const deleteEpisode = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  
-  if (!isValidObjectId(id)) {
-    return res.status(400).json({
-      success: false,
-      message: 'ID episode không hợp lệ'
-    });
-  }
-  
+
   await episodeService.deleteEpisode(id);
-  
+
   res.status(200).json({
     success: true,
     message: 'Xóa episode thành công'
   });
+});
+
+// Lấy danh sách episode (admin)
+export const getAdminEpisodes = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 20, search, movie, season, isPublished } = req.query
+  const filters = { page: Number(page), limit: Number(limit), search, movie, season, isPublished }
+  const result = await episodeService.getAdminEpisodes(filters)
+  res.status(200).json({
+    success: true,
+    message: 'Lấy danh sách tập (admin) thành công',
+    data: result.episodes,
+    pagination: result.pagination
+  })
 });

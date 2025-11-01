@@ -1,57 +1,48 @@
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-
-
+import api from '@/services/api'
+ 
 const route = useRoute()
 const router = useRouter()
-const id = route.params.id || 's1'
+const id = route.params.id
 
-// mock data (replace with real fetch when backend ready)
-const mockSeriesList = [
-  {
-    id: 's1',
-    title: 'Breaking Bad',
-    description: 'Demo description for Breaking Bad',
-    director: 'Vince Gilligan',
-    country: 'ct1',
-    categories: ['cat1'],
-    actors: ['a1'],
-    posterFileName: '',
-    trailer: '',
-    isPublished: true,
-    isFeatured: false,
-    isHot: false,
-    episodes: [
-      { id: 1, season: 1, episodeNumber: 1, title: 'Pilot', duration: 58, airDate: '2008-01-20', videoUrl: '' },
-      { id: 2, season: 1, episodeNumber: 2, title: "Cat's in the Bag...", duration: 48, airDate: '2008-01-27', videoUrl: '' }
-    ]
-  },
-  {
-    id: 's2',
-    title: 'Stranger Things',
-    description: 'Demo description for Stranger Things',
-    director: 'Duffer Brothers',
-    country: 'ct1',
-    categories: ['cat2'],
-    actors: ['a2'],
-    posterFileName: '',
-    trailer: '',
-    isPublished: true,
-    isFeatured: true,
-    isHot: false,
-    episodes: []
-  }
-]
+const loading = ref(false)
+const saving = ref(false)
+const episodesLoading = ref(false)
 
-// mock options
-const categories = ref([{ id: 'cat1', name: 'Hành động' }, { id: 'cat2', name: 'Khoa học viễn tưởng' }])
-const countries = ref([{ id: 'ct1', name: 'Mỹ' }, { id: 'ct2', name: 'Nhật Bản' }])
-const actors = ref([{ id: 'a1', name: 'Bryan Cranston' }, { id: 'a2', name: 'Winona Ryder' }])
+const categories = ref([])
+const countries = ref([])
+const actors = ref([])
 
-// form model
+// temp selects for adding category/actor (fix v-model error)
+const newCategorySelect = ref('')
+const newActorSelect = ref('')
+
+const addCategoryFromSelect = () => {
+  const v = newCategorySelect.value
+  if (v && !form.categories.includes(v)) form.categories.push(v)
+  newCategorySelect.value = ''
+}
+
+const addActorFromSelect = () => {
+  const v = newActorSelect.value
+  if (v && !form.actors.includes(v)) form.actors.push(v)
+  newActorSelect.value = ''
+}
+
+// remove handlers
+const removeCategory = (cid) => {
+  form.categories = form.categories.filter(c => c !== cid)
+}
+
+const removeActor = (aid) => {
+  form.actors = form.actors.filter(a => a !== aid)
+}
+
+// form for series
 const form = reactive({
-  id: '',
+  _id: '',
   title: '',
   description: '',
   director: '',
@@ -59,143 +50,265 @@ const form = reactive({
   categories: [],
   actors: [],
   posterFile: null,
-  posterFileName: '',
+  posterUrl: '',
   trailer: '',
   isPublished: false,
   isFeatured: false,
-  isHot: false
+  isHot: false,
+  totalEpisodes: 0,
+  seasons: 1
 })
 
-// episodes list (editable)
+// episodes list (from DB)
 const episodes = ref([])
 
-// episode editor (for add or edit)
-const editingEpisode = ref(null)
-const episodeDraft = reactive({
-  id: null,
+// episode editor state
+const showEpisodeModal = ref(false)
+const editingEpisode = ref(null) // null => create
+const epDraft = reactive({
+  _id: null,
   season: 1,
   episodeNumber: 1,
   title: '',
   duration: '',
   airDate: '',
+  description: '',
   videoUrl: '',
+  thumbnailFile: null,
   videoFile: null,
-  videoFileName: ''
+  isPublished: true
+})
+const thumbPreview = ref(null)
+const videoPreview = ref(null)
+const _revoke = () => {
+  if (thumbPreview.value) { try { URL.revokeObjectURL(thumbPreview.value) } catch{
+    console.error('Failed to revoke thumbnail URL')
+  }; thumbPreview.value = null }
+  if (videoPreview.value) { try { URL.revokeObjectURL(videoPreview.value) } catch{
+    console.error('Failed to revoke video URL')
+  }; videoPreview.value = null }
+}
+onBeforeUnmount(_revoke)
+
+// helpers
+const loadOptions = async () => {
+  try {
+    const [cRes, coRes, aRes] = await Promise.all([
+      api.get('/categories'),
+      api.get('/countries'),
+      api.get('/actors')
+    ])
+    categories.value = (cRes?.data?.data || cRes?.data || [])
+    countries.value = (coRes?.data?.data || coRes?.data || [])
+    actors.value = (aRes?.data?.data || aRes?.data || [])
+  } catch (e) {
+    console.warn('load options failed', e)
+  }
+}
+
+const loadMovie = async () => {
+  if (!id) { alert('Movie id missing'); return }
+  loading.value = true
+  try {
+    const res = await api.get(`/movies/${id}`)
+    const m = res?.data?.data || res?.data
+    if (!m) throw new Error('Không tìm thấy series')
+    form._id = m._id || m.id
+    form.title = m.title || ''
+    form.description = m.description || ''
+    form.director = m.director || ''
+    form.country = m.country ? (m.country._id || m.country._id || m.country) : (m.country || '')
+    form.categories = Array.isArray(m.categories) ? m.categories.map(c => c._id || c.id || c) : (m.categories || [])
+    form.actors = Array.isArray(m.actors) ? m.actors.map(a => a._id || a.id || a) : (m.actors || [])
+    form.posterUrl = m.poster || ''
+    form.trailer = m.trailer || ''
+    form.isPublished = !!m.isPublished
+    form.isFeatured = !!m.isFeatured
+    form.isHot = !!m.isHot
+    form.totalEpisodes = m.totalEpisodes ?? 0
+    form.seasons = m.seasons ?? 1
+  } catch (err) {
+    console.error(err)
+    alert(err?.response?.data?.message || err.message || 'Load series failed')
+  } finally {
+    loading.value = false
+  }
+}
+
+const loadEpisodes = async () => {
+  episodesLoading.value = true
+  try {
+    const res = await api.get(`/episodes/movie/${id}`)
+    episodes.value = (res?.data?.data || res?.data || []).map(e => ({
+      ...e,
+      _id: e._id || e.id,
+      airDate: e.airDate ? (new Date(e.airDate)) : null
+    }))
+  } catch (err) {
+    console.error('load episodes failed', err)
+    episodes.value = []
+  } finally {
+    episodesLoading.value = false
+  }
+}
+
+onMounted(async () => {
+  await loadOptions()
+  await loadMovie()
+  await loadEpisodes()
 })
 
-// UI helpers
-const categorySearch = ref('')
-const actorSearch = ref('')
-const filteredCategories = computed(() => categories.value.filter(c => c.name.toLowerCase().includes(categorySearch.value.toLowerCase())))
-const filteredActors = computed(() => actors.value.filter(a => a.name.toLowerCase().includes(actorSearch.value.toLowerCase())))
-
-onMounted(() => {
-  // load mock series by id
-  const s = mockSeriesList.find(x => x.id === id) || mockSeriesList[0]
-  form.id = s.id
-  form.title = s.title
-  form.description = s.description
-  form.director = s.director
-  form.country = s.country
-  form.categories = [...(s.categories || [])]
-  form.actors = [...(s.actors || [])]
-  form.trailer = s.trailer || ''
-  form.isPublished = !!s.isPublished
-  form.isFeatured = !!s.isFeatured
-  form.isHot = !!s.isHot
-  form.posterFile = null
-  form.posterFileName = s.posterFileName || ''
-  episodes.value = (s.episodes || []).map(e => ({ ...e }))
-})
-
-// handlers
+// Poster change
 const onPosterChange = (e) => {
   const f = e.target.files?.[0] || null
   form.posterFile = f
-  form.posterFileName = f ? f.name : ''
+  if (f) {
+    try { form.posterUrl = URL.createObjectURL(f) } catch {
+      console.error('Failed to create poster URL')
+    }
+  }
 }
 
+// add helper to normalize
+const getMediaUrl = (u) => {
+  if (!u) return ''
+  if (/^https?:\/\//.test(u)) return u
+  return `${window.location.origin}${u}`
+}
+
+// Episode modal actions
 const openAddEpisode = () => {
   editingEpisode.value = null
-  Object.assign(episodeDraft, { id: null, season: 1, episodeNumber: 1, title: '', duration: '', airDate: '', videoUrl: '', videoFile: null, videoFileName: '' })
+  Object.assign(epDraft, {
+    _id: null, season: 1, episodeNumber: 1, title: '', duration: '', airDate: '', description: '', videoUrl: '', thumbnailFile: null, videoFile: null, isPublished: true
+  })
+  _revoke()
   showEpisodeModal.value = true
 }
-
 const openEditEpisode = (ep) => {
   editingEpisode.value = ep
-  Object.assign(episodeDraft, {
-    id: ep.id,
+  Object.assign(epDraft, {
+    _id: ep._id || ep.id,
     season: ep.season,
     episodeNumber: ep.episodeNumber,
     title: ep.title,
     duration: ep.duration,
-    airDate: ep.airDate,
+    airDate: ep.airDate ? new Date(ep.airDate).toISOString().slice(0,10) : '',
+    description: ep.description || '',
     videoUrl: ep.videoUrl || '',
+    thumbnailFile: null,
     videoFile: null,
-    videoFileName: ep.videoFileName || ''
+    isPublished: ep.isPublished ?? true
   })
+  _revoke()
+  // set preview urls from existing urls
+  if (ep.thumbnail) thumbPreview.value = ep.thumbnail
+  if (ep.videoUrl) videoPreview.value = ep.videoUrl
   showEpisodeModal.value = true
 }
 
-const onEpisodeFileChange = (e) => {
+const onEpThumbnailChange = (e) => {
   const f = e.target.files?.[0] || null
-  episodeDraft.videoFile = f
-  episodeDraft.videoFileName = f ? f.name : ''
-  if (episodeDraft.videoFile) episodeDraft.videoUrl = ''
+  epDraft.thumbnailFile = f
+  if (thumbPreview.value) { try { URL.revokeObjectURL(thumbPreview.value) } catch{
+    console.error('Failed to revoke thumbnail URL')
+  } }
+  thumbPreview.value = f ? URL.createObjectURL(f) : null
+}
+const onEpVideoChange = (e) => {
+  const f = e.target.files?.[0] || null
+  epDraft.videoFile = f
+  if (videoPreview.value) { try { URL.revokeObjectURL(videoPreview.value) } catch{
+    console.error('Failed to revoke video URL')
+  } }
+  videoPreview.value = f ? URL.createObjectURL(f) : null
+  if (f) epDraft.videoUrl = ''
 }
 
-const saveEpisode = () => {
-  if (!episodeDraft.title) { alert('Tên tập là bắt buộc'); return }
-  if (editingEpisode.value) {
-    Object.assign(editingEpisode.value, {
-      season: Number(episodeDraft.season),
-      episodeNumber: Number(episodeDraft.episodeNumber),
-      title: episodeDraft.title,
-      duration: episodeDraft.duration ? Number(episodeDraft.duration) : null,
-      airDate: episodeDraft.airDate || null,
-      videoUrl: episodeDraft.videoFile ? URL.createObjectURL(episodeDraft.videoFile) : (episodeDraft.videoUrl || ''),
-      videoFileName: episodeDraft.videoFileName || ''
-    })
-  } else {
-    const nextId = (episodes.value.reduce((m, e) => Math.max(m, e.id || 0), 0) || 0) + 1
-    episodes.value.push({
-      id: nextId,
-      season: Number(episodeDraft.season),
-      episodeNumber: Number(episodeDraft.episodeNumber),
-      title: episodeDraft.title,
-      duration: episodeDraft.duration ? Number(episodeDraft.duration) : null,
-      airDate: episodeDraft.airDate || null,
-      videoUrl: episodeDraft.videoFile ? URL.createObjectURL(episodeDraft.videoFile) : (episodeDraft.videoUrl || ''),
-      videoFileName: episodeDraft.videoFileName || ''
-    })
+// API: save series (PUT)
+const saveSeries = async () => {
+  if (!form.title || !form.description) return alert('Vui lòng nhập tiêu đề và mô tả')
+  saving.value = true
+  try {
+    const fd = new FormData()
+    fd.append('title', form.title)
+    fd.append('description', form.description)
+    fd.append('director', form.director || '')
+    fd.append('trailer', form.trailer || '')
+    fd.append('country', form.country || '')
+    fd.append('type', 'series')
+    fd.append('totalEpisodes', String(form.totalEpisodes || 0))
+    fd.append('seasons', String(form.seasons || 1))
+    fd.append('isPublished', form.isPublished ? 'true' : 'false')
+    fd.append('isFeatured', form.isFeatured ? 'true' : 'false')
+    fd.append('isHot', form.isHot ? 'true' : 'false')
+    form.categories.forEach(id => fd.append('categories[]', id))
+    form.actors.forEach(id => fd.append('actors[]', id))
+    if (form.posterFile) fd.append('poster', form.posterFile)
+
+    // axios will set Content-Type with boundary automatically
+    await api.put(`/movies/${id}`, fd)
+    alert('Cập nhật series thành công')
+    await loadMovie()
+  } catch (err) {
+    console.error('save series failed', err)
+    alert(err?.response?.data?.message || 'Lưu thất bại')
+  } finally {
+    saving.value = false
   }
-  showEpisodeModal.value = false
 }
 
-const deleteEpisode = (ep) => {
-  if (confirm(`Xóa tập "${ep.title}"?`)) episodes.value = episodes.value.filter(e => e.id !== ep.id)
-}
+// API: create / update episode
+const saveEpisode = async () => {
+  if (!epDraft.title) return alert('Tên tập là bắt buộc')
+  if (!epDraft.episodeNumber || epDraft.episodeNumber < 1) return alert('Số tập không hợp lệ')
+  if (!epDraft.season || epDraft.season < 1) return alert('Số mùa không hợp lệ')
 
-const toggleCategory = (c) => {
-  if (form.categories.includes(c.id)) form.categories = form.categories.filter(x => x !== c.id)
-  else form.categories.push(c.id)
-}
-const toggleActor = (a) => {
-  if (form.actors.includes(a.id)) form.actors = form.actors.filter(x => x !== a.id)
-  else form.actors.push(a.id)
-}
+  const fd = new FormData()
+  fd.append('movie', id)
+  fd.append('season', String(epDraft.season))
+  fd.append('episodeNumber', String(epDraft.episodeNumber))
+  fd.append('title', epDraft.title)
+  fd.append('description', epDraft.description || '')
+  if (epDraft.duration) fd.append('duration', String(epDraft.duration))
+  if (epDraft.airDate) fd.append('airDate', epDraft.airDate)
+  fd.append('isPublished', epDraft.isPublished ? 'true' : 'false')
 
-const showEpisodeModal = ref(false)
+  if (epDraft.videoFile) fd.append('video', epDraft.videoFile)
+  else if (epDraft.videoUrl) fd.append('videoUrl', epDraft.videoUrl)
 
-const submit = () => {
-  if (!form.title) { alert('Tên series là bắt buộc'); return }
-  const payload = {
-    ...form,
-    episodes: episodes.value.map(e => ({ ...e }))
+  if (epDraft.thumbnailFile) fd.append('thumbnail', epDraft.thumbnailFile)
+
+  try {
+    if (editingEpisode.value && epDraft._id) {
+      await api.put(`/episodes/${epDraft._id}`, fd)
+      alert('Cập nhật tập thành công')
+    } else {
+      await api.post('/episodes', fd)
+      alert('Tạo tập thành công')
+    }
+    showEpisodeModal.value = false
+    _revoke()
+    await loadEpisodes()
+    // update totalEpisodes on series UI (optional)
+    form.totalEpisodes = episodes.value.length
+  } catch (err) {
+    console.error('save episode failed', err)
+    alert(err?.response?.data?.message || 'Lưu tập thất bại')
   }
-  console.log('Edit series payload (UI-only):', payload)
-  alert('Lưu seriesthành công')
-  router.push('/admin/series')
+}
+
+const deleteEpisode = async (ep) => {
+  if (!confirm(`Xóa tập S${ep.season}E${ep.episodeNumber} — ${ep.title}?`)) return
+  try {
+    await api.delete(`/episodes/${ep._id || ep.id}`)
+    alert('Xóa thành công')
+    await loadEpisodes()
+    form.totalEpisodes = episodes.value.length
+  } catch (err) {
+    console.error('delete ep failed', err)
+    alert(err?.response?.data?.message || 'Xóa thất bại')
+  }
 }
 
 const cancel = () => router.back()
@@ -206,11 +319,11 @@ const cancel = () => router.back()
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-2xl font-bold text-white">Sửa Series</h1>
-        <p class="text-slate-400 text-sm">Chỉnh sửa thông tin series & quản lý tập </p>
+        <p class="text-slate-400 text-sm">Chỉnh sửa thông tin series và quản lý tập</p>
       </div>
       <div class="flex gap-2">
         <button @click="cancel" class="px-4 py-2 bg-slate-700 rounded text-white">Hủy</button>
-        <button @click="submit" class="px-4 py-2 bg-emerald-600 rounded text-white">Lưu</button>
+        <button @click="saveSeries" :disabled="saving" class="px-4 py-2 bg-emerald-600 rounded text-white">{{ saving ? 'Đang lưu...' : 'Lưu' }}</button>
       </div>
     </div>
 
@@ -218,124 +331,98 @@ const cancel = () => router.back()
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div class="md:col-span-2 space-y-4">
           <div>
-            <label class="block text-sm font-medium text-slate-300 mb-2">Tên Series</label>
-            <input v-model="form.title" type="text" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white" />
+            <label class="block text-sm text-slate-300 mb-1">Tên Series</label>
+            <input v-model="form.title" type="text" class="w-full bg-slate-700 px-3 py-2 rounded text-white" />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-slate-300 mb-2">Mô tả</label>
-            <textarea v-model="form.description" rows="6" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"></textarea>
+            <label class="block text-sm text-slate-300 mb-1">Mô tả</label>
+            <textarea v-model="form.description" rows="5" class="w-full bg-slate-700 px-3 py-2 rounded text-white"></textarea>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-slate-300 mb-2">Đạo diễn</label>
-              <input v-model="form.director" type="text" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white" />
+              <label class="block text-sm text-slate-300 mb-1">Đạo diễn</label>
+              <input v-model="form.director" type="text" class="w-full bg-slate-700 px-3 py-2 rounded text-white" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-slate-300 mb-2">Quốc gia</label>
-              <select v-model="form.country" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white">
+              <label class="block text-sm text-slate-300 mb-1">Quốc gia</label>
+              <select v-model="form.country" class="w-full bg-slate-700 px-3 py-2 rounded text-white">
                 <option value="">Chọn quốc gia</option>
-                <option v-for="c in countries" :key="c.id" :value="c.id">{{ c.name }}</option>
+                <option v-for="c in countries" :key="c._id || c.id" :value="c._id || c.id">{{ c.name || c.title }}</option>
               </select>
             </div>
           </div>
 
-          <!-- categories & actors (search/toggle) -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-slate-300 mb-2">Thể loại</label>
-              <input v-model="categorySearch" placeholder="Tìm thể loại..." class="w-full bg-slate-700 px-3 py-2 rounded mb-2 text-white" />
-              <div class="flex gap-2 flex-wrap mb-3">
-                <span v-for="id in form.categories" :key="id" class="px-3 py-1 bg-slate-700 text-white rounded-full text-sm">
-                  {{ categories.find(c => c.id === id)?.name || id }}
+              <label class="block text-sm text-slate-300 mb-1">Thể loại</label>
+              <div class="flex gap-2 flex-wrap mb-2">
+                <span v-for="cid in form.categories" :key="cid" class="inline-flex items-center gap-2 px-3 py-1 bg-slate-700 text-white rounded-full text-sm">
+                  <span>{{ (categories.find(x => x._id === cid || x.id === cid)?.name) || cid }}</span>
+                  <button type="button" @click="removeCategory(cid)" class="text-xs text-red-400 hover:text-red-300" title="Xóa">×</button>
                 </span>
               </div>
-              <ul class="max-h-36 overflow-auto bg-slate-800/20 rounded p-1">
-                <li v-for="c in filteredCategories" :key="c.id" class="p-2 hover:bg-slate-700 cursor-pointer" @click.prevent="toggleCategory(c)">
-                  <input type="checkbox" :checked="form.categories.includes(c.id)" class="mr-2" /> {{ c.name }}
-                </li>
-              </ul>
+              <select v-model="newCategorySelect" @change="addCategoryFromSelect" class="w-full bg-slate-700 px-3 py-2 rounded text-white">
+                <option value="">Thêm thể loại...</option>
+                <option v-for="c in categories" :key="c._id || c.id" :value="c._id || c.id">{{ c.name }}</option>
+              </select>
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-slate-300 mb-2">Diễn viên</label>
-              <input v-model="actorSearch" placeholder="Tìm diễn viên..." class="w-full bg-slate-700 px-3 py-2 rounded mb-2 text-white" />
-              <div class="flex gap-2 flex-wrap mb-3">
-                <span v-for="id in form.actors" :key="id" class="px-3 py-1 bg-slate-700 text-white rounded-full text-sm">
-                  {{ actors.find(a => a.id === id)?.name || id }}
+              <label class="block text-sm text-slate-300 mb-1">Diễn viên</label>
+              <div class="flex gap-2 flex-wrap mb-2">
+                <span v-for="aid in form.actors" :key="aid" class="inline-flex items-center gap-2 px-3 py-1 bg-slate-700 text-white rounded-full text-sm">
+                  <span>{{ (actors.find(x => x._id === aid || x.id === aid)?.name) || aid }}</span>
+                  <button type="button" @click="removeActor(aid)" class="text-xs text-red-400 hover:text-red-300" title="Xóa">×</button>
                 </span>
               </div>
-              <ul class="max-h-36 overflow-auto bg-slate-800/20 rounded p-1">
-                <li v-for="a in filteredActors" :key="a.id" class="p-2 hover:bg-slate-700 cursor-pointer" @click.prevent="toggleActor(a)">
-                  <input type="checkbox" :checked="form.actors.includes(a.id)" class="mr-2" /> {{ a.name }}
-                </li>
-              </ul>
+              <select v-model="newActorSelect" @change="addActorFromSelect" class="w-full bg-slate-700 px-3 py-2 rounded text-white">
+                <option value="">Thêm diễn viên...</option>
+                <option v-for="a in actors" :key="a._id || a.id" :value="a._id || a.id">{{ a.name }}</option>
+              </select>
             </div>
           </div>
 
-          <div class="flex items-center gap-4 mt-2">
-            <label class="inline-flex items-center">
-              <input type="checkbox" v-model="form.isPublished" class="mr-2" />
-              <span class="text-slate-300">Đăng</span>
-            </label>
-            <label class="inline-flex items-center">
-              <input type="checkbox" v-model="form.isFeatured" class="mr-2" />
-              <span class="text-slate-300">Nổi bật</span>
-            </label>
-            <label class="inline-flex items-center">
-              <input type="checkbox" v-model="form.isHot" class="mr-2" />
-              <span class="text-slate-300">Hot</span>
-            </label>
+          <div class="flex items-center gap-4">
+            <label class="inline-flex items-center"><input type="checkbox" v-model="form.isPublished" class="mr-2" /> <span class="text-slate-300">Đăng</span></label>
+            <label class="inline-flex items-center"><input type="checkbox" v-model="form.isFeatured" class="mr-2" /> <span class="text-slate-300">Nổi bật</span></label>
+            <label class="inline-flex items-center"><input type="checkbox" v-model="form.isHot" class="mr-2" /> <span class="text-slate-300">Hot</span></label>
           </div>
         </div>
 
-        <!-- right column: poster, trailer, episodes -->
         <div class="space-y-4">
           <div>
-            <label class="block text-sm font-medium text-slate-300 mb-2">Poster</label>
+            <label class="block text-sm text-slate-300 mb-1">Poster</label>
             <input type="file" accept="image/*" @change="onPosterChange" class="w-full text-sm text-white" />
-            <div v-if="form.posterFileName" class="mt-3 text-sm text-slate-200">File: {{ form.posterFileName }}</div>
-            <div v-if="form.posterFile" class="mt-3">
-              <img :src="URL.createObjectURL(form.posterFile)" class="w-full h-48 object-cover rounded" />
+            <div v-if="form.posterUrl" class="mt-3">
+              <img :src="getMediaUrl(form.posterUrl)" class="w-full h-48 object-cover rounded" />
             </div>
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-slate-300 mb-2">Trailer URL</label>
-            <input v-model="form.trailer" type="url" placeholder="https://www.youtube.com/..." class="w-full bg-slate-700 px-3 py-2 rounded text-white" />
+            <label class="block text-sm text-slate-300 mb-1">Trailer URL</label>
+            <input v-model="form.trailer" type="url" class="w-full bg-slate-700 px-3 py-2 rounded text-white" />
           </div>
 
           <div class="bg-slate-900/30 p-3 rounded">
             <div class="flex justify-between items-center mb-2">
               <h4 class="text-sm text-slate-200 font-medium">Danh sách tập</h4>
-              <button @click="openAddEpisode" class="px-2 py-1 bg-blue-600 text-white rounded text-sm">Thêm tập</button>
+              <div>
+                <button @click="openAddEpisode" class="px-2 py-1 bg-blue-600 text-white rounded text-sm mr-2">Thêm tập</button>
+              </div>
             </div>
-            <ul class="space-y-2 max-h-48 overflow-auto">
-              <li v-for="ep in episodes" :key="ep.id" class="flex items-center justify-between p-2 bg-slate-800 rounded">
+
+            <div v-if="episodesLoading" class="text-slate-400">Đang tải tập...</div>
+            <ul class="space-y-2 max-h-64 overflow-auto">
+              <li v-for="ep in episodes" :key="ep._id" class="flex items-center justify-between p-2 bg-slate-800 rounded">
                 <div class="text-sm text-slate-200">{{ 'S' + ep.season + ' · T' + ep.episodeNumber + ' — ' + ep.title }}</div>
-                <div class="flex items-center gap-3">
-                  <button @click="openEditEpisode(ep)" class="text-yellow-300 hover:text-yellow-200 p-2 rounded transition-colors" title="Sửa">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                  </button>
-
-                  <button v-if="ep.videoUrl" @click.prevent="() => window.open(ep.videoUrl, '_blank')" class="text-blue-400 hover:text-blue-300 p-2 rounded transition-colors" title="Xem">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5s8.268 2.943 9.542 7c-1.274 4.057-5.065 7-9.542 7s-8.268-2.943-9.542-7z" />
-                    </svg>
-                  </button>
-
-                  <button @click="deleteEpisode(ep)" class="text-red-400 hover:text-red-300 p-2 rounded transition-colors" title="Xóa">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6" />
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 4h4m-7 0h10a1 1 0 011 1v0a1 1 0 01-1 1H6a1 1 0 01-1-1v0a1 1 0 011-1z" />
-                    </svg>
-                  </button>                </div>
+                <div class="flex items-center gap-2">
+                  <button @click="openEditEpisode(ep)" class="text-yellow-300">Sửa</button>
+                  <button @click="deleteEpisode(ep)" class="text-red-400">Xóa</button>
+                </div>
               </li>
-              <li v-if="episodes.length === 0" class="text-slate-400 text-sm">Chưa có tập nào</li>
+              <li v-if="!episodesLoading && episodes.length===0" class="text-slate-400 text-sm">Chưa có tập nào</li>
             </ul>
           </div>
         </div>
@@ -347,40 +434,49 @@ const cancel = () => router.back()
       <div class="bg-slate-900 rounded-lg w-full max-w-2xl p-6">
         <div class="flex items-center justify-between mb-4">
           <div class="text-white font-medium">{{ editingEpisode ? 'Sửa tập' : 'Thêm tập' }}</div>
-          <button @click="showEpisodeModal = false" class="text-slate-300">Đóng</button>
+          <button @click="showEpisodeModal=false" class="text-slate-300">Đóng</button>
         </div>
+
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label class="block text-sm text-slate-300 mb-1">Mùa</label>
-            <input v-model.number="episodeDraft.season" type="number" min="1" class="w-full bg-slate-800 px-3 py-2 rounded text-white" />
+            <input v-model.number="epDraft.season" type="number" min="1" class="w-full bg-slate-800 px-3 py-2 rounded text-white" />
           </div>
           <div>
             <label class="block text-sm text-slate-300 mb-1">Số tập</label>
-            <input v-model.number="episodeDraft.episodeNumber" type="number" min="1" class="w-full bg-slate-800 px-3 py-2 rounded text-white" />
+            <input v-model.number="epDraft.episodeNumber" type="number" min="1" class="w-full bg-slate-800 px-3 py-2 rounded text-white" />
           </div>
+
           <div class="md:col-span-2">
             <label class="block text-sm text-slate-300 mb-1">Tên tập</label>
-            <input v-model="episodeDraft.title" type="text" class="w-full bg-slate-800 px-3 py-2 rounded text-white" />
+            <input v-model="epDraft.title" type="text" class="w-full bg-slate-800 px-3 py-2 rounded text-white" />
           </div>
+
           <div>
             <label class="block text-sm text-slate-300 mb-1">Thời lượng (phút)</label>
-            <input v-model="episodeDraft.duration" type="number" min="1" class="w-full bg-slate-800 px-3 py-2 rounded text-white" />
+            <input v-model.number="epDraft.duration" type="number" min="1" class="w-full bg-slate-800 px-3 py-2 rounded text-white" />
           </div>
           <div>
             <label class="block text-sm text-slate-300 mb-1">Ngày phát sóng</label>
-            <input v-model="episodeDraft.airDate" type="date" class="w-full bg-slate-800 px-3 py-2 rounded text-white" />
+            <input v-model="epDraft.airDate" type="date" class="w-full bg-slate-800 px-3 py-2 rounded text-white" />
           </div>
 
           <div class="md:col-span-2">
-            <label class="block text-sm text-slate-300 mb-1">Video (chọn file hoặc nhập URL)</label>
-            <input type="file" accept="video/*" @change="onEpisodeFileChange" class="w-full text-sm text-white mb-2" />
-            <div v-if="episodeDraft.videoFileName" class="text-sm text-slate-200 mb-2">File: {{ episodeDraft.videoFileName }}</div>
-            <input v-model="episodeDraft.videoUrl" type="url" placeholder="Hoặc dán Video URL" class="w-full bg-slate-700 px-3 py-2 rounded text-white" />
+            <label class="block text-sm text-slate-300 mb-1">Thumbnail</label>
+            <input type="file" accept="image/*" @change="onEpThumbnailChange" class="w-full text-sm text-white mb-2" />
+            <div v-if="thumbPreview" class="mt-2"><img :src="thumbPreview" class="w-48 h-28 object-cover rounded" /></div>
+          </div>
+
+          <div class="md:col-span-2">
+            <label class="block text-sm text-slate-300 mb-1">Video (file hoặc URL)</label>
+            <input type="file" accept="video/*" @change="onEpVideoChange" class="w-full text-sm text-white mb-2" />
+            <div v-if="videoPreview" class="mt-2"><video :src="videoPreview" controls class="w-full h-40 object-cover rounded"></video></div>
+            <input v-model="epDraft.videoUrl" type="url" placeholder="Hoặc dán Video URL" class="w-full bg-slate-700 px-3 py-2 rounded text-white mt-2" />
           </div>
 
           <div class="md:col-span-2 flex justify-end gap-2 mt-2">
-            <button @click="showEpisodeModal = false" class="px-4 py-2 bg-slate-700 rounded">Hủy</button>
-            <button @click="saveEpisode" class="px-4 py-2 bg-blue-600 text-white rounded">Lưu</button>
+            <button @click="showEpisodeModal=false" class="px-4 py-2 bg-slate-700 rounded">Hủy</button>
+            <button @click="saveEpisode" class="px-4 py-2 bg-blue-600 text-white rounded">{{ editingEpisode ? 'Cập nhật' : 'Tạo' }}</button>
           </div>
         </div>
       </div>

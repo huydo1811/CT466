@@ -30,16 +30,18 @@ const fetchMovies = async () => {
       page: page.value,
       limit: perPage.value,
       search: searchQuery.value?.trim() || undefined,
-      // send ids for category/country if selected
       category: selectedCategory.value || undefined,
       country: selectedCountry.value || undefined,
+      type: 'movie' // <- ensure backend returns only movies (not series)
     }
     const res = await api.get('/movies', { params })
     const body = res?.data || {}
     const arr = body.data || []
 
     // normalize each movie for template
-    movies.value = (arr || []).map(m => {
+    // fallback: if backend doesn't filter, keep only items with type==='movie'
+    const filtered = (arr || []).filter(m => ((m.type || '').toString().toLowerCase() === 'movie'))
+    movies.value = (filtered || []).map(m => {
       const id = m._id || m.id
       // categories -> readable string (if populated)
       let categoryStr = ''

@@ -1,7 +1,7 @@
 import movieService from '../services/movieService.js';
-import { asyncHandler } from '../utils/asyncHandler.js';
 import mongoose from 'mongoose';
-import path from 'path';
+import Movie from '../models/Movie.js'
+import asyncHandler from '../middleware/asyncHandler.js'
 
 // Helper validate ObjectId
 const isValidObjectId = (id) => {
@@ -80,89 +80,100 @@ export const getMovieById = asyncHandler(async (req, res) => {
 
 // Tạo phim mới (Admin)
 export const createMovie = asyncHandler(async (req, res) => {
-  const movieData = { ...req.body }
+  const data = { ...req.body }
 
-  // parse arrays sent as categories[] / actors[]
-  if (req.body['categories[]']) {
-    movieData.categories = Array.isArray(req.body['categories[]']) ? req.body['categories[]'] : [req.body['categories[]']]
-  } else if (req.body.categories) {
-    movieData.categories = Array.isArray(req.body.categories) ? req.body.categories : [req.body.categories]
+  // normalize numbers
+  if (typeof data.seasons !== 'undefined' && data.seasons !== '') {
+    data.seasons = Number(data.seasons)
+    if (Number.isNaN(data.seasons) || data.seasons < 1) data.seasons = 1
+  } else {
+    if (data.type === 'series') data.seasons = 1
+  }
+  if (typeof data.totalEpisodes !== 'undefined' && data.totalEpisodes !== '') {
+    data.totalEpisodes = Number(data.totalEpisodes)
   }
 
-  if (req.body['actors[]']) {
-    movieData.actors = Array.isArray(req.body['actors[]']) ? req.body['actors[]'] : [req.body['actors[]']]
-  } else if (req.body.actors) {
-    movieData.actors = Array.isArray(req.body.actors) ? req.body.actors : [req.body.actors]
+  // map poster file
+  if (req.files?.poster?.[0]) {
+    data.poster = buildFileUrl(req, req.files.poster[0].filename, 'movies')
   }
 
-  // files from multer
-  if (req.files) {
-    if (req.files.poster && req.files.poster[0]) {
-      movieData.poster = buildFileUrl(req, req.files.poster[0].filename, 'movies')
+  // If user requested splitting seasons into separate entries
+  const createSeparate = (String(data.createSeparateSeasons || '') === 'true')
+
+  if (data.type === 'series' && createSeparate && data.seasons > 1) {
+    // create parent show
+    const parentPayload = { ...data }
+    parentPayload.isParentSeries = true
+    parentPayload.seasonNumber = 0
+    parentPayload.parentSeries = null
+    // keep seasons & totalEpisodes on parent
+    const parent = await Movie.create(parentPayload)
+
+    // create individual season entries
+    const seasonsToCreate = []
+    for (let s = 1; s <= data.seasons; s++) {
+      const seasonPayload = {
+        title: `${data.title} - Season ${s}`,
+        description: data.description || '',
+        categories: data.categories || [],
+        country: data.country || null,
+        actors: data.actors || [],
+        director: data.director || '',
+        poster: parent.poster || data.poster || '',
+        trailer: data.trailer || '',
+        type: 'series',
+        parentSeries: parent._id,
+        seasonNumber: s,
+        totalEpisodes: 0,
+        isPublished: data.isPublished !== undefined ? data.isPublished : true
+      }
+      seasonsToCreate.push(seasonPayload)
     }
-    if (req.files.video && req.files.video[0]) {
-      movieData.videoUrl = buildFileUrl(req, req.files.video[0].filename, 'movies')
-    }
+    const createdSeasons = await Movie.insertMany(seasonsToCreate)
+
+    return res.status(201).json({
+      success: true,
+      message: 'Tạo series (parent + seasons) thành công',
+      data: { parent, seasons: createdSeasons }
+    })
   }
 
-  // convert booleans sent as strings
-  if (typeof movieData.isPublished === 'string') movieData.isPublished = movieData.isPublished === 'true'
-  if (typeof movieData.isFeatured === 'string') movieData.isFeatured = movieData.isFeatured === 'true'
-  if (typeof movieData.isHot === 'string') movieData.isHot = movieData.isHot === 'true'
-
-  const userId = req.user && req.user._id
-  const movie = await movieService.createMovie(movieData, userId)
+  // default single doc (either series single doc or movie)
+  const movie = await Movie.create(data)
 
   res.status(201).json({
     success: true,
-    message: 'Tạo phim thành công',
+    message: 'Tạo phim/series thành công',
     data: movie
-  });
+  })
 });
 
 // Cập nhật phim (Admin)
 export const updateMovie = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const movieData = { ...req.body }
+  const { id } = req.params
+  const payload = { ...req.body }
 
-  if (!isValidObjectId(id)) {
-    return res.status(400).json({ success: false, message: 'ID phim không hợp lệ' });
+  // debug: in ra req.files và req.body khi dev
+  console.log('updateMovie req.body:', req.body)
+  console.log('updateMovie req.files:', req.files)
+
+  if (typeof payload.seasons !== 'undefined' && payload.seasons !== '') {
+    payload.seasons = Number(payload.seasons)
+    if (Number.isNaN(payload.seasons) || payload.seasons < 1) payload.seasons = 1
+  }
+  if (typeof payload.totalEpisodes !== 'undefined' && payload.totalEpisodes !== '') {
+    payload.totalEpisodes = Number(payload.totalEpisodes)
   }
 
-  // parse arrays like create
-  if (req.body['categories[]']) {
-    movieData.categories = Array.isArray(req.body['categories[]']) ? req.body['categories[]'] : [req.body['categories[]']]
-  } else if (req.body.categories) {
-    movieData.categories = Array.isArray(req.body.categories) ? req.body.categories : [req.body.categories]
+  // CHỈ cập nhật poster nếu có file upload (tên field = 'poster')
+  if (req.files && req.files.poster && req.files.poster[0]) {
+    payload.poster = buildFileUrl(req, req.files.poster[0].filename, 'movies')
   }
 
-  if (req.body['actors[]']) {
-    movieData.actors = Array.isArray(req.body['actors[]']) ? req.body['actors[]'] : [req.body['actors[]']]
-  } else if (req.body.actors) {
-    movieData.actors = Array.isArray(req.body.actors) ? req.body.actors : [req.body.actors]
-  }
-
-  if (req.files) {
-    if (req.files.poster && req.files.poster[0]) {
-      movieData.poster = buildFileUrl(req, req.files.poster[0].filename, 'movies')
-    }
-    if (req.files.video && req.files.video[0]) {
-      movieData.videoUrl = buildFileUrl(req, req.files.video[0].filename, 'movies')
-    }
-  }
-
-  // convert booleans
-  if (typeof movieData.isPublished === 'string') movieData.isPublished = movieData.isPublished === 'true'
-  if (typeof movieData.isFeatured === 'string') movieData.isFeatured = movieData.isFeatured === 'true'
-  if (typeof movieData.isHot === 'string') movieData.isHot = movieData.isHot === 'true'
-
-  const movie = await movieService.updateMovie(id, movieData);
-
-  res.status(200).json({
-    success: true,
-    message: 'Cập nhật phim thành công',
-    data: movie
-  });
+  const updated = await Movie.findByIdAndUpdate(id, payload, { new: true, runValidators: true })
+  if (!updated) return res.status(404).json({ success: false, message: 'Movie not found' })
+  res.json({ success: true, data: updated })
 });
 
 // Xóa phim (Admin)

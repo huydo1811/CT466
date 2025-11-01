@@ -13,6 +13,7 @@ import userRoutes from './routes/userRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import bannerRoutes from './routes/bannerRoutes.js';
 import movieRoutes from './routes/movieRoutes.js';
+import seriesRoutes from './routes/seriesRoutes.js' 
 import episodeRoutes from './routes/episodeRoute.js';
 import reviewRoutes from './routes/reviewRoutes.js';
 
@@ -45,6 +46,7 @@ app.use('/api/banners', bannerRoutes);
 app.use('/api/movies', movieRoutes);
 app.use('/api/episodes', episodeRoutes);
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/series', seriesRoutes) 
 
 // Route mặc định
 app.get('/', (req, res) => {
@@ -61,7 +63,8 @@ app.get('/', (req, res) => {
       banners: '/api/banners',
       movies: '/api/movies',
       episodes: '/api/episodes',
-      reviews: '/api/reviews'
+      reviews: '/api/reviews',
+      series: '/api/series'
     }
   });
 });

@@ -1,14 +1,11 @@
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
-
-/*
-  LƯU Ý: UI demo only — chưa kết nối backend.
-*/
+import api from '@/services/api'
 
 const router = useRouter()
 
-// form model for series
+// form model for series (basic info only)
 const seriesForm = reactive({
   title: '',
   description: '',
@@ -17,53 +14,84 @@ const seriesForm = reactive({
   actors: [],
   director: '',
   posterFile: null,
-  trailer: '', // youtube url or embed
+  posterUrl: '',
+  trailer: '',
+  totalEpisodes: 0,
+  releaseDate: '',
+  seasons: 1,
+  createSeparateSeasons: false, // <-- new
   isPublished: true,
   isFeatured: false,
-  isHot: false,
-  type: 'series'
+  isHot: false
 })
 
-// mock option lists
+// option lists loaded from backend
 const categories = ref([])
 const countries = ref([])
 const actors = ref([])
 
-// UI helpers (same UX as AddMovie)
 const categorySearch = ref('')
 const actorSearch = ref('')
 
+const normalize = (arr = []) => (arr || []).map(it => ({ ...it, id: it._id || it.id }))
+
 const filteredCategories = computed(() =>
-  categories.value.filter(c => c.name.toLowerCase().includes(categorySearch.value.toLowerCase()))
+  categories.value
+    .filter(c => c.name && c.name.toLowerCase().includes(categorySearch.value.toLowerCase()))
+    .filter(c => !seriesForm.categories.includes(c.id))
 )
 const filteredActors = computed(() =>
-  actors.value.filter(a => a.name.toLowerCase().includes(actorSearch.value.toLowerCase()))
+  actors.value
+    .filter(a => a.name && a.name.toLowerCase().includes(actorSearch.value.toLowerCase()))
+    .filter(a => !seriesForm.actors.includes(a.id))
 )
 
-const selectedCategories = ref([]) // objects
-const selectedActors = ref([]) // objects
+const selectedCategories = ref([])
+const selectedActors = ref([])
 
-// episode draft list for this series (UI-only)
-const episodes = ref([])
+// poster preview + revoke
+const posterPreview = ref(null)
+const _revokePoster = () => {
+  if (posterPreview.value) {
+    try { URL.revokeObjectURL(posterPreview.value) } catch {
+      // ignore
+    }
+    posterPreview.value = null
+  }
+}
+onBeforeUnmount(_revokePoster)
 
-
-onMounted(() => {
-  // mock data
-  categories.value = [{ id: 'cat1', name: 'Hành động' }, { id: 'cat2', name: 'Hài' }]
-  countries.value = [{ id: 'ct1', name: 'Mỹ' }, { id: 'ct2', name: 'Nhật Bản' }]
-  actors.value = [{ id: 'a1', name: 'Diễn viên A' }, { id: 'a2', name: 'Diễn viên B' }]
-
-  // initialize selected lists if seriesForm already has ids (defensive)
-  selectedCategories.value = categories.value.filter(c => seriesForm.categories.includes(c.id))
-  selectedActors.value = actors.value.filter(a => seriesForm.actors.includes(a.id))
+onMounted(async () => {
+  try {
+    const [catRes, countryRes, actorRes] = await Promise.all([
+      api.get('/categories'),
+      api.get('/countries'),
+      api.get('/actors')
+    ])
+    categories.value = normalize(catRes?.data?.data || catRes?.data || [])
+    countries.value = normalize(countryRes?.data?.data || countryRes?.data || [])
+    actors.value = normalize(actorRes?.data?.data || actorRes?.data || [])
+    selectedCategories.value = []
+    selectedActors.value = []
+  } catch (err) {
+    console.warn('Load option lists failed', err)
+    categories.value = []
+    countries.value = []
+    actors.value = []
+  }
 })
 
 const onPosterChange = (e) => {
-  const f = e.target.files[0]
-  seriesForm.posterFile = f || null
+  const f = e.target.files?.[0] || null
+  _revokePoster()
+  seriesForm.posterFile = f
+  if (f) {
+    try { posterPreview.value = URL.createObjectURL(f) } catch { posterPreview.value = null }
+  } else {
+    seriesForm.posterFile = null
+  }
 }
 
-// category / actor add/remove keep ids + selected object lists (like AddMovie)
 const addCategory = (cat) => {
   if (!seriesForm.categories.includes(cat.id)) {
     seriesForm.categories.push(cat.id)
@@ -86,22 +114,49 @@ const removeActor = (id) => {
   selectedActors.value = selectedActors.value.filter(a => a.id !== id)
 }
 
-const handleSubmit = () => {
-  // UI-only: validate minimal and show collected data in console
-  if (!seriesForm.title || !seriesForm.description) {
-    alert('Vui lòng nhập tên và mô tả series.')
-    return
+const handleSubmit = async () => {
+  try {
+    if (!seriesForm.title || !seriesForm.description) {
+      alert('Vui lòng nhập tên và mô tả series.')
+      return
+    }
+
+    const fd = new FormData()
+    fd.append('title', seriesForm.title)
+    fd.append('description', seriesForm.description)
+    fd.append('director', seriesForm.director || '')
+    fd.append('trailer', seriesForm.trailer || '')
+    fd.append('releaseDate', seriesForm.releaseDate || '') // <-- send releaseDate if set
+    fd.append('country', seriesForm.country || '')
+    fd.append('type', 'series')
+    fd.append('totalEpisodes', String(seriesForm.totalEpisodes || 0))
+    fd.append('seasons', String(seriesForm.seasons || 1)) // <-- gửi seasons
+    fd.append('isPublished', seriesForm.isPublished ? 'true' : 'false')
+    fd.append('isFeatured', seriesForm.isFeatured ? 'true' : 'false')
+    fd.append('isHot', seriesForm.isHot ? 'true' : 'false')
+
+    seriesForm.categories.forEach(id => fd.append('categories[]', id))
+    seriesForm.actors.forEach(id => fd.append('actors[]', id))
+
+    if (seriesForm.posterFile) fd.append('poster', seriesForm.posterFile)
+    fd.append('createSeparateSeasons', seriesForm.createSeparateSeasons ? 'true' : 'false')
+
+    // send to /movies as before
+    await api.post('/movies', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+
+    _revokePoster()
+    alert('Tạo series thành công')
+    router.push('/admin/series')
+  } catch (err) {
+    console.error('create series failed', err)
+    alert(err?.response?.data?.message || 'Lỗi khi tạo series')
   }
-  const payload = {
-    ...seriesForm,
-    episodes: episodes.value.map(e => ({ ...e }))
-  }
-  console.log('Series create payload (UI-only):', payload)
-  alert('Tạo series (demo) thành công — kiểm tra console.')
-  router.push('/admin/series')
 }
 
-const handleCancel = () => router.go(-1)
+const handleCancel = () => {
+  _revokePoster()
+  router.go(-1)
+}
 </script>
 
 <template>
@@ -112,7 +167,7 @@ const handleCancel = () => router.go(-1)
       </div>
       <div class="flex items-center gap-3">
         <button @click="handleCancel" class="bg-slate-600 hover:bg-slate-500 text-white px-4 py-2 rounded-lg">Hủy</button>
-        <button @click="handleSubmit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg">Lưu </button>
+        <button @click="handleSubmit" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg">Lưu</button>
       </div>
     </div>
 
@@ -143,7 +198,17 @@ const handleCancel = () => router.go(-1)
             </div>
           </div>
 
-          <!-- categories / actors -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-300 mb-2">Số tập</label>
+              <input v-model.number="seriesForm.totalEpisodes" type="number" min="0" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-300 mb-2">Số mùa</label>
+              <input v-model.number="seriesForm.seasons" type="number" min="1" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white" />
+            </div>
+          </div>
+
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-slate-300 mb-2">Thể loại</label>
@@ -157,7 +222,6 @@ const handleCancel = () => router.go(-1)
                 <li v-for="c in filteredCategories" :key="c.id" class="p-2 hover:bg-slate-700 cursor-pointer" @click.prevent="addCategory(c)">{{ c.name }}</li>
               </ul>
             </div>
-
             <div>
               <label class="block text-sm font-medium text-slate-300 mb-2">Diễn viên</label>
               <div class="flex gap-2 flex-wrap mb-2">
@@ -187,6 +251,11 @@ const handleCancel = () => router.go(-1)
               <span class="text-slate-300">Hot</span>
             </label>
           </div>
+
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-2">Ngày phát hành</label>
+            <input v-model="seriesForm.releaseDate" type="date" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white" />
+          </div>
         </div>
 
         <!-- right column -->
@@ -194,8 +263,11 @@ const handleCancel = () => router.go(-1)
           <div>
             <label class="block text-sm font-medium text-slate-300 mb-2">Poster</label>
             <input type="file" accept="image/*" @change="onPosterChange" class="w-full text-sm text-white" />
-            <div v-if="seriesForm.posterFile" class="mt-3">
-              <img :src="URL.createObjectURL(seriesForm.posterFile)" class="w-full h-48 object-cover rounded" />
+            <div v-if="posterPreview" class="mt-3">
+              <img :src="posterPreview" class="w-full h-48 object-cover rounded" />
+            </div>
+            <div v-else-if="seriesForm.posterUrl" class="mt-3">
+              <img :src="seriesForm.posterUrl" class="w-full h-48 object-cover rounded" />
             </div>
           </div>
 

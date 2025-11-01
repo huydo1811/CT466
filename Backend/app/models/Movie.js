@@ -27,7 +27,7 @@ const movieSchema = new mongoose.Schema({
   },
   videoUrl: {
     type: String,
-    required: [true, 'Link video là bắt buộc']
+    required: function() { return this.type !== 'series' } // only required for non-series
   },
   
   categories: [{
@@ -51,23 +51,47 @@ const movieSchema = new mongoose.Schema({
   
   duration: {
     type: Number, 
-    required: [true, 'Thời lượng phim là bắt buộc'],
-    min: [1, 'Thời lượng phải lớn hơn 0']
+    min: [1, 'Thời lượng phải lớn hơn 0'],
+    required: function() { return this.type !== 'series' } // only required for non-series
   },
   releaseDate: {
     type: Date,
-    required: [true, 'Ngày phát hành là bắt buộc']
+    required: function() { return this.type !== 'series' } // optional for series
   },
   year: {
     type: Number,
-    required: [true, 'Năm phát hành là bắt buộc']
+    required: function() { return this.type !== 'series' } // optional for series
   },
   
-  type: {
-    type: String,
-    enum: ['movie', 'series', 'anime'],
-    default: 'movie'
+  // series helper (tùy chọn)
+  totalEpisodes: {
+    type: Number,
+    default: 0
   },
+  // number of seasons for a parent series
+  seasons: {
+    type: Number,
+    min: [1, 'Số mùa phải lớn hơn 0'],
+    default: 1
+  },
+
+  parentSeries: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Movie',
+    default: null
+  },
+  // season number for this entry (if it's a season record)
+  seasonNumber: {
+    type: Number,
+    min: [1, 'Số mùa phải >= 1'],
+    default: 1
+  },
+  // flag to mark a parent "show" (optional)
+  isParentSeries: {
+    type: Boolean,
+    default: false
+  },
+  type: { type: String, enum: ['movie','series','anime'], default: 'movie' },
   
   rating: {
     average: { type: Number, default: 0 },

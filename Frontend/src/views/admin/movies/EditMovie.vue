@@ -189,7 +189,7 @@ const handleSubmit = async () => {
     if (movieForm.posterFile) fd.append('poster', movieForm.posterFile)
     if (movieForm.videoFile) fd.append('video', movieForm.videoFile)
 
-    await api.put(`/movies/${id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+    await api.put(`/movies/${id}`, fd)
 
     // revoke previews
     _revokePoster(); _revokeVideo()
