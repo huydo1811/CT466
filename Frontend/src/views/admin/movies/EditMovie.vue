@@ -1,6 +1,7 @@
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import api from '@/services/api'
 
 const router = useRouter()
 const route = useRoute()
@@ -19,16 +20,16 @@ const movieForm = reactive({
   year: '',
   type: 'movie',
   posterFile: null,
-  posterUrl: '', // existing url
+  posterUrl: '', // existing url or preview
   trailer: '',
   videoFile: null,
-  videoUrl: '', // existing url
+  videoUrl: '', // existing url or preview
   isPublished: true,
   isFeatured: false,
   isHot: false
 })
 
-// option lists (should come from API)
+// option lists
 const categories = ref([])
 const countries = ref([])
 const actors = ref([])
@@ -39,77 +40,108 @@ const categorySearch = ref('')
 const selectedActors = ref([]) // objects
 const selectedCategories = ref([])
 
-// filtered lists
+// previews (object URLs)
+const posterPreview = ref(null)
+const videoPreview = ref(null)
+
+const normalizeList = (arr = []) => (arr || []).map(it => ({ ...it, id: it._id || it.id }))
+
 const filteredActors = computed(() =>
-  actors.value.filter(a => a.name.toLowerCase().includes(actorSearch.value.toLowerCase()))
+  actors.value
+    .filter(a => a.name && a.name.toLowerCase().includes(actorSearch.value.toLowerCase()))
+    .filter(a => !movieForm.actors.includes(a.id))
 )
 const filteredCategories = computed(() =>
-  categories.value.filter(c => c.name.toLowerCase().includes(categorySearch.value.toLowerCase()))
+  categories.value
+    .filter(c => c.name && c.name.toLowerCase().includes(categorySearch.value.toLowerCase()))
+    .filter(c => !movieForm.categories.includes(c.id))
 )
+
+// revoke helpers
+const _revokePoster = () => {
+  if (posterPreview.value) {
+    URL.revokeObjectURL(posterPreview.value)
+    posterPreview.value = null
+  }
+}
+const _revokeVideo = () => {
+  if (videoPreview.value) {
+    URL.revokeObjectURL(videoPreview.value)
+    videoPreview.value = null
+  }
+}
+onBeforeUnmount(() => { _revokePoster(); _revokeVideo() })
 
 // load lists and movie data
 onMounted(async () => {
-  // load options (replace with real API calls)
-  categories.value = [{ id: 'cat1', name: 'Hành động' }, { id: 'cat2', name: 'Kinh dị' }]
-  countries.value = [{ id: 'ct1', name: 'Mỹ' }, { id: 'ct2', name: 'Hàn Quốc' }]
-  actors.value = [
-    { id: 'a1', name: 'Robert Downey Jr.' },
-    { id: 'a2', name: 'Chris Evans' },
-    { id: 'a3', name: 'Scarlett Johansson' }
-  ]
-
-  // fetch movie detail
   try {
-    const res = await fetch(`/api/admin/movies/${id}`)
-    if (res.ok) {
-      const data = await res.json()
-      // map response -> form (adjust keys to your backend)
-      movieForm.title = data.title || ''
-      movieForm.description = data.description || ''
-      movieForm.categories = (data.categories || []).map(c => c.id ?? c) // accept objects or ids
-      movieForm.country = data.country?.id || data.country || ''
-      movieForm.actors = (data.cast || []).map(a => a.id ?? a)
-      movieForm.director = data.director || ''
-      movieForm.duration = data.duration || ''
-      movieForm.releaseDate = data.releaseDate ? data.releaseDate.split('T')[0] : (data.releaseDate || '')
-      movieForm.year = data.year || ''
-      movieForm.type = data.type || 'movie'
-      movieForm.posterUrl = data.poster || ''
-      movieForm.trailer = data.trailer || ''
-      movieForm.videoUrl = data.video || ''
-      movieForm.isPublished = !!data.isPublished
-      movieForm.isFeatured = !!data.isFeatured
-      movieForm.isHot = !!data.isHot
-
-      // fill selected actor/category objects for UI chips
-      selectedActors.value = actors.value.filter(a => movieForm.actors.includes(a.id))
-      selectedCategories.value = categories.value.filter(c => movieForm.categories.includes(c.id))
-    } else {
-      console.warn('Movie fetch failed', await res.text())
-    }
+    const [catRes, countryRes, actorRes] = await Promise.all([
+      api.get('/categories'),
+      api.get('/countries'),
+      api.get('/actors')
+    ])
+    categories.value = normalizeList(catRes?.data?.data || catRes?.data || [])
+    countries.value = normalizeList(countryRes?.data?.data || countryRes?.data || [])
+    actors.value = normalizeList(actorRes?.data?.data || actorRes?.data || [])
   } catch (e) {
-    console.error(e)
+    console.warn('load lists failed', e)
+  }
+
+  // fetch movie details (admin route requires auth header from api instance)
+  try {
+    const res = await api.get(`/movies/${id}`)
+    const data = res?.data?.data || res?.data || {}
+    // normalize fields
+    movieForm.title = data.title || ''
+    movieForm.description = data.description || ''
+    movieForm.categories = (data.categories || []).map(c => c._id || c.id || c)
+    movieForm.country = (data.country && (data.country._id || data.country.id)) || data.country || ''
+    movieForm.actors = (data.actors || data.cast || []).map(a => a._id || a.id || a)
+    movieForm.director = data.director || ''
+    movieForm.duration = data.duration || ''
+    movieForm.releaseDate = data.releaseDate ? data.releaseDate.split('T')[0] : (data.releaseDate || '')
+    movieForm.year = data.year || ''
+    movieForm.type = data.type || 'movie'
+    movieForm.posterUrl = data.poster || data.posterUrl || ''
+    movieForm.trailer = data.trailer || ''
+    movieForm.videoUrl = data.videoUrl || data.video || ''
+    movieForm.isPublished = !!data.isPublished
+    movieForm.isFeatured = !!data.isFeatured
+    movieForm.isHot = !!data.isHot
+
+    // populate selected objects for chips
+    selectedActors.value = actors.value.filter(a => movieForm.actors.includes(a.id))
+    selectedCategories.value = categories.value.filter(c => movieForm.categories.includes(c.id))
+  } catch (err) {
+    console.error('fetch movie failed', err)
   }
 })
 
-// file change handlers
+// file handlers
 const onPosterChange = (e) => {
-  const f = e.target.files[0]
-  movieForm.posterFile = f || null
-  if (f) movieForm.posterUrl = URL.createObjectURL(f)
+  const f = e.target.files?.[0] || null
+  _revokePoster()
+  movieForm.posterFile = f
+  if (f) {
+    try { posterPreview.value = URL.createObjectURL(f); movieForm.posterUrl = posterPreview.value } catch { posterPreview.value = null }
+  }
 }
 
 const onVideoChange = (e) => {
-  const f = e.target.files[0]
-  movieForm.videoFile = f || null
-  if (f) movieForm.videoUrl = f.name
+  const f = e.target.files?.[0] || null
+  _revokeVideo()
+  movieForm.videoFile = f
+  if (f) {
+    try { videoPreview.value = URL.createObjectURL(f); movieForm.videoUrl = videoPreview.value } catch { videoPreview.value = null }
+  }
 }
 
 // multi-select helpers
 const addActor = (actor) => {
-  if (!movieForm.actors.includes(actor.id)) {
-    movieForm.actors.push(actor.id)
-    selectedActors.value.push(actor)
+  const id = actor.id || actor._id || actor
+  if (!movieForm.actors.includes(id)) {
+    movieForm.actors.push(id)
+    selectedActors.value.push({ id, name: actor.name })
   }
 }
 const removeActor = (id) => {
@@ -118,9 +150,10 @@ const removeActor = (id) => {
 }
 
 const addCategory = (cat) => {
-  if (!movieForm.categories.includes(cat.id)) {
-    movieForm.categories.push(cat.id)
-    selectedCategories.value.push(cat)
+  const id = cat.id || cat._id || cat
+  if (!movieForm.categories.includes(id)) {
+    movieForm.categories.push(id)
+    selectedCategories.value.push({ id, name: cat.name })
   }
 }
 const removeCategory = (id) => {
@@ -156,27 +189,23 @@ const handleSubmit = async () => {
     if (movieForm.posterFile) fd.append('poster', movieForm.posterFile)
     if (movieForm.videoFile) fd.append('video', movieForm.videoFile)
 
-    // send PUT/PATCH to update (adjust method/endpoint per backend)
-    const res = await fetch(`/api/admin/movies/${id}`, {
-      method: 'PUT',
-      body: fd
-    })
+    await api.put(`/movies/${id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ message: 'Lỗi server' }))
-      alert('Cập nhật thất bại: ' + (err.message || res.statusText))
-      return
-    }
+    // revoke previews
+    _revokePoster(); _revokeVideo()
 
     alert('Cập nhật thành công')
     router.push('/admin/movies')
   } catch (err) {
-    console.error(err)
-    alert('Lỗi khi gửi dữ liệu')
+    console.error('update failed', err)
+    alert(err?.response?.data?.message || 'Cập nhật thất bại')
   }
 }
 
-const handleCancel = () => router.go(-1)
+const handleCancel = () => {
+  _revokePoster(); _revokeVideo()
+  router.go(-1)
+}
 </script>
 
 <template>
@@ -291,7 +320,10 @@ const handleCancel = () => router.go(-1)
             <div>
               <label class="block text-sm font-medium text-slate-300 mb-2">Poster</label>
               <input type="file" accept="image/*" @change="onPosterChange" class="w-full text-sm text-white" />
-              <div v-if="movieForm.posterUrl" class="mt-3">
+              <div v-if="posterPreview" class="mt-3">
+                <img :src="posterPreview" class="w-full h-48 object-cover rounded" />
+              </div>
+              <div v-else-if="movieForm.posterUrl" class="mt-3">
                 <img :src="movieForm.posterUrl" class="w-full h-48 object-cover rounded" />
               </div>
             </div>
@@ -304,7 +336,10 @@ const handleCancel = () => router.go(-1)
             <div>
               <label class="block text-sm font-medium text-slate-300 mb-2">File phim (upload)</label>
               <input type="file" accept="video/*" @change="onVideoChange" class="w-full text-sm text-white" />
-              <div v-if="movieForm.videoUrl" class="mt-2 text-slate-300 text-sm">Hiện tại: {{ movieForm.videoUrl }}</div>
+              <div v-if="videoPreview" class="mt-2">
+                <video :src="videoPreview" controls class="w-full h-48 object-cover rounded bg-black"></video>
+              </div>
+              <div v-else-if="movieForm.videoUrl" class="mt-2 text-slate-300 text-sm">Hiện tại: <a :href="movieForm.videoUrl" target="_blank" class="text-blue-300 underline">Xem file</a></div>
             </div>
 
             <div class="mt-4">

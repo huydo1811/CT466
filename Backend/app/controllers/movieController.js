@@ -1,11 +1,17 @@
 import movieService from '../services/movieService.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import mongoose from 'mongoose';
+import path from 'path';
 
 // Helper validate ObjectId
 const isValidObjectId = (id) => {
   return mongoose.Types.ObjectId.isValid(id) && /^[0-9a-fA-F]{24}$/.test(id);
 };
+
+const buildFileUrl = (req, filename, folder = 'movies') => {
+  if (!filename) return undefined
+  return `${req.protocol}://${req.get('host')}/uploads/${folder}/${filename}`
+}
 
 // Lấy tất cả phim với filters (Public)
 export const getAllMovies = asyncHandler(async (req, res) => {
@@ -74,11 +80,39 @@ export const getMovieById = asyncHandler(async (req, res) => {
 
 // Tạo phim mới (Admin)
 export const createMovie = asyncHandler(async (req, res) => {
-  const movieData = req.body;
-  const userId = req.user._id;
-  
-  const movie = await movieService.createMovie(movieData, userId);
-  
+  const movieData = { ...req.body }
+
+  // parse arrays sent as categories[] / actors[]
+  if (req.body['categories[]']) {
+    movieData.categories = Array.isArray(req.body['categories[]']) ? req.body['categories[]'] : [req.body['categories[]']]
+  } else if (req.body.categories) {
+    movieData.categories = Array.isArray(req.body.categories) ? req.body.categories : [req.body.categories]
+  }
+
+  if (req.body['actors[]']) {
+    movieData.actors = Array.isArray(req.body['actors[]']) ? req.body['actors[]'] : [req.body['actors[]']]
+  } else if (req.body.actors) {
+    movieData.actors = Array.isArray(req.body.actors) ? req.body.actors : [req.body.actors]
+  }
+
+  // files from multer
+  if (req.files) {
+    if (req.files.poster && req.files.poster[0]) {
+      movieData.poster = buildFileUrl(req, req.files.poster[0].filename, 'movies')
+    }
+    if (req.files.video && req.files.video[0]) {
+      movieData.videoUrl = buildFileUrl(req, req.files.video[0].filename, 'movies')
+    }
+  }
+
+  // convert booleans sent as strings
+  if (typeof movieData.isPublished === 'string') movieData.isPublished = movieData.isPublished === 'true'
+  if (typeof movieData.isFeatured === 'string') movieData.isFeatured = movieData.isFeatured === 'true'
+  if (typeof movieData.isHot === 'string') movieData.isHot = movieData.isHot === 'true'
+
+  const userId = req.user && req.user._id
+  const movie = await movieService.createMovie(movieData, userId)
+
   res.status(201).json({
     success: true,
     message: 'Tạo phim thành công',
@@ -89,17 +123,41 @@ export const createMovie = asyncHandler(async (req, res) => {
 // Cập nhật phim (Admin)
 export const updateMovie = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const movieData = req.body;
-  
+  const movieData = { ...req.body }
+
   if (!isValidObjectId(id)) {
-    return res.status(400).json({
-      success: false,
-      message: 'ID phim không hợp lệ'
-    });
+    return res.status(400).json({ success: false, message: 'ID phim không hợp lệ' });
   }
-  
+
+  // parse arrays like create
+  if (req.body['categories[]']) {
+    movieData.categories = Array.isArray(req.body['categories[]']) ? req.body['categories[]'] : [req.body['categories[]']]
+  } else if (req.body.categories) {
+    movieData.categories = Array.isArray(req.body.categories) ? req.body.categories : [req.body.categories]
+  }
+
+  if (req.body['actors[]']) {
+    movieData.actors = Array.isArray(req.body['actors[]']) ? req.body['actors[]'] : [req.body['actors[]']]
+  } else if (req.body.actors) {
+    movieData.actors = Array.isArray(req.body.actors) ? req.body.actors : [req.body.actors]
+  }
+
+  if (req.files) {
+    if (req.files.poster && req.files.poster[0]) {
+      movieData.poster = buildFileUrl(req, req.files.poster[0].filename, 'movies')
+    }
+    if (req.files.video && req.files.video[0]) {
+      movieData.videoUrl = buildFileUrl(req, req.files.video[0].filename, 'movies')
+    }
+  }
+
+  // convert booleans
+  if (typeof movieData.isPublished === 'string') movieData.isPublished = movieData.isPublished === 'true'
+  if (typeof movieData.isFeatured === 'string') movieData.isFeatured = movieData.isFeatured === 'true'
+  if (typeof movieData.isHot === 'string') movieData.isHot = movieData.isHot === 'true'
+
   const movie = await movieService.updateMovie(id, movieData);
-  
+
   res.status(200).json({
     success: true,
     message: 'Cập nhật phim thành công',

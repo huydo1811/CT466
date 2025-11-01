@@ -1,108 +1,153 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import api from '@/services/api'
 
 const router = useRouter()
+const loading = ref(false)
+
 const page = ref(1)
 const perPage = ref(8)
 
-const filteredMovies = computed(() => {
-  return movies.value.filter(m => {
-    const q = (searchQuery.value || '').toLowerCase().trim()
-    if (q && !m.title.toLowerCase().includes(q)) return false
-    if (selectedCategory.value && m.category !== selectedCategory.value) return false
-    if (selectedCountry.value && m.country !== selectedCountry.value) return false
-    return true
-  })
-})
-const total = computed(() => filteredMovies.value.length)
-const pages = computed(() => Math.max(1, Math.ceil(total.value / perPage.value)))
-const pagedMovies = computed(() => {
-  const start = (page.value - 1) * perPage.value
-  return filteredMovies.value.slice(start, start + perPage.value)
-})
-
-// Mock data - chỉ phim điện ảnh
-const movies = ref([
-  {
-    id: 1,
-    title: 'Avengers: Endgame',
-    category: 'Hành động',
-    country: 'Mỹ',
-    views: 150000,
-    status: 'Hoạt động',
-    createdAt: '2024-01-15',
-    type: 'movie'
-  },
-  {
-    id: 2,
-    title: 'The Dark Knight',
-    category: 'Hành động',
-    country: 'Mỹ',
-    views: 120000,
-    status: 'Hoạt động',
-    createdAt: '2024-01-10',
-    type: 'movie'
-  },
-  {
-    id: 3,
-    title: 'Spider-Man: No Way Home',
-    category: 'Hành động',
-    country: 'Mỹ',
-    views: 180000,
-    status: 'Hoạt động',
-    createdAt: '2024-01-20',
-    type: 'movie'
-  },
-  {
-    id: 4,
-    title: 'Parasite',
-    category: 'Kinh dị',
-    country: 'Hàn Quốc',
-    views: 95000,
-    status: 'Hoạt động',
-    createdAt: '2024-01-05',
-    type: 'movie'
-  },
-  {
-    id: 5,
-    title: 'The Conjuring',
-    category: 'Kinh dị',
-    country: 'Mỹ',
-    views: 140000,
-    status: 'Không hoạt động',
-    createdAt: '2024-01-12',
-    type: 'movie'
-  }
-])
+const movies = ref([]) // current page items from server
+const pagination = ref({ currentPage: 1, totalPages: 1, totalItems: 0, itemsPerPage: perPage.value })
 
 const searchQuery = ref('')
+// selected values will hold ids (or empty string)
 const selectedCategory = ref('')
 const selectedCountry = ref('')
 
-const handleAddMovie = () => {
-  router.push('/admin/movies/add')
-}
+/* new: lists from API */
+const categories = ref([])
+const countries = ref([])
 
-const handleEditMovie = (movie) => {
-  router.push(`/admin/movies/edit/${movie.id}`)
-}
+let _searchTimeout = null
 
-const handleDeleteMovie = (movie) => {
-  if (confirm(`Bạn có chắc muốn xóa phim "${movie.title}"?`)) {
-    // Call API to delete
-    movies.value = movies.value.filter(m => m.id !== movie.id)
+const fetchMovies = async () => {
+  loading.value = true
+  try {
+    const params = {
+      page: page.value,
+      limit: perPage.value,
+      search: searchQuery.value?.trim() || undefined,
+      // send ids for category/country if selected
+      category: selectedCategory.value || undefined,
+      country: selectedCountry.value || undefined,
+    }
+    const res = await api.get('/movies', { params })
+    const body = res?.data || {}
+    const arr = body.data || []
+
+    // normalize each movie for template
+    movies.value = (arr || []).map(m => {
+      const id = m._id || m.id
+      // categories -> readable string (if populated)
+      let categoryStr = ''
+      if (Array.isArray(m.categories) && m.categories.length) {
+        categoryStr = m.categories.map(c => (c && (c.name || c._id || c.id))).filter(Boolean).join(', ')
+      } else if (m.category) {
+        categoryStr = (m.category.name || m.category)
+      } else if (m.categories && typeof m.categories === 'string') {
+        categoryStr = m.categories
+      }
+
+      // country -> name if populated
+      const countryStr = m.country ? (m.country.name || m.country) : ''
+
+      return {
+        ...m,
+        id,
+        category: categoryStr,
+        country: countryStr,
+        views: m.viewCount ?? m.views ?? 0,
+        status: m.isPublished ? 'Hoạt động' : 'Ẩn',
+        createdAt: m.createdAt
+      }
+    })
+
+    const p = body.pagination || {}
+    pagination.value = {
+      currentPage: p.currentPage ?? page.value,
+      totalPages: p.totalPages ?? 1,
+      totalItems: p.totalItems ?? (movies.value.length || 0),
+      itemsPerPage: p.itemsPerPage ?? perPage.value
+    }
+    page.value = pagination.value.currentPage
+  } catch (err) {
+    console.error('fetchMovies error', err)
+    movies.value = []
+    pagination.value = { currentPage: 1, totalPages: 1, totalItems: 0, itemsPerPage: perPage.value }
+  } finally {
+    loading.value = false
   }
 }
 
-// thêm hàm xem chi tiết
-const handleViewMovie = (movie) => {
-  router.push(`/admin/movies/${movie.id}`)
+onMounted(async () => {
+  // load initial lists and movies
+  try {
+    const [catRes, countryRes] = await Promise.all([
+      api.get('/categories'),
+      api.get('/countries')
+    ])
+    // normalize to { id, name }
+    categories.value = (catRes?.data?.data || catRes?.data || []).map(c => ({ id: c._id || c.id, name: c.name }))
+    countries.value = (countryRes?.data?.data || countryRes?.data || []).map(c => ({ id: c._id || c.id, name: c.name || c.title || c.code }))
+  } catch (e) {
+    console.warn('load filter lists failed', e)
+  }
+  await fetchMovies()
+})
+
+// debounce realtime search
+watch(searchQuery, () => {
+  clearTimeout(_searchTimeout)
+  _searchTimeout = setTimeout(() => {
+    page.value = 1
+    fetchMovies()
+  }, 350)
+})
+
+// react to filters immediately
+watch([selectedCategory, selectedCountry], () => {
+  page.value = 1
+  fetchMovies()
+})
+
+// computed helpers used by template
+const total = computed(() => pagination.value.totalItems ?? 0)
+const pages = computed(() => Math.max(1, pagination.value.totalPages ?? 1))
+
+const handleAddMovie = () => router.push('/admin/movies/add')
+const handleEditMovie = (movie) => router.push(`/admin/movies/edit/${movie._id || movie.id}`)
+const handleViewMovie = (movie) => router.push(`/admin/movies/${movie._id || movie.id}`)
+
+const handleDeleteMovie = async (movie) => {
+  if (!confirm(`Bạn có chắc muốn xóa phim "${movie.title}"?`)) return
+  try {
+    await api.delete(`/movies/${movie._id || movie.id}`)
+    await fetchMovies()
+  } catch (err) {
+    console.error('delete movie error', err)
+    alert(err?.response?.data?.message || 'Xóa thất bại')
+  }
 }
 
-const formatNumber = (num) => {
-  return num.toLocaleString('vi-VN')
+const resetFilters = () => {
+  searchQuery.value = ''
+  selectedCategory.value = ''
+  selectedCountry.value = ''
+  page.value = 1
+  fetchMovies()
 }
+
+const prev = () => {
+  if (page.value > 1) { page.value = Math.max(1, page.value - 1); fetchMovies() }
+}
+const next = () => {
+  if (page.value < pages.value) { page.value = Math.min(pages.value, page.value + 1); fetchMovies() }
+}
+
+const formatNumber = (num) => num?.toLocaleString('vi-VN') || '0'
 </script>
 
 <template>
@@ -126,7 +171,7 @@ const formatNumber = (num) => {
       </div>
     </div>
 
-    <!-- Filters -->
+    <!-- Filters (dynamic categories/countries) -->
     <div class="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6 shadow-lg">
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div>
@@ -145,9 +190,7 @@ const formatNumber = (num) => {
             class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-red-500"
           >
             <option value="">Tất cả</option>
-            <option value="Hành động">Hành động</option>
-            <option value="Hài hước">Hài hước</option>
-            <option value="Kinh dị">Kinh dị</option>
+            <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
           </select>
         </div>
         <div>
@@ -157,14 +200,12 @@ const formatNumber = (num) => {
             class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-red-500"
           >
             <option value="">Tất cả</option>
-            <option value="Mỹ">Mỹ</option>
-            <option value="Hàn Quốc">Hàn Quốc</option>
-            <option value="Trung Quốc">Trung Quốc</option>
+            <option v-for="co in countries" :key="co.id" :value="co.id">{{ co.name }}</option>
           </select>
         </div>
         <div class="flex items-end">
           <button 
-            @click="() => { searchQuery = ''; selectedCategory = ''; selectedCountry = '' }"
+            @click="resetFilters"
             class="w-full bg-slate-600 hover:bg-slate-500 text-white px-4 py-2 rounded-lg transition-colors"
           >
             Xóa bộ lọc
@@ -188,18 +229,17 @@ const formatNumber = (num) => {
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-700/50">
-            <tr v-for="movie in pagedMovies" :key="movie.id" class="hover:bg-slate-700/30 transition-colors">              
+            <tr v-for="movie in movies" :key="movie.id" class="hover:bg-slate-700/30 transition-colors">              
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-white">{{ movie.title }}</div>
-                <div class="text-sm text-slate-400">{{ movie.createdAt }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{{ movie.category }}</td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{{ movie.country }}</td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{{ formatNumber(movie.views) }}</td>
+                <div class="text-lg font-semibold text-white">{{ movie.title }}</div>
+             </td>
+              <td class="px-6 py-4 whitespace-nowrap text-base text-slate-300">{{ movie.category }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-base text-slate-300">{{ movie.country }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-base text-slate-300">{{ formatNumber(movie.views) }}</td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span 
                   :class="movie.status === 'Hoạt động' ? 'bg-green-600/20 text-green-400' : 'bg-red-600/20 text-red-400'"
-                  class="px-2 py-1 text-xs rounded-full"
+                  class="px-2 py-1 text-sm rounded-full"
                 >
                   {{ movie.status }}
                 </span>
@@ -246,9 +286,9 @@ const formatNumber = (num) => {
                 <div class="flex items-center justify-between">
                   <div class="text-slate-400 text-sm">Tổng: {{ total }}</div>
                   <div class="flex items-center gap-2">
-                    <button :disabled="page<=1" @click="page = Math.max(1, page-1)" class="px-2 py-1 bg-slate-800 rounded disabled:opacity-50">Prev</button>
+                    <button :disabled="page<=1" @click="prev" class="px-2 py-1 bg-slate-800 rounded disabled:opacity-50">Prev</button>
                     <div class="px-3 py-1 bg-slate-800 rounded text-slate-200">{{ page }} / {{ pages }}</div>
-                    <button :disabled="page>=pages" @click="page = Math.min(pages, page+1)" class="px-2 py-1 bg-slate-800 rounded disabled:opacity-50">Next</button>
+                    <button :disabled="page>=pages" @click="next" class="px-2 py-1 bg-slate-800 rounded disabled:opacity-50">Next</button>
                   </div>
                 </div>
               </td>
@@ -275,4 +315,5 @@ const formatNumber = (num) => {
 .animate-fade-in {
   animation: fade-in 0.5s ease-out;
 }
+
 </style>

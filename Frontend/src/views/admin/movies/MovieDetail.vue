@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import api from '@/services/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -32,7 +33,8 @@ const mockMovie = (idVal = id) => ({
   episodes: []
 })
 
-const USE_MOCK = true
+// nếu muốn tắt mock đổi thành false
+const USE_MOCK = false
 
 const fetchMovie = async () => {
   if (USE_MOCK) {
@@ -45,68 +47,47 @@ const fetchMovie = async () => {
   loading.value = true
   error.value = null
   try {
-    const res = await fetch(`/api/admin/movies/${id}`)
-    // read raw text first to avoid JSON parse errors when server returns HTML (index/404 page)
-    const text = await res.text()
-    const contentType = res.headers.get('content-type') || ''
+    // sử dụng axios instance để kèm auth/header baseURL
+    const res = await api.get(`/movies/${id}`)
+    const data = res?.data?.data || res?.data || {}
 
-    if (contentType.includes('application/json')) {
-      let data = null
-      try {
-        data = JSON.parse(text)
-      } catch {
-        throw new Error('Invalid JSON response from server')
-      }
-      if (!res.ok) throw new Error(data?.message || `Fetch failed: ${res.status}`)
-      // normalize fields
-      movie.value = {
-        id: data.id ?? data._id ?? id,
-        title: data.title ?? '',
-        description: data.description ?? '',
-        poster: data.poster ?? data.posterUrl ?? '',
-        trailer: data.trailer ?? '',
-        video: data.video ?? data.videoUrl ?? '',
-        categoryNames: (data.categories || []).map(c => (c.name ?? c)),
-        countryName: (data.country?.name ?? data.country) || '',
-        releaseDate: data.releaseDate ? (data.releaseDate.split?.('T')[0] || data.releaseDate) : '',
-        year: data.year ?? '',
-        duration: data.duration ?? '',
-        director: data.director ?? '',
-        cast: (data.cast || data.actors || []).map(a => (typeof a === 'string' ? { id: a, name: a } : (a.name ? { id: a.id ?? a._id, name: a.name } : a))),
-        type: data.type ?? 'movie',
-        isPublished: !!data.isPublished,
-        isFeatured: !!data.isFeatured,
-        isHot: !!data.isHot,
-        episodes: data.episodes ?? []
-      }
-    } else {
-      // server returned HTML / not JSON (e.g. backend not running or 404 page). Use mock data for UI demo.
-      console.warn('Non-JSON response from API; using mock demo data. Response preview:', text?.slice?.(0, 300))
-      error.value = 'Backend unavailable — showing demo data (UI only)'
-      movie.value = mockMovie()
+    movie.value = {
+      id: data._id ?? data.id ?? id,
+      title: data.title ?? '',
+      description: data.description ?? '',
+      poster: data.poster ?? data.posterUrl ?? '',
+      trailer: data.trailer ?? '',
+      video: data.videoUrl ?? data.video ?? '',
+      categoryNames: (data.categories || []).map(c => (c?.name ?? c)),
+      countryName: (data.country?.name ?? data.country) || '',
+      releaseDate: data.releaseDate ? (data.releaseDate.split?.('T')[0] || data.releaseDate) : '',
+      year: data.year ?? '',
+      duration: data.duration ?? '',
+      director: data.director ?? '',
+      cast: (data.actors || data.cast || []).map(a => {
+        if (!a) return a
+        if (typeof a === 'string') return { id: a, name: a }
+        return { id: a._id ?? a.id, name: a.name ?? a.fullName ?? a.title ?? '' }
+      }),
+      type: data.type ?? 'movie',
+      isPublished: !!data.isPublished,
+      isFeatured: !!data.isFeatured,
+      isHot: !!data.isHot,
+      episodes: data.episodes ?? []
     }
   } catch (err) {
-    console.warn('Fetch movie failed, using mock data:', err)
-    error.value = 'Backend unavailable — showing demo data (UI only)'
+    console.warn('Fetch movie failed, using demo data:', err)
+    error.value = 'Không thể kết nối backend — đang hiển thị dữ liệu demo'
     movie.value = mockMovie()
   } finally {
     loading.value = false
   }
 }
 
-onMounted(() => {
-  if (USE_MOCK) {
-    error.value = null
-    movie.value = mockMovie()
-    loading.value = false
-  } else {
-    fetchMovie()
-  }
-})
+onMounted(fetchMovie)
 
 const posterSrc = computed(() => movie.value?.poster || '/placeholder-portrait.png')
 
-// convert common youtube links to embed url, otherwise return raw trailer
 const trailerEmbed = computed(() => {
   const t = movie.value?.trailer || ''
   if (!t) return ''
@@ -137,19 +118,14 @@ const handleDelete = async () => {
   if (!movie.value?.id) { alert('Phim chưa được tải'); return }
   if (!confirm('Bạn có chắc muốn xóa phim này?')) return
   try {
-    const res = await fetch(`/api/admin/movies/${movie.value.id}`, { method: 'DELETE' })
-    if (!res.ok) {
-      const txt = await res.text().catch(() => '')
-      throw new Error(txt || 'Xóa thất bại')
-    }
+    await api.delete(`/movies/${movie.value.id}`)
     alert('Xóa thành công')
     router.push('/admin/movies')
   } catch (err) {
     console.error(err)
-    alert('Xóa thất bại: ' + (err.message || ''))
+    alert('Xóa thất bại: ' + (err?.response?.data?.message || err.message || ''))
   }
 }
-
 </script>
 
 <template>

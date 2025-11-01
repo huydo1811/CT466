@@ -1,4 +1,22 @@
 import Movie from '../models/Movie.js';
+import fs from 'fs'
+import path from 'path'
+ 
+const uploadsDir = path.join(process.cwd(), 'uploads', 'movies')
+
+const _deleteLocalFile = (fileUrl) => {
+  if (!fileUrl || typeof fileUrl !== 'string') return
+  try {
+    const segment = '/uploads/movies/'
+    const idx = fileUrl.indexOf(segment)
+    if (idx === -1) return
+    const filename = fileUrl.slice(idx + segment.length)
+    const fp = path.join(uploadsDir, filename)
+    if (fs.existsSync(fp)) fs.unlinkSync(fp)
+  } catch (err) {
+    console.warn('delete local movie file error', err)
+  }
+}
 
 class MovieService {
   
@@ -122,6 +140,19 @@ class MovieService {
   // Cập nhật phim
   async updateMovie(id, movieData, userId) {
     try {
+      // find existing to check old files
+      const existing = await Movie.findById(id).lean()
+      if (!existing) throw new Error('Phim không tồn tại')
+
+      // if poster replaced, remove old poster file
+      if (movieData.poster && existing.poster && movieData.poster !== existing.poster) {
+        _deleteLocalFile(existing.poster)
+      }
+      // if video replaced, remove old video file
+      if (movieData.videoUrl && existing.videoUrl && movieData.videoUrl !== existing.videoUrl) {
+        _deleteLocalFile(existing.videoUrl)
+      }
+
       const movie = await Movie.findByIdAndUpdate(
         id,
         movieData,
@@ -137,7 +168,7 @@ class MovieService {
       throw new Error(`Lỗi khi cập nhật phim: ${error.message}`);
     }
   }
-  
+ 
   // Xóa phim
   async deleteMovie(id) {
     try {
@@ -146,7 +177,11 @@ class MovieService {
       if (!movie) {
         throw new Error('Phim không tồn tại');
       }
-      
+
+      // delete poster & video files if they are stored locally
+      if (movie.poster) _deleteLocalFile(movie.poster)
+      if (movie.videoUrl) _deleteLocalFile(movie.videoUrl)
+
       return movie;
     } catch (error) {
       throw new Error(`Lỗi khi xóa phim: ${error.message}`);
@@ -302,5 +337,5 @@ class MovieService {
     }
   }
 }
-
+ 
 export default new MovieService();
