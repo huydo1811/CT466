@@ -3,4 +3,5 @@ node_modules/
 *.log
 dist/
 build/.env
-uploads/countries/
+uploads/*
+uploads

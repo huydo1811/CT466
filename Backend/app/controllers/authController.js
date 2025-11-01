@@ -1,5 +1,5 @@
 import User from '../models/User.js';
-import * as authService from '../services/authService.js';
+import authService from '../services/authService.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 // Đăng ký
