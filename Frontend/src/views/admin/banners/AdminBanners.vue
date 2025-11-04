@@ -1,32 +1,33 @@
 <template>
   <div class="space-y-6 p-2 animate-fade-in">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-    <div>
+      <div>
         <h2 class="text-3xl font-bold text-white">Banner</h2>
         <p class="text-slate-400 text-sm mt-1">
-        Quản lý banner / quảng bá — thêm, sửa, kích hoạt, đặt lịch và ưu tiên.
+          Quản lý banner / quảng bá — thêm, sửa, kích hoạt, đặt lịch và ưu tiên.
         </p>
-    </div>
-    <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
+      </div>
+
+      <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
         <input
-        v-model="q"
-        placeholder="Tìm theo tiêu đề..."
-        class="px-3 py-2 rounded bg-slate-800 border border-slate-700 text-slate-200 w-full sm:w-auto focus:outline-none"
+          v-model="q"
+          placeholder="Tìm theo tiêu đề..."
+          class="px-3 py-2 rounded bg-slate-800 border border-slate-700 text-slate-200 w-full sm:w-auto focus:outline-none"
         />
         <select
-        v-model="posFilter"
-        class="px-3 py-2 rounded bg-slate-800 border border-slate-700 text-slate-200 w-full sm:w-auto"
+          v-model="posFilter"
+          class="px-3 py-2 rounded bg-slate-800 border border-slate-700 text-slate-200 w-full sm:w-auto"
         >
-        <option value="">Tất cả vị trí</option>
-        <option v-for="p in positions" :key="p" :value="p">{{ p }}</option>
+          <option value="">Tất cả vị trí</option>
+          <option v-for="p in positions" :key="p" :value="p">{{ p }}</option>
         </select>
         <button
-        @click="openAdd"
-        class="px-3 py-2 text-sm sm:text-base bg-emerald-600 hover:bg-emerald-700 text-white rounded w-full sm:w-auto"
+          @click="openAdd"
+          class="px-3 py-2 text-sm sm:text-base bg-emerald-600 hover:bg-emerald-700 text-white rounded w-full sm:w-auto"
         >
-        Thêm banner
+          Thêm banner
         </button>
-    </div>
+      </div>
     </div>
 
     <div class="bg-slate-800/50 border border-slate-700/40 rounded-xl shadow overflow-hidden">
@@ -55,7 +56,7 @@
 
             <tr v-for="b in paged" :key="b.id" class="hover:bg-slate-700/20">
               <td class="px-4 py-3">
-                <img :src="b.mobileImage || b.image" alt="banner" class="w-32 h-12 object-cover rounded" />
+                <img :src="getMediaUrl(b.mobileImage || b.image)" alt="banner" class="w-32 h-12 object-cover rounded" />
               </td>
               <td class="px-4 py-3">
                 <div class="font-medium text-white">{{ b.title }}</div>
@@ -104,10 +105,9 @@
       </div>
     </div>
 
-    <!-- modal add/edit (responsive + scrollable) -->
+    <!-- modal add/edit -->
     <div v-if="showModal" class="fixed inset-0 z-50 overflow-auto bg-black/50 p-4">
       <div class="mx-auto w-full max-w-3xl bg-slate-900 rounded-lg border border-slate-700 max-h-[calc(100vh-4rem)] overflow-y-auto">
-        <!-- sticky header so close button remains visible when scrolling -->
         <div class="sticky top-0 bg-slate-900/90 backdrop-blur px-4 py-3 border-b border-slate-700 z-10">
           <div class="flex items-center justify-between">
             <div class="text-white font-medium">{{ editing ? 'Sửa banner' : 'Thêm banner' }}</div>
@@ -142,10 +142,12 @@
             <div>
               <label class="text-sm text-slate-300">Hình (desktop)</label>
               <input @change="handleImage($event, 'image')" type="file" accept="image/*" class="block mt-2 text-slate-300" />
+              <div v-if="preview.image" class="mt-2"><img :src="preview.image" class="w-full h-28 object-cover rounded" /></div>
             </div>
             <div>
               <label class="text-sm text-slate-300">Hình (mobile)</label>
               <input @change="handleImage($event, 'mobileImage')" type="file" accept="image/*" class="block mt-2 text-slate-300" />
+              <div v-if="preview.mobileImage" class="mt-2"><img :src="preview.mobileImage" class="w-full h-28 object-cover rounded" /></div>
             </div>
           </div>
 
@@ -179,8 +181,8 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import api from '@/services/api'
 
-const USE_MOCK = true
 const loading = ref(true)
 const q = ref('')
 const posFilter = ref('')
@@ -188,7 +190,6 @@ const page = ref(1)
 const perPage = ref(8)
 
 const positions = ['hero', 'secondary', 'sidebar', 'footer']
-
 const banners = ref([])
 
 const showModal = ref(false)
@@ -209,24 +210,21 @@ const form = ref({
   endDate: ''
 })
 
-const mockBanners = () => ([
-  { id: 'b1', title: 'Mùa phim hành động', subtitle: 'Ưu đãi cuối tuần', image: 'https://picsum.photos/800/200?random=1', mobileImage: '', position: 'hero', priority: 10, isActive: true, startDate: '2025-10-01', endDate: '' },
-  { id: 'b2', title: 'Top Comedy', subtitle: 'Cười tẹt ga', image: 'https://picsum.photos/800/200?random=2', mobileImage: '', position: 'secondary', priority: 5, isActive: true, startDate: '2025-09-01', endDate: '2025-12-31' },
-  { id: 'b3', title: 'Tuyển chọn châu Á', subtitle: '', image: 'https://picsum.photos/800/200?random=3', mobileImage: '', position: 'sidebar', priority: 1, isActive: false, startDate: '2025-08-01', endDate: '' }
-])
+const files = ref({ image: null, mobileImage: null })
+const preview = ref({ image: '', mobileImage: '' })
 
 const fetchBanners = async () => {
   loading.value = true
   try {
-    if (USE_MOCK) banners.value = mockBanners()
-    else {
-      const res = await fetch('/api/admin/banners')
-      if (!res.ok) throw new Error('Fetch failed')
-      banners.value = await res.json()
-    }
+    const res = await api.get('/banners') // adjust endpoint if different
+    const data = res?.data?.data || res?.data || []
+    banners.value = data.map(b => ({
+      id: b._id || b.id,
+      ...b
+    }))
   } catch (e) {
-    banners.value = []
     console.error('Error fetching banners:', e)
+    banners.value = []
   } finally {
     loading.value = false
   }
@@ -235,7 +233,7 @@ const fetchBanners = async () => {
 onMounted(fetchBanners)
 
 const filtered = computed(() => {
-  let list = banners.value.slice().sort((a,b) => b.priority - a.priority)
+  let list = banners.value.slice().sort((a,b) => (b.priority||0) - (a.priority||0))
   if (q.value) {
     const t = q.value.toLowerCase().trim()
     list = list.filter(x => (x.title||'').toLowerCase().includes(t) || (x.subtitle||'').toLowerCase().includes(t))
@@ -256,44 +254,92 @@ watch([q, posFilter], () => { page.value = 1 })
 const openAdd = () => {
   editing.value = false
   form.value = { id: null, title:'', subtitle:'', image:'', mobileImage:'', linkUrl:'', linkType:'none', targetId:null, position:'hero', priority:0, isActive:true, startDate:'', endDate:'' }
+  files.value = { image: null, mobileImage: null }
+  preview.value = { image: '', mobileImage: '' }
   showModal.value = true
 }
+
 const openEdit = (b) => {
   editing.value = true
   form.value = { ...b }
+  files.value = { image: null, mobileImage: null }
+  preview.value = { image: getMediaUrl(b.image), mobileImage: getMediaUrl(b.mobileImage) }
   showModal.value = true
 }
-const closeModal = () => { showModal.value = false }
+
+const closeModal = () => {
+  showModal.value = false
+  // revoke objectURLs
+  if (preview.value.image && preview.value.image.startsWith('blob:')) URL.revokeObjectURL(preview.value.image)
+  if (preview.value.mobileImage && preview.value.mobileImage.startsWith('blob:')) URL.revokeObjectURL(preview.value.mobileImage)
+}
 
 const handleImage = (e, key) => {
-  const f = e.target.files?.[0]
-  if (!f) return
-  const reader = new FileReader()
-  reader.onload = () => { form.value[key] = reader.result }
-  reader.readAsDataURL(f)
+  const f = e.target.files?.[0] || null
+  files.value[key] = f
+  if (preview.value[key] && preview.value[key].startsWith('blob:')) URL.revokeObjectURL(preview.value[key])
+  preview.value[key] = f ? URL.createObjectURL(f) : ''
 }
 
-const save = () => {
-  if (!form.value.title || !form.value.image) return alert('Cần có tiêu đề và hình ảnh')
-  if (editing.value) {
-    const idx = banners.value.findIndex(x => x.id === form.value.id)
-    if (idx >= 0) banners.value.splice(idx, 1, { ...form.value })
-  } else {
-    const id = 'b' + Date.now()
-    banners.value.unshift({ id, ...form.value })
+const save = async () => {
+  if (!form.value.title || (!form.value.image && !files.value.image)) return alert('Cần có tiêu đề và hình ảnh')
+  try {
+    const fd = new FormData()
+    fd.append('title', form.value.title)
+    fd.append('subtitle', form.value.subtitle || '')
+    fd.append('position', form.value.position || 'hero')
+    fd.append('priority', String(form.value.priority || 0))
+    fd.append('linkUrl', form.value.linkUrl || '')
+    fd.append('startDate', form.value.startDate || '')
+    fd.append('endDate', form.value.endDate || '')
+    fd.append('isActive', String(!!form.value.isActive))
+
+    if (files.value.image) fd.append('image', files.value.image)
+    if (files.value.mobileImage) fd.append('mobileImage', files.value.mobileImage)
+
+    if (editing.value && form.value.id) {
+      // update
+      await api.put(`/banners/${form.value.id}`, fd) // backend should accept multipart
+      await fetchBanners()
+      closeModal()
+    } else {
+      // create
+      await api.post('/banners', fd)
+      await fetchBanners()
+      closeModal()
+    }
+  } catch (err) {
+    console.error('save banner failed', err)
+    alert(err?.response?.data?.message || 'Lưu banner thất bại')
   }
-  closeModal()
 }
 
-const remove = (b) => {
+const remove = async (b) => {
   if (!confirm(`Xóa banner "${b.title}"?`)) return
-  banners.value = banners.value.filter(x => x.id !== b.id)
+  try {
+    await api.delete(`/banners/${b.id}`)
+    await fetchBanners()
+  } catch (err) {
+    console.error('delete banner failed', err)
+    alert(err?.response?.data?.message || 'Xóa thất bại')
+  }
 }
 
-const toggleActive = (b) => {
-  const idx = banners.value.findIndex(x => x.id === b.id)
-  if (idx < 0) return
-  banners.value[idx].isActive = !banners.value[idx].isActive
+const toggleActive = async (b) => {
+  try {
+    // simple toggle via update; backend may provide specific route
+    await api.put(`/banners/${b.id}`, { isActive: !b.isActive })
+    await fetchBanners()
+  } catch (err) {
+    console.error('toggle active failed', err)
+    alert('Cập nhật trạng thái thất bại')
+  }
+}
+
+const getMediaUrl = (u) => {
+  if (!u) return ''
+  if (/^https?:\/\//.test(u)) return u
+  return `${window.location.origin}${u}`
 }
 
 const formatDate = (d) => {

@@ -25,7 +25,7 @@
       </div>
 
       <div class="bg-slate-800 p-4 rounded border border-slate-700">
-        <label class="text-sm text-slate-300">Logo (URL)</label>
+        <label class="text-sm text-slate-300">Logo (URL hoặc upload)</label>
         <input v-model="form.logo" class="w-full mt-2 px-3 py-2 rounded bg-slate-900 border border-slate-700 text-slate-200" placeholder="https://..." />
         <div class="flex items-center gap-3 mt-3">
           <div class="w-24 h-12 bg-slate-700 rounded flex items-center justify-center overflow-hidden border border-slate-600">
@@ -65,6 +65,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import api from '@/services/api'
 
 const saving = ref(false)
 const form = ref({
@@ -74,19 +75,20 @@ const form = ref({
   emails: [''],
   phones: ['']
 })
+let logoFile = null
 
+// load settings from backend
 const load = async () => {
   try {
-    const res = await fetch('/api/admin/settings')
-    if (!res.ok) throw new Error('No settings')
-    const data = await res.json()
-    const s = data?.settings || data || {}
+    const res = await api.get('/settings') 
+    const s = res?.data?.data || {}
     form.value.siteName = s.siteName || ''
     form.value.siteUrl = s.siteUrl || ''
     form.value.logo = s.logo || ''
     form.value.emails = (s.emails && s.emails.length) ? s.emails.slice() : ['']
     form.value.phones = (s.phones && s.phones.length) ? s.phones.slice() : ['']
-  } catch {
+  } catch (err) {
+    console.error('load settings failed', err)
     form.value.siteName = 'MyCinema'
     form.value.siteUrl = ''
     form.value.logo = ''
@@ -99,30 +101,34 @@ onMounted(load)
 
 const save = async () => {
   if (!form.value.siteName) return alert('Nhập tên website')
-  // filter empty entries
-  const payload = {
-    siteName: form.value.siteName,
-    siteUrl: form.value.siteUrl,
-    logo: form.value.logo,
-    emails: form.value.emails.map(x => (x||'').trim()).filter(Boolean),
-    phones: form.value.phones.map(x => (x||'').trim()).filter(Boolean)
-  }
   saving.value = true
   try {
-    const res = await fetch('/api/admin/settings', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    })
-    if (!res.ok) {
-      await new Promise(r => setTimeout(r, 400))
-      alert('Lưu (mock)')
+    // if a file was selected, send multipart FormData (logo field)
+    if (logoFile) {
+      const fd = new FormData()
+      fd.append('siteName', form.value.siteName)
+      fd.append('siteUrl', form.value.siteUrl)
+      fd.append('emails', JSON.stringify(form.value.emails))
+      fd.append('phones', JSON.stringify(form.value.phones))
+      fd.append('logo', logoFile)
+      await api.put('/settings', fd)
     } else {
-      alert('Lưu thành công')
+      // send JSON payload
+      const payload = {
+        siteName: form.value.siteName,
+        siteUrl: form.value.siteUrl,
+        logo: form.value.logo, // could be dataURL or existing URL
+        emails: form.value.emails,
+        phones: form.value.phones
+      }
+      await api.put('/settings', payload)
     }
+    alert('Lưu thành công')
+    logoFile = null
+    await load()
   } catch (e) {
-    console.warn(e)
-    alert('Lưu thất bại (mock)')
+    console.error('save settings failed', e)
+    alert(e?.response?.data?.message || 'Lưu thất bại')
   } finally {
     saving.value = false
   }
@@ -133,12 +139,14 @@ const reset = () => {
   form.value = { siteName: 'MyCinema', siteUrl: '', logo: '', emails: [''], phones: [''] }
 }
 
+// handle file input: preview + store file for upload
 const handleFile = (e) => {
   const f = e.target.files?.[0]
   if (!f) return
   const reader = new FileReader()
-  reader.onload = () => { form.value.logo = reader.result }
+  reader.onload = () => { form.value.logo = reader.result } // preview
   reader.readAsDataURL(f)
+  logoFile = f
 }
 
 const addEmail = () => form.value.emails.push('')

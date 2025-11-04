@@ -16,6 +16,7 @@ import movieRoutes from './routes/movieRoutes.js';
 import seriesRoutes from './routes/seriesRoutes.js' 
 import episodeRoutes from './routes/episodeRoute.js';
 import reviewRoutes from './routes/reviewRoutes.js';
+import settingRoutes from './routes/settingRoutes.js';
 
 // Kết nối database
 connectDB();
@@ -46,7 +47,8 @@ app.use('/api/banners', bannerRoutes);
 app.use('/api/movies', movieRoutes);
 app.use('/api/episodes', episodeRoutes);
 app.use('/api/reviews', reviewRoutes);
-app.use('/api/series', seriesRoutes) 
+app.use('/api/series', seriesRoutes);
+app.use('/api/settings', settingRoutes);
 
 // Route mặc định
 app.get('/', (req, res) => {
@@ -92,3 +94,5 @@ app.listen(PORT, () => {
   console.log(`Server đang chạy trên port ${PORT}`);
   console.log(`API URL: http://localhost:${PORT}`);
 });
+
+export default app
