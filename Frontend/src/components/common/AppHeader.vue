@@ -1,139 +1,167 @@
 <script setup>
+
+
 import { RouterLink } from 'vue-router'
 import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import api from '@/services/api'
+ 
 
-// phân biệt: isMobileView = có phải màn nhỏ; mobileOpen = menu mobile đang mở
-const isMobileView = ref(false)
-const mobileOpen = ref(false)
-const searchActive = ref(false)
-const searchQuery = ref('')
-const searchResults = ref([])
-const showResults = ref(false)
+ const isMobileView = ref(false)
+ const mobileOpen = ref(false)
+ const searchActive = ref(false)
+ const searchQuery = ref('')
+ const searchResults = ref([])
+ const showResults = ref(false)
 
-// ref cho container nav để detect click outside
-const navRef = ref(null)
+ // ref cho container nav để detect click outside
+ const navRef = ref(null)
 
-// Thay vì 1 searchRef chung, dùng 2 ref riêng
-const searchRefDesktop = ref(null)
-const searchRefMobile = ref(null)
+ // Thay vì 1 searchRef chung, dùng 2 ref riêng
+ const searchRefDesktop = ref(null)
+ const searchRefMobile = ref(null)
 
-// Fake search results
-watch(searchQuery, (query) => {
-  if (query.length < 2) {
-    showResults.value = false
-    return
-  }
-  
-  // Demo search results
-  searchResults.value = [
-    { id: 1, title: 'Spider-Man: No Way Home', poster: 'https://image.tmdb.org/t/p/w92/1g0dhYtq4irTY1GPXvft6k4YLjm.jpg', year: 2021 },
-    { id: 2, title: 'Spider-Man: Homecoming', poster: 'https://image.tmdb.org/t/p/w92/c24sv2weTHPsmDa7jEMN0m2P3RT.jpg', year: 2017 },
-    { id: 3, title: 'The Amazing Spider-Man', poster: 'https://image.tmdb.org/t/p/w92/fSbqPbqXa7ePo8bcnZYN9AHv6zA.jpg', year: 2012 }
-  ].filter(movie => movie.title.toLowerCase().includes(query.toLowerCase()))
-  
-  showResults.value = true
-})
+ // Fake search results
+ watch(searchQuery, (query) => {
+   if (query.length < 2) {
+     showResults.value = false
+     return
+   }
+   
+   // Demo search results
+   searchResults.value = [
+     { id: 1, title: 'Spider-Man: No Way Home', poster: 'https://image.tmdb.org/t/p/w92/1g0dhYtq4irTY1GPXvft6k4YLjm.jpg', year: 2021 },
+     { id: 2, title: 'Spider-Man: Homecoming', poster: 'https://image.tmdb.org/t/p/w92/c24sv2weTHPsmDa7jEMN0m2P3RT.jpg', year: 2017 },
+     { id: 3, title: 'The Amazing Spider-Man', poster: 'https://image.tmdb.org/t/p/w92/fSbqPbqXa7ePo8bcnZYN9AHv6zA.jpg', year: 2012 }
+   ].filter(movie => movie.title.toLowerCase().includes(query.toLowerCase()))
+   
+   showResults.value = true
+ })
 
-// Handle form submission
-function handleSearch(e) {
-  e.preventDefault()
-  if (searchQuery.value.trim()) {
-    // Navigate to search page (implement actual search later)
-    console.log(`Searching for: ${searchQuery.value}`)
-    // router.push({ name: 'search', query: { q: searchQuery.value } })
-    searchActive.value = false
-    searchQuery.value = ''
-    showResults.value = false
-  }
-}
+ // Handle form submission
+ function handleSearch(e) {
+   e.preventDefault()
+   if (searchQuery.value.trim()) {
+     // Navigate to search page (implement actual search later)
+     console.log(`Searching for: ${searchQuery.value}`)
+     // router.push({ name: 'search', query: { q: searchQuery.value } })
+     searchActive.value = false
+     searchQuery.value = ''
+     showResults.value = false
+   }
+ }
 
-// Close search results when clicking outside
-function handleClickOutside(e) {
-  const path = e.composedPath ? e.composedPath() : (e.path || []);
-  const clickedInsideNav = navRef.value && (navRef.value.contains(e.target) || path.includes(navRef.value))
+ // Close search results when clicking outside
+ function handleClickOutside(e) {
+   const path = e.composedPath ? e.composedPath() : (e.path || []);
+   const clickedInsideNav = navRef.value && (navRef.value.contains(e.target) || path.includes(navRef.value))
 
-  const clickedInsideSearchDesktop = searchRefDesktop.value && (searchRefDesktop.value.contains(e.target) || path.includes(searchRefDesktop.value))
-  const clickedInsideSearchMobile = searchRefMobile.value && (searchRefMobile.value.contains(e.target) || path.includes(searchRefMobile.value))
-  const clickedInsideSearch = clickedInsideSearchDesktop || clickedInsideSearchMobile
+   const clickedInsideSearchDesktop = searchRefDesktop.value && (searchRefDesktop.value.contains(e.target) || path.includes(searchRefDesktop.value))
+   const clickedInsideSearchMobile = searchRefMobile.value && (searchRefMobile.value.contains(e.target) || path.includes(searchRefMobile.value))
+   const clickedInsideSearch = clickedInsideSearchDesktop || clickedInsideSearchMobile
 
-  if (!clickedInsideSearch) {
-    showResults.value = false
-  }
+   if (!clickedInsideSearch) {
+     showResults.value = false
+   }
 
-  if (!clickedInsideNav && mobileOpen.value) {
-    mobileOpen.value = false
-  }
+   if (!clickedInsideNav && mobileOpen.value) {
+     mobileOpen.value = false
+   }
 
-  // close profile menu if click outside
-  const clickedInsideProfile = path.includes(profileBtnRef?.value)
-  if (!clickedInsideProfile) showProfileMenu.value = false
-}
+   // close profile menu if click outside
+   const clickedInsideProfile = path.includes(profileBtnRef?.value)
+   if (!clickedInsideProfile) showProfileMenu.value = false
+ }
 
-// Check mobile view
-function checkMobileView() {
-  isMobileView.value = window.innerWidth < 1024
-  // nếu chuyển sang desktop thì đóng menu mobile
-  if (!isMobileView.value) mobileOpen.value = false
-}
+ // Check mobile view
+ function checkMobileView() {
+   isMobileView.value = window.innerWidth < 1024
+   // nếu chuyển sang desktop thì đóng menu mobile
+   if (!isMobileView.value) mobileOpen.value = false
+ }
 
-// Add and remove event listeners
-onMounted(() => {
-  checkMobileView()
-  window.addEventListener('resize', checkMobileView)
-  document.addEventListener('click', handleClickOutside)
-})
+ // Add and remove event listeners
+ onMounted(() => {
+   checkMobileView()
+   window.addEventListener('resize', checkMobileView)
+   document.addEventListener('click', handleClickOutside)
+  // load categories & countries
+  fetchCategories()
+  fetchCountries()
+ })
+ 
+ onUnmounted(() => {
+   window.removeEventListener('resize', checkMobileView)
+   document.removeEventListener('click', handleClickOutside)
+ })
 
-onUnmounted(() => {
-  window.removeEventListener('resize', checkMobileView)
-  document.removeEventListener('click', handleClickOutside)
-})
+ // categories & countries loaded from API
+ const categories = ref([])
+ const countries = ref([])
 
-// Data fake hiển thị ngay
-const categories = ref([
-  { id: 1, name: 'Hành động', slug: 'hanh-dong' },
-  { id: 2, name: 'Tâm lý', slug: 'tam-ly' },
-  { id: 3, name: 'Kinh dị', slug: 'kinh-di' },
-  { id: 4, name: 'Hài', slug: 'hai' }
-])
+ const getMediaUrl = (u) => {
+   if (!u) return ''
+   if (/^data:|^https?:\/\//.test(u)) return u
+   return `${window.location.origin}${u}`
+ }
 
-const countries = [
-  { id: 'us', name: 'Mỹ', slug: 'us', flag: 'https://flagcdn.com/w80/us.png' },
-  { id: 'kr', name: 'Hàn Quốc', slug: 'kr', flag: 'https://flagcdn.com/w80/kr.png' },
-  { id: 'jp', name: 'Nhật Bản', slug: 'jp', flag: 'https://flagcdn.com/w80/jp.png' },
-  { id: 'vn', name: 'Việt Nam', slug: 'vn', flag: 'https://flagcdn.com/w80/vn.png' },
-  { id: 'cn', name: 'Trung Quốc', slug: 'cn', flag: 'https://flagcdn.com/w80/cn.png' },
-  { id: 'tw', name: 'Đài Loan', slug: 'tw', flag: 'https://flagcdn.com/w80/tw.png' },
-  { id: 'th', name: 'Thái Lan', slug: 'th', flag: 'https://flagcdn.com/w80/th.png' },
-  { id: 'uk', name: 'Anh', slug: 'uk', flag: 'https://flagcdn.com/w80/gb.png' }
-]
+ const fetchCategories = async () => {
+   try {
+     const res = await api.get('/categories')
+     const data = res?.data?.data || res?.data || []
+     categories.value = Array.isArray(data) ? data : []
+   } catch (e) {
+     console.warn('fetch categories failed', e)
+     // fallback minimal list
+     categories.value = [
+       { _id: '1', name: 'Hành động', slug: 'hanh-dong' },
+       { _id: '2', name: 'Tâm lý', slug: 'tam-ly' },
+       { _id: '3', name: 'Hài', slug: 'hai' }
+     ]
+   }
+ }
 
-const router = useRouter()
-const auth = useAuthStore()
-const showProfileMenu = ref(false)
+ const fetchCountries = async () => {
+   try {
+     const res = await api.get('/countries')
+     const data = res?.data?.data || res?.data || []
+     countries.value = Array.isArray(data) ? data : []
+   } catch (e) {
+     console.warn('fetch countries failed', e)
+     // fallback
+     countries.value = [
+       { _id: 'vn', name: 'Việt Nam', slug: 'vn', flag: 'https://flagcdn.com/w80/vn.png' },
+       { _id: 'us', name: 'Mỹ', slug: 'us', flag: 'https://flagcdn.com/w80/us.png' }
+     ]
+   }
+ }
+ 
+ const router = useRouter()
+ const auth = useAuthStore()
+ const showProfileMenu = ref(false)
 
-// profile button ref
-const profileBtnRef = ref(null)
+ // profile button ref
+ const profileBtnRef = ref(null)
 
-function goToProfile() {
-  showProfileMenu.value = false
-  router.push('/profile')
-}
+ function goToProfile() {
+   showProfileMenu.value = false
+   router.push('/profile')
+ }
 
-function logout() {
-  auth.logout()
-  showProfileMenu.value = false
-  router.push('/')
-}
+ function logout() {
+   auth.logout()
+   showProfileMenu.value = false
+   router.push('/')
+ }
 
-// computed name/initial for avatar
-const userInitial = computed(() => {
-  const name = auth.user?.fullName || auth.user?.name || auth.user?.username || ''
-  return name ? name.trim().charAt(0).toUpperCase() : 'C'
-})
+ // computed name/initial for avatar
+ const userInitial = computed(() => {
+   const name = auth.user?.fullName || auth.user?.name || auth.user?.username || ''
+   return name ? name.trim().charAt(0).toUpperCase() : 'C'
+ })
 </script>
-
+ 
 <template>
   <header class="fixed top-0 w-full z-50 bg-dark-900/95 backdrop-blur-md border-b border-gray-800/50">
     <nav ref="navRef" class="container mx-auto px-4 py-4">
@@ -163,7 +191,7 @@ const userInitial = computed(() => {
         </button>
 
         <!-- Desktop Nav (center) -->
-        <div class="hidden lg:flex items-center mx-auto space-x-6 pl-2">
+        <div class="hidden lg:flex items-center mx-auto space-x-6 pl-2 text-lg">
           <RouterLink to="/" exact-active-class="nav-link-active" class="nav-link">
             <span>Trang chủ</span><div class="nav-underline"></div>
           </RouterLink>
@@ -187,15 +215,15 @@ const userInitial = computed(() => {
             </button>
             <!-- Panel -->
             <div class="absolute left-0 top-full w-56 rounded-xl border border-gray-800 bg-dark-900/95 backdrop-blur-md shadow-2xl opacity-0 scale-95 pointer-events-none transition duration-150 group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto z-50">
-              <ul class="py-2 max-h-80 overflow-y-auto">
-                <li v-for="c in categories" :key="c.id">
+              <ul class="py-2 max-h-80 overflow-y-auto">               
+                <li v-for="c in categories" :key="c._id || c.id">
                   <RouterLink :to="{ name: 'category-detail', params: { slug: c.slug } }" class="block px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white">
                     {{ c.name }}
                   </RouterLink>
                 </li>
-              </ul>
-            </div>
-          </div>
+               </ul>
+             </div>
+           </div>
 
           <!-- Quốc gia dropdown -->
           <div class="relative group">
@@ -210,23 +238,23 @@ const userInitial = computed(() => {
             <!-- Panel -->
             <div class="absolute left-0 top-full w-56 rounded-xl border border-gray-800 bg-dark-900/95 backdrop-blur-md shadow-2xl opacity-0 scale-95 pointer-events-none transition duration-150 group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto z-50">
               <ul class="py-2 max-h-80 overflow-y-auto">
-                <li v-for="c in countries" :key="c.id">
-                  <RouterLink 
-                    :to="{ name: 'country', params: { slug: c.slug } }" 
-                    class="flex items-center px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white"
-                  >
+                 <li v-for="c in countries" :key="c.id">
+                   <RouterLink 
+                     :to="{ name: 'country', params: { slug: c.slug } }" 
+                     class="flex items-center px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white"
+                   >
                     <img 
                       v-if="c.flag" 
-                      :src="c.flag" 
+                      :src="getMediaUrl(c.flag)" 
                       :alt="c.name" 
                       class="w-5 h-3 mr-2 object-cover"
                     />
-                    {{ c.name }}
-                  </RouterLink>
-                </li>
-              </ul>
-            </div>
-          </div>
+                     {{ c.name }}
+                   </RouterLink>
+                 </li>
+               </ul>
+             </div>
+           </div>
 
           <RouterLink to="/actors" active-class="nav-link-active" class="nav-link">
             <span>Diễn viên</span><div class="nav-underline"></div>
@@ -389,14 +417,14 @@ const userInitial = computed(() => {
             <div class="grid grid-cols-2 gap-1">
               <RouterLink
                 v-for="n in countries"
-                :key="n.id"
+                :key="n._id || n.id"
                 :to="{ name: 'country', params: { slug: n.slug } }"
                 class="flex items-center px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white rounded-md"
                 @click="mobileOpen = false"
               >
                 <img
                   v-if="n.flag"
-                  :src="n.flag"
+                  :src="getMediaUrl(n.flag)"
                   :alt="n.name"
                   class="w-4 h-3 mr-1.5 object-cover"
                 />

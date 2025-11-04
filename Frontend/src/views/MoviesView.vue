@@ -12,41 +12,39 @@
 
     <div class="container mx-auto px-4">
       <!-- Sort and results info -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
-      <div class="text-gray-300">
-        Hiển thị <span class="text-white font-medium">{{ (currentPage - 1) * moviesPerPage + 1 }}-{{ Math.min(currentPage * moviesPerPage, totalMovies) }}</span> 
-        trên <span class="text-white font-medium">{{ totalMovies }}</span> phim
-      </div>
-      
-      <div class="flex items-center gap-2">
-    <button 
-      @click="showFilters = !showFilters" 
-      class="text-sm sm:text-base px-2 py-1 sm:px-3 sm:py-2 flex items-center bg-dark-800 text-white border border-gray-700 rounded-lg hover:bg-dark-700 transition"
-    >
-      <svg class="w-4 h-4 ml-1 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-      </svg>
-      Bộ lọc
-
-      <span v-if="hasActiveFilters" class="ml-2 w-2 h-2 rounded-full bg-primary-500"></span>
-    </button>
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+        <div class="text-gray-300">
+          Hiển thị <span class="text-white font-medium">{{ (currentPage - 1) * moviesPerPage + 1 }}-{{ Math.min(currentPage * moviesPerPage, totalMovies) }}</span> 
+          trên <span class="text-white font-medium">{{ totalMovies }}</span> phim
+        </div>
         
-        <span class="text-gray-400 whitespace-nowrap">Sắp xếp:</span>
-        <!-- Select nhỏ hơn -->
-        <select 
-          v-model="sortBy" 
-          @change="applySorting"
-          class="text-sm sm:text-base px-2 py-1 sm:px-3 sm:py-2 bg-dark-800 text-white border border-gray-700 rounded-lg focus:ring-1 focus:ring-primary-500"
-        >
-          <option value="latest">Mới nhất</option>
-          <option value="oldest">Cũ nhất</option>
-          <option value="nameAZ">Tên A-Z</option>
-          <option value="nameZA">Tên Z-A</option>
-          <option value="rating">Đánh giá cao nhất</option>
-          <option value="popularity">Phổ biến nhất</option>
-        </select>
+        <div class="flex items-center gap-2">
+          <button 
+            @click="showFilters = !showFilters" 
+            class="text-sm sm:text-base px-2 py-1 sm:px-3 sm:py-2 flex items-center bg-dark-800 text-white border border-gray-700 rounded-lg hover:bg-dark-700 transition"
+          >
+            <svg class="w-4 h-4 ml-1 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            </svg>
+            Bộ lọc
+
+            <span v-if="hasActiveFilters" class="ml-2 w-2 h-2 rounded-full bg-primary-500"></span>
+          </button>
+              
+          <span class="text-gray-400 whitespace-nowrap">Sắp xếp:</span>
+          <select 
+            v-model="sortBy" 
+            @change="applySorting"
+            class="text-sm sm:text-base px-2 py-1 sm:px-3 sm:py-2 bg-dark-800 text-white border border-gray-700 rounded-lg focus:ring-1 focus:ring-primary-500"
+          >
+            <option value="createdAt">Mới nhất</option>
+            <option value="releaseDate">Ngày phát hành</option>
+            <option value="title">Tên A-Z</option>
+            <option value="-rating.average">Đánh giá cao nhất</option>
+            <option value="-viewCount">Phổ biến nhất</option>
+          </select>
+        </div>
       </div>
-    </div>
 
       <!-- Filter Modal/Offcanvas -->
       <div 
@@ -74,7 +72,7 @@
                   class="w-full bg-dark-700 text-white border border-gray-600 rounded-lg px-3 py-2 focus:ring-1 focus:ring-primary-500"
                 >
                   <option value="">Tất cả thể loại</option>
-                  <option v-for="category in categories" :key="category.id" :value="category.slug">
+                  <option v-for="category in categories" :key="category._id || category.id" :value="category._id || category.id">
                     {{ category.name }}
                   </option>
                 </select>
@@ -88,7 +86,7 @@
                   class="w-full bg-dark-700 text-white border border-gray-600 rounded-lg px-3 py-2 focus:ring-1 focus:ring-primary-500"
                 >
                   <option value="">Tất cả quốc gia</option>
-                  <option v-for="country in countries" :key="country.id" :value="country.slug">
+                  <option v-for="country in countries" :key="country._id || country.id" :value="country._id || country.id">
                     {{ country.name }}
                   </option>
                 </select>
@@ -126,22 +124,22 @@
       </div>
 
       <!-- Movies grid -->
-      <div v-if="movies.length > 0" class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-5 mb-8">
-        <div v-for="movie in movies" :key="movie.id" class="movie-card group">
+      <div v-if="!loading && movies.length > 0" class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-5 mb-8">
+        <div v-for="movie in movies" :key="movie._id || movie.id" class="movie-card group">
           <div class="relative overflow-hidden rounded-xl aspect-[2/3] bg-gray-800">
             <img 
               :src="movie.poster" 
               :alt="movie.title" 
               class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-              @click="viewMovieDetails(movie.id)" 
+              @click="viewMovieDetails(movie._id || movie.id)" 
             />
             <div class="absolute top-2 right-2 bg-black/70 backdrop-blur-sm px-2 py-1 rounded-lg">
-              <span class="text-yellow-400 text-xs font-semibold">{{ movie.rating }}</span>
+              <span class="text-yellow-400 text-xs font-semibold">{{ movie.rating?.average ?? movie.rating }}</span>
             </div>
             <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-end">
               <div class="p-4 w-full">
                 <button 
-                  @click="viewMovieDetails(movie.id)" 
+                  @click="viewMovieDetails(movie._id || movie.id)" 
                   class="w-full py-2 bg-primary-600 hover:bg-primary-700 rounded-lg text-white text-sm transition"
                 >
                   Xem chi tiết
@@ -150,19 +148,21 @@
             </div>
           </div>
           <div class="mt-2">
-            <h3 class="text-white font-medium truncate cursor-pointer hover:text-primary-500" @click="viewMovieDetails(movie.id)">{{ movie.title }}</h3>
+            <h1 class="text-white text-xl font-medium truncate cursor-pointer hover:text-primary-500" @click="viewMovieDetails(movie._id || movie.id)">{{ movie.title }}</h1>
             <div class="flex items-center justify-between">
               <p class="text-gray-400 text-sm">{{ movie.year }}</p>
               <div class="text-xs text-gray-500">
-                {{ movie.categories[0] }}
+                {{ movie.categories?.[0]?.name || (movie.categories ? movie.categories[0] : '') }}
               </div>
             </div>
           </div>
         </div>
       </div>
       
+      <div v-if="loading" class="text-center py-12 text-gray-400">Đang tải...</div>
+
       <!-- Empty state -->
-      <div v-else class="bg-dark-800 border border-gray-700 rounded-xl p-12 text-center">
+      <div v-else-if="!loading && movies.length === 0" class="bg-dark-800 border border-gray-700 rounded-xl p-12 text-center">
         <svg class="w-16 h-16 mx-auto text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
         </svg>
@@ -193,14 +193,7 @@
             v-for="page in pageArray"
             :key="page"
             @click="goToPage(page)"
-            :class="[
-              'px-4 py-2 rounded-lg', 
-              page === currentPage 
-                ? 'bg-primary-600 text-white' 
-                : page === '...' 
-                  ? 'text-gray-500 cursor-default' 
-                  : 'text-gray-300 hover:bg-dark-700 hover:text-white'
-            ]"
+            :class="[ 'px-4 py-2 rounded-lg', page === currentPage ? 'bg-primary-600 text-white' : (page === '...' ? 'text-gray-500 cursor-default' : 'text-gray-300 hover:bg-dark-700 hover:text-white') ]"
           >
             {{ page }}
           </button>
@@ -224,89 +217,114 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import api from '@/services/api'
 
 const router = useRouter()
 
-// Trạng thái lọc
-const filters = ref({
-  category: '',
-  country: '',
-  year: '',
-  quality: '',
-  status: '',
-  minRating: 0
+// Filters and sorting state
+const filters = ref({ category: '', country: '', year: '' })
+const sortBy = ref('createdAt')
+const showFilters = ref(false)
+const hasActiveFilters = computed(() => {
+  return filters.value.category || filters.value.country || filters.value.year
 })
 
-// Trạng thái sắp xếp
-const sortBy = ref('latest')
-
-// Dữ liệu mẫu - danh mục
-const categories = ref([
-  { id: 1, name: 'Hành động', slug: 'hanh-dong' },
-  { id: 2, name: 'Tâm lý', slug: 'tam-ly' },
-  { id: 3, name: 'Kinh dị', slug: 'kinh-di' },
-  { id: 4, name: 'Hài', slug: 'hai' },
-  { id: 5, name: 'Phiêu lưu', slug: 'phieu-luu' },
-  { id: 6, name: 'Khoa học viễn tưởng', slug: 'khoa-hoc-vien-tuong' },
-  { id: 7, name: 'Hoạt hình', slug: 'hoat-hinh' }
-])
-
-// Dữ liệu mẫu - quốc gia
-const countries = ref([
-  { id: 'us', name: 'Mỹ', slug: 'us' },
-  { id: 'kr', name: 'Hàn Quốc', slug: 'kr' },
-  { id: 'jp', name: 'Nhật Bản', slug: 'jp' },
-  { id: 'vn', name: 'Việt Nam', slug: 'vn' },
-  { id: 'cn', name: 'Trung Quốc', slug: 'cn' },
-  { id: 'tw', name: 'Đài Loan', slug: 'tw' },
-  { id: 'in', name: 'Ấn Độ', slug: 'in' }
-])
-
-// Dữ liệu mẫu - năm
-const years = ref([2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015])
-
-
-
-// // Dữ liệu mẫu - trạng thái
-// const statuses = ref(['Đã hoàn thành', 'Đang cập nhật'])
-
-// Trạng thái phân trang
+// pagination
 const currentPage = ref(1)
-const totalPages = ref(10)
+const moviesPerPage = ref(12)
+const totalPages = ref(1)
+const totalMovies = ref(0)
+const loading = ref(false)
 
-// Dữ liệu mẫu - danh sách phim
-const movies = ref([
-  { id: 1, title: 'Avengers: Endgame', poster: 'https://image.tmdb.org/t/p/w500/or06FN3Dka5tukK1e9sl16pB3iy.jpg', year: 2019, rating: 8.4, categories: ['Hành động', 'Phiêu lưu', 'Khoa học viễn tưởng'] },
-  { id: 2, title: 'The Batman', poster: 'https://image.tmdb.org/t/p/w500/74xTEgt7R36Fpooo50r9T25onhq.jpg', year: 2022, rating: 7.8, categories: ['Hành động', 'Phiêu lưu', 'Tâm lý'] },
-  { id: 3, title: 'Joker', poster: 'https://image.tmdb.org/t/p/w500/udDclJoHjfjb8Ekgsd4FDteOkCU.jpg', year: 2019, rating: 8.2, categories: ['Tâm lý', 'Tội phạm'] },
-  { id: 4, title: 'Dune', poster: 'https://image.tmdb.org/t/p/w500/d5NXSklXo0qyIYkgV94XAgMIckC.jpg', year: 2021, rating: 7.9, categories: ['Phiêu lưu', 'Khoa học viễn tưởng'] },
-  { id: 5, title: 'Top Gun: Maverick', poster: 'https://image.tmdb.org/t/p/w500/62HCnUTziyWcpDaBO2i1DX17ljH.jpg', year: 2022, rating: 8.3, categories: ['Hành động', 'Phiêu lưu'] },
-  { id: 6, title: 'Spider-Man: No Way Home', poster: 'https://image.tmdb.org/t/p/w500/1g0dhYtq4irTY1GPXvft6k4YLjm.jpg', year: 2021, rating: 8.2, categories: ['Hành động', 'Phiêu lưu', 'Khoa học viễn tưởng'] },
-  { id: 7, title: 'Everything Everywhere All at Once', poster: 'https://image.tmdb.org/t/p/w500/w3LxiVYdWWRvEVdn5RYq6jIqkb1.jpg', year: 2022, rating: 7.9, categories: ['Phiêu lưu', 'Khoa học viễn tưởng', 'Hài'] },
-  { id: 8, title: 'The Shawshank Redemption', poster: 'https://image.tmdb.org/t/p/w500/q6y0Go1tsGEsmtFryDOJo3dEmqu.jpg', year: 1994, rating: 8.7, categories: ['Tâm lý', 'Tội phạm'] },
-  { id: 9, title: 'Oppenheimer', poster: 'https://image.tmdb.org/t/p/w500/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg', year: 2023, rating: 8.2, categories: ['Lịch sử', 'Tâm lý'] },
-  { id: 10, title: 'The Godfather', poster: 'https://image.tmdb.org/t/p/w500/3bhkrj58Vtu7enYsRolD1fZdja1.jpg', year: 1972, rating: 8.7, categories: ['Tội phạm', 'Tâm lý'] },
-  { id: 11, title: 'Inception', poster: 'https://image.tmdb.org/t/p/w500/9gk7adHYeDvHkCSEqAvQNLV5Uge.jpg', year: 2010, rating: 8.4, categories: ['Khoa học viễn tưởng', 'Hành động'] },
-  { id: 12, title: 'Interstellar', poster: 'https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg', year: 2014, rating: 8.4, categories: ['Khoa học viễn tưởng', 'Phiêu lưu'] }
-])
+// data holders
+const movies = ref([])
+const categories = ref([])
+const countries = ref([])
+const years = ref([])
 
-// Tổng số phim
-const totalMovies = ref(120)
+// helper to normalize media urls
+const getMediaUrl = (u) => {
+  if (!u) return ''
+  if (/^data:|^https?:\/\//.test(u)) return u
+  return `${window.location.origin}${u}`
+}
 
-// Số phim mỗi trang
-const moviesPerPage = 12
+const fetchCategories = async () => {
+  try {
+    const res = await api.get('/categories')
+    categories.value = res?.data?.data || res?.data || []
+  } catch (e) {
+    console.warn('fetch categories failed', e)
+  }
+}
 
-// Tính toán số trang
+const fetchCountries = async () => {
+  try {
+    const res = await api.get('/countries')
+    countries.value = res?.data?.data || res?.data || []
+  } catch (e) {
+    console.warn('fetch countries failed', e)
+  }
+}
+
+const fetchMovies = async () => {
+  loading.value = true
+  try {
+    const params = {
+      page: currentPage.value,
+      limit: moviesPerPage.value,
+      type: 'movie',
+      sortBy: sortBy.value
+    }
+    if (filters.value.category) params.category = filters.value.category
+    if (filters.value.country) params.country = filters.value.country
+    if (filters.value.year) params.year = filters.value.year
+
+    const res = await api.get('/movies', { params })
+    const data = res?.data
+    movies.value = (data?.data || []).map(m => {
+      return { ...m, poster: getMediaUrl(m.poster) }
+    })
+    totalMovies.value = data?.pagination?.totalItems ?? data?.pagination?.totalItems ?? (data?.pagination?.totalItems ?? 0)
+    totalPages.value = data?.pagination?.totalPages ?? Math.max(1, Math.ceil((totalMovies.value || 0) / moviesPerPage.value))
+  } catch (err) {
+    console.error('fetchMovies failed', err)
+    movies.value = []
+    totalMovies.value = 0
+    totalPages.value = 1
+  } finally {
+    loading.value = false
+  }
+}
+
+const applyFilters = () => {
+  currentPage.value = 1
+  fetchMovies()
+}
+
+const resetFilters = () => {
+  filters.value = { category: '', country: '', year: '' }
+  applyFilters()
+}
+
+const applyFiltersAndClose = () => { applyFilters(); showFilters.value = false }
+const resetFiltersAndClose = () => { resetFilters(); showFilters.value = false }
+
+const applySorting = () => { currentPage.value = 1; fetchMovies() }
+
+const goToPage = (page) => {
+  if (page === '...' || page < 1 || page > totalPages.value) return
+  currentPage.value = page
+  fetchMovies()
+}
+
 const pageArray = computed(() => {
   const result = []
-  for (let i = 1; i <= totalPages.value; i++) {
-    if (
-      i === 1 || 
-      i === totalPages.value || 
-      (i >= currentPage.value - 1 && i <= currentPage.value + 1)
-    ) {
+  const total = totalPages.value || 1
+  for (let i = 1; i <= total; i++) {
+    if (i === 1 || i === total || (i >= currentPage.value - 1 && i <= currentPage.value + 1)) {
       result.push(i)
     } else if (i === currentPage.value - 2 || i === currentPage.value + 2) {
       result.push('...')
@@ -315,72 +333,22 @@ const pageArray = computed(() => {
   return result
 })
 
-// Xử lý khi đổi trang
-function goToPage(page) {
-  if (page === '...' || page < 1 || page > totalPages.value) return
-  currentPage.value = page
-  // Trong thực tế, bạn sẽ gọi API để lấy dữ liệu cho trang mới
-}
+const viewMovieDetails = (id) => router.push({ name: 'movie-detail', params: { id } })
 
-// Xử lý khi thay đổi filter
-function applyFilters() {
-  currentPage.value = 1
-  // Trong thực tế, bạn sẽ gọi API để lấy dữ liệu theo filter
-  console.log('Applying filters:', filters.value)
-}
+onMounted(async () => {
+  // build years list
+  const now = new Date().getFullYear()
+  for (let y = now; y >= 1950; y--) years.value.push(y)
 
-// Reset filters
-function resetFilters() {
-  filters.value = {
-    category: '',
-    country: '',
-    year: '',
-    quality: '',
-    status: '',
-    minRating: 0
-  }
-  applyFilters()
-}
-
-// Xử lý khi đổi sort
-function applySorting() {
-  currentPage.value = 1
-  // Trong thực tế, bạn sẽ gọi API để sắp xếp dữ liệu
-  console.log('Sorting by:', sortBy.value)
-}
-
-// Xem chi tiết phim
-function viewMovieDetails(movieId) {
-  router.push({ name: 'movie-detail', params: { id: movieId } })
-}
-
-onMounted(() => {
-  // Trong thực tế, bạn sẽ gọi API để lấy dữ liệu phim đầu tiên
+  await Promise.all([fetchCategories(), fetchCountries()])
+  await fetchMovies()
 })
 
-// Thêm state và computed properties mới
-const showFilters = ref(false)
-
-// Kiểm tra có filter nào đang active không để hiển thị đèn báo
-const hasActiveFilters = computed(() => {
-  return filters.value.category !== '' || 
-         filters.value.country !== '' || 
-         filters.value.year !== '' || 
-         filters.value.quality !== '' || 
-         filters.value.minRating > 0
+// watch filters/sort/page changes when user interacts via controls
+watch([() => filters.value.category, () => filters.value.country, () => filters.value.year], () => {
+  // don't auto-fetch here — user will click Áp dụng; if you want auto, call fetchMovies()
 })
 
-// Hàm áp dụng filter và đóng modal
-function applyFiltersAndClose() {
-  applyFilters()
-  showFilters.value = false
-}
-
-// Hàm reset filter và đóng modal
-function resetFiltersAndClose() {
-  resetFilters()
-  showFilters.value = false
-}
 </script>
 
 <style scoped>
