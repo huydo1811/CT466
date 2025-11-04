@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-dark-900 min-h-screen pt-20 pb-16">
+  <div class="bg-dark-900 min-h-screen pb-16">
     <!-- Hero/Banner Section -->
     <div class="relative bg-gradient-to-b from-dark-800 to-dark-900 py-12 mb-8">
       <div class="container mx-auto px-4">
@@ -41,7 +41,7 @@
           <span class="text-gray-400 whitespace-nowrap">Sắp xếp:</span>
           <select 
             v-model="sortBy" 
-            @change="fetchMovies()"
+            @change="applySorting()"
             class="bg-dark-800 text-white border border-gray-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-primary-500"
           >
             <option value="latest">Mới nhất</option>
@@ -66,7 +66,7 @@
               @click="viewMovieDetails(movie.id)" 
             />
             <div class="absolute top-2 right-2 bg-black/70 backdrop-blur-sm px-2 py-1 rounded-lg">
-              <span class="text-yellow-400 text-xs font-semibold">{{ movie.rating }}</span>
+              <span class="text-yellow-400 text-xs font-semibold">{{ movie.ratingDisplay }}</span>
             </div>
             <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-end">
               <div class="p-4 w-full">
@@ -80,11 +80,11 @@
             </div>
           </div>
           <div class="mt-2">
-            <h3 class="text-white font-medium truncate cursor-pointer hover:text-primary-500" @click="viewMovieDetails(movie.id)">{{ movie.title }}</h3>
+            <h1 class="text-white text-xl font-medium truncate cursor-pointer hover:text-primary-500" @click="viewMovieDetails(movie.id)">{{ movie.title }}</h1>
             <div class="flex items-center justify-between">
               <p class="text-gray-400 text-sm">{{ movie.year }}</p>
               <div class="text-xs text-gray-500">
-                {{ movie.categories[0] }}
+                {{ movie.categoryLabel }}
               </div>
             </div>
           </div>
@@ -156,6 +156,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import api from '@/services/api'
 
 const router = useRouter()
 const route = useRoute()
@@ -163,12 +164,12 @@ const route = useRoute()
 // Tham số từ URL
 const categorySlug = computed(() => route.params.slug)
 
-// Lấy thông tin thể loại từ slug
+// State
 const categoryName = ref('')
 const categoryId = ref(null)
 
 // Trạng thái sắp xếp
-const sortBy = ref('latest')
+const sortBy = ref('createdAt')
 
 // Phân trang
 const currentPage = ref(1)
@@ -179,26 +180,20 @@ const totalMovies = ref(0)
 // Danh sách phim theo thể loại
 const movies = ref([])
 
-// Danh sách thể loại (để mapping từ slug -> name)
-const categories = [
-  { id: 1, name: 'Hành động', slug: 'hanh-dong' },
-  { id: 2, name: 'Tâm lý', slug: 'tam-ly' },
-  { id: 3, name: 'Kinh dị', slug: 'kinh-di' },
-  { id: 4, name: 'Hài', slug: 'hai' },
-  { id: 5, name: 'Phiêu lưu', slug: 'phieu-luu' },
-  { id: 6, name: 'Khoa học viễn tưởng', slug: 'khoa-hoc-vien-tuong' },
-  { id: 7, name: 'Hoạt hình', slug: 'hoat-hinh' }
-]
+const loading = ref(false)
+ 
+// helper to normalize media urls
+const getMediaUrl = (u) => {
+  if (!u) return ''
+  if (/^data:|^https?:\/\//.test(u)) return u
+  return `${window.location.origin}${u}`
+}
 
-// Tính toán các trang hiển thị trong phân trang
 const pageArray = computed(() => {
   const result = []
-  for (let i = 1; i <= totalPages.value; i++) {
-    if (
-      i === 1 || 
-      i === totalPages.value || 
-      (i >= currentPage.value - 1 && i <= currentPage.value + 1)
-    ) {
+  const total = totalPages.value || 1
+  for (let i = 1; i <= total; i++) {
+    if (i === 1 || i === total || (i >= currentPage.value - 1 && i <= currentPage.value + 1)) {
       result.push(i)
     } else if (i === currentPage.value - 2 || i === currentPage.value + 2) {
       result.push('...')
@@ -207,56 +202,97 @@ const pageArray = computed(() => {
   return result
 })
 
-// Lấy thông tin thể loại từ slug
-function getCategoryInfo() {
-  const category = categories.find(cat => cat.slug === categorySlug.value)
-  if (category) {
-    categoryName.value = category.name
-    categoryId.value = category.id
-    document.title = `Phim ${category.name}`
-  } else {
-    // Xử lý khi không tìm thấy thể loại
+// Fetch category by slug from backend
+const fetchCategory = async (slug) => {
+  try {
+    const res = await api.get(`/categories/slug/${encodeURIComponent(slug)}`)
+    const c = res?.data?.data
+    if (!c) throw new Error('Category not found')
+    categoryName.value = c.name
+    categoryId.value = c._id || c.id
+    document.title = `Phim ${categoryName.value}`
+    return true
+  } catch (err) {
+    console.error('fetchCategory failed', err)
+    // redirect back to categories list if not found
     router.replace('/categories')
+    return false
   }
 }
 
-// Lấy danh sách phim theo thể loại
-function fetchMovies() {
-  // Trong thực tế, bạn sẽ gọi API ở đây với các tham số:
-  // - categoryId: ID thể loại
-  // - page: Trang hiện tại
-  // - sortBy: Cách sắp xếp
-  
-  // Dữ liệu mẫu - trong thực tế sẽ được lấy từ API
-  const allMovies = [
-    { id: 1, title: 'Avengers: Endgame', poster: 'https://image.tmdb.org/t/p/w500/or06FN3Dka5tukK1e9sl16pB3iy.jpg', year: 2019, rating: 8.4, categories: ['Hành động', 'Phiêu lưu', 'Khoa học viễn tưởng'] },
-    { id: 2, title: 'The Batman', poster: 'https://image.tmdb.org/t/p/w500/74xTEgt7R36Fpooo50r9T25onhq.jpg', year: 2022, rating: 7.8, categories: ['Hành động', 'Phiêu lưu', 'Tâm lý'] },
-    { id: 3, title: 'Joker', poster: 'https://image.tmdb.org/t/p/w500/udDclJoHjfjb8Ekgsd4FDteOkCU.jpg', year: 2019, rating: 8.2, categories: ['Tâm lý', 'Tội phạm'] },
-    { id: 4, title: 'Dune', poster: 'https://image.tmdb.org/t/p/w500/d5NXSklXo0qyIYkgV94XAgMIckC.jpg', year: 2021, rating: 7.9, categories: ['Phiêu lưu', 'Khoa học viễn tưởng'] },
-    { id: 5, title: 'Top Gun: Maverick', poster: 'https://image.tmdb.org/t/p/w500/62HCnUTziyWcpDaBO2i1DX17ljH.jpg', year: 2022, rating: 8.3, categories: ['Hành động', 'Phiêu lưu'] },
-    { id: 6, title: 'Spider-Man: No Way Home', poster: 'https://image.tmdb.org/t/p/w500/1g0dhYtq4irTY1GPXvft6k4YLjm.jpg', year: 2021, rating: 8.2, categories: ['Hành động', 'Phiêu lưu', 'Khoa học viễn tưởng'] },
-    { id: 7, title: 'Everything Everywhere All at Once', poster: 'https://image.tmdb.org/t/p/w500/w3LxiVYdWWRvEVdn5RYq6jIqkb1.jpg', year: 2022, rating: 7.9, categories: ['Phiêu lưu', 'Khoa học viễn tưởng', 'Hài'] },
-    { id: 8, title: 'John Wick: Chapter 4', poster: 'https://image.tmdb.org/t/p/w500/vZloFAK7NmvMGKE7VkF5UHaz0I.jpg', year: 2023, rating: 7.8, categories: ['Hành động', 'Tội phạm'] }
-  ]
-  
-  // Lọc phim theo thể loại
-  const filteredMovies = allMovies.filter(movie => 
-    movie.categories.some(cat => 
-      cat.toLowerCase() === categoryName.value.toLowerCase()
-    )
-  )
-  
-  // Cập nhật state
-  movies.value = filteredMovies
-  totalMovies.value = filteredMovies.length
-  totalPages.value = Math.ceil(totalMovies.value / moviesPerPage)
+// thêm hàm map sort và applySorting
+const mapSortOption = (opt) => {
+  switch (opt) {
+    case 'latest': return '-createdAt'
+    case 'oldest': return 'createdAt'
+    case 'nameAZ': return 'title'
+    case 'nameZA': return '-title'
+    case 'rating': return '-rating.average' // hoặc '-rating' tùy backend
+    case 'popularity': return '-viewCount'
+    default: return '-createdAt'
+  }
+}
+
+const applySorting = () => {
+  currentPage.value = 1
+  fetchMovies(1)
+}
+
+// Fetch movies by category id
+const fetchMovies = async (page = 1) => {
+  if (!categoryId.value) return
+  loading.value = true
+  try {
+    const params = {
+      page,
+      limit: moviesPerPage,
+      category: categoryId.value,
+      sortBy: mapSortOption(sortBy.value)
+    }
+    const res = await api.get('/movies', { params })
+    const data = res?.data || {}
+    const list = data?.data || []
+    movies.value = list.map(m => {
+      // normalize rating: backend may provide { average, count } or plain number
+      let ratingDisplay = ''
+      if (m.rating && typeof m.rating === 'object') {
+        ratingDisplay = (m.rating.average != null) ? Number(m.rating.average).toFixed(1) : ''
+      } else if (m.rating != null) {
+        ratingDisplay = String(m.rating)
+      }
+
+      // normalize categories: could be array of names or array of objects
+      let catLabel = ''
+      if (Array.isArray(m.categories) && m.categories.length) {
+        const first = m.categories[0]
+        catLabel = (typeof first === 'object') ? (first.name || first.title || '') : first
+      }
+
+      return {
+        ...m,
+        poster: getMediaUrl(m.poster),
+        id: m._id || m.id,
+        ratingDisplay,
+        categoryLabel: catLabel
+      }
+    })
+    totalMovies.value = data?.pagination?.totalItems ?? 0
+    totalPages.value = data?.pagination?.totalPages ?? Math.max(1, Math.ceil((totalMovies.value || 0) / moviesPerPage))
+  } catch (err) {
+    console.error('fetchMovies failed', err)
+    movies.value = []
+    totalMovies.value = 0
+    totalPages.value = 1
+  } finally {
+    loading.value = false
+  }
 }
 
 // Xử lý khi đổi trang
 function goToPage(page) {
   if (page === '...' || page < 1 || page > totalPages.value) return
   currentPage.value = page
-  fetchMovies()
+  fetchMovies(page)
 }
 
 // Xem chi tiết phim
@@ -264,20 +300,22 @@ function viewMovieDetails(movieId) {
   router.push({ name: 'movie-detail', params: { id: movieId } })
 }
 
-// Khi component được tạo
-onMounted(() => {
-  getCategoryInfo()
-  fetchMovies()
-})
+// Khi component được tạo / slug thay đổi
+const loadCategoryAndMovies = async () => {
+  const slug = categorySlug.value
+  if (!slug) return router.replace('/categories')
+  const ok = await fetchCategory(slug)
+  if (ok) await fetchMovies(currentPage.value)
+}
 
-// Theo dõi thay đổi của route.params.slug
-watch(() => route.params.slug, (newSlug) => {
+onMounted(loadCategoryAndMovies)
+
+watch(() => route.params.slug, async (newSlug) => {
   if (newSlug) {
-    // Khi slug thay đổi, cập nhật lại dữ liệu
-    getCategoryInfo()
-    fetchMovies()
+    currentPage.value = 1
+    await loadCategoryAndMovies()
   }
-}, { immediate: true })
+})
 </script>
 
 <style scoped>

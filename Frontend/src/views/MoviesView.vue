@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-dark-900 min-h-screen pt-20 pb-16">
+  <div class="bg-dark-900 min-h-screen pb-16">
     <!-- Hero/Banner Section -->
     <div class="relative bg-gradient-to-b from-dark-800 to-dark-900 py-12 mb-8">
       <div class="container mx-auto px-4">

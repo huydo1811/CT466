@@ -130,7 +130,16 @@ const routes = [
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  routes
+  routes,
+  //cuộn đầu trang mỗi khi điều hướng
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) return savedPosition
+    if (to.hash) {
+      return { el: to.hash, top: 0, behavior: 'smooth' }
+    }
+    // mặc định cuộn về đầu trang
+    return { top: 0, behavior: 'smooth' }
+  }
 })
 
 router.beforeEach(async (to, from, next) => {

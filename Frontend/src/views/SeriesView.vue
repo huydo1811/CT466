@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-dark-900 min-h-screen pt-20 pb-16">
+  <div class="bg-dark-900 min-h-screen pb-16">
     <!-- Hero/Banner Section -->
     <div class="relative bg-gradient-to-b from-dark-800 to-dark-900 py-12 mb-8">
       <div class="container mx-auto px-4">
@@ -152,7 +152,7 @@
             </div>
           </div>
           <div class="mt-2">
-            <h3 class="text-white font-medium truncate cursor-pointer hover:text-primary-500" @click="viewSeriesDetails(item._id || item.id)">{{ item.title }}</h3>
+            <h1 class="text-white text-xl font-medium truncate cursor-pointer hover:text-primary-500" @click="viewSeriesDetails(item._id || item.id)">{{ item.title }}</h1>
             <div class="flex items-center justify-between">
               <p class="text-gray-400 text-sm">{{ item.year }}</p>
               <div class="text-xs text-gray-500">

@@ -10,14 +10,34 @@ const buildPhotoUrl = (req, file) => {
 
 // Lấy tất cả diễn viên
 export const getAllActors = asyncHandler(async (req, res) => {
+  // existing params
   const { page, limit, search } = req.query
+
+  // new params for filtering/sorting
+  const nationality = req.query.nationality || req.query.nationalityId || undefined
+  const genre = req.query.genre || req.query.genreId || undefined
+  const ageRange = req.query.ageRange || undefined
+  // support both 'sort' and 'sortBy' sent by frontend
+  const sort = req.query.sort || req.query.sortBy || undefined
+
   // parse isActive: 'true'|'false' -> boolean, else undefined
   let isActive
   if (req.query.isActive === 'true') isActive = true
   else if (req.query.isActive === 'false') isActive = false
   else isActive = undefined
 
-  const result = await actorService.getAllActors({ page, limit, search, isActive })
+  const options = {
+    page,
+    limit,
+    search,
+    isActive,
+    nationality,
+    genre,
+    ageRange,
+    sort
+  }
+
+  const result = await actorService.getAllActors(options)
 
   res.status(200).json({
     success: true,

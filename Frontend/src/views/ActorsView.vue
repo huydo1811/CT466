@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-dark-900 min-h-screen pt-20 pb-16">
+  <div class="bg-dark-900 min-h-screen pb-16">
     <!-- Hero/Banner Section -->
     <div class="relative bg-gradient-to-b from-dark-800 to-dark-900 py-12 mb-8">
       <div class="container mx-auto px-4">
@@ -89,7 +89,7 @@
                   class="w-full bg-dark-700 text-white border border-gray-600 rounded-lg px-3 py-2 focus:ring-1 focus:ring-primary-500"
                 >
                   <option value="">Tất cả quốc tịch</option>
-                  <option v-for="nationality in nationalities" :key="nationality.id" :value="nationality.id">
+                  <option v-for="nationality in nationalities" :key="nationality._id || nationality.id" :value="nationality._id || nationality.id">
                     {{ nationality.name }}
                   </option>
                 </select>
@@ -103,39 +103,10 @@
                   class="w-full bg-dark-700 text-white border border-gray-600 rounded-lg px-3 py-2 focus:ring-1 focus:ring-primary-500"
                 >
                   <option value="">Tất cả thể loại</option>
-                  <option v-for="genre in genres" :key="genre.id" :value="genre.slug">
+                  <option v-for="genre in genres" :key="genre._id || genre.id" :value="genre._id || genre.id">
                     {{ genre.name }}
                   </option>
                 </select>
-              </div>
-
-              <!-- Giới tính -->
-              <div>
-                <label class="block text-sm font-medium text-gray-300 mb-1">Giới tính</label>
-                <div class="grid grid-cols-2 gap-2">
-                  <button 
-                    @click="filters.gender = 'male'"
-                    :class="[
-                      'py-2 px-4 rounded-lg border', 
-                      filters.gender === 'male' 
-                        ? 'bg-primary-600 border-primary-500 text-white' 
-                        : 'bg-dark-700 border-gray-600 text-gray-300 hover:bg-dark-600'
-                    ]"
-                  >
-                    Nam
-                  </button>
-                  <button 
-                    @click="filters.gender = 'female'"
-                    :class="[
-                      'py-2 px-4 rounded-lg border', 
-                      filters.gender === 'female' 
-                        ? 'bg-primary-600 border-primary-500 text-white' 
-                        : 'bg-dark-700 border-gray-600 text-gray-300 hover:bg-dark-600'
-                    ]"
-                  >
-                    Nữ
-                  </button>
-                </div>
               </div>
 
               <!-- Độ tuổi -->
@@ -276,176 +247,203 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import api from '@/services/api' // axios instance
 
 const router = useRouter()
 
-// Tìm kiếm
+// UI state
 const searchQuery = ref('')
-const searchTimeout = ref(null)
+let _searchTimeout = null
 
-// Trạng thái lọc
 const filters = ref({
   nationality: '',
-  gender: '',
   ageRange: '',
   genre: ''
 })
 
-// Trạng thái sắp xếp
-const sortBy = ref('popular')
+// removed gender filter from model
 
-// Trạng thái hiển thị modal filter
+const sortBy = ref('popular')
 const showFilters = ref(false)
 
-// Dữ liệu mẫu - quốc tịch
-const nationalities = ref([
-  { id: 'us', name: 'Mỹ' },
-  { id: 'kr', name: 'Hàn Quốc' },
-  { id: 'jp', name: 'Nhật Bản' },
-  { id: 'vn', name: 'Việt Nam' },
-  { id: 'cn', name: 'Trung Quốc' },
-  { id: 'uk', name: 'Anh' },
-  { id: 'fr', name: 'Pháp' },
-  { id: 'ca', name: 'Canada' }
-])
-
-// Dữ liệu mẫu - thể loại
-const genres = ref([
-  { id: 1, name: 'Hành động', slug: 'hanh-dong' },
-  { id: 2, name: 'Tâm lý', slug: 'tam-ly' },
-  { id: 3, name: 'Kinh dị', slug: 'kinh-di' },
-  { id: 4, name: 'Hài', slug: 'hai' },
-  { id: 5, name: 'Phiêu lưu', slug: 'phieu-luu' },
-  { id: 6, name: 'Khoa học viễn tưởng', slug: 'khoa-hoc-vien-tuong' }
-])
-
-// Trạng thái phân trang
+// server-side paging
 const currentPage = ref(1)
-const totalPages = ref(10)
-const actorsPerPage = 20
-const totalActors = ref(182)
+const totalPages = ref(1)
+// rename to actorsPerPage to match template usage and avoid NaN
+const actorsPerPage = ref(20)
+const totalActors = ref(0)
 
-// Dữ liệu mẫu - danh sách diễn viên
-const actors = ref([
-  { id: 1, name: 'Tom Cruise', photo: 'https://m.media-amazon.com/images/M/MV5BYTFlOTdjMjgtNmY0ZC00MDgxLThjNmEtZGIxZTQyZDdkMTRjXkEyXkFqcGdeQXVyMTkxNjUyNQ@@._V1_.jpg', nationality: 'Mỹ', knownFor: 'Mission Impossible, Top Gun' },
-  { id: 2, name: 'Robert Downey Jr.', photo: 'https://m.media-amazon.com/images/M/MV5BNzg1MTUyNDYxOF5BMl5BanBnXkFtZTgwNTQ4MTE2MjE@._V1_.jpg', nationality: 'Mỹ', knownFor: 'Iron Man, Sherlock Holmes' },
-  { id: 3, name: 'Son Ye-Jin', photo: 'https://upload.wikimedia.org/wikipedia/commons/9/99/Son_Ye-jin_at_BIFF_in_October_2018.jpg', nationality: 'Hàn Quốc', knownFor: 'Crash Landing on You' },
-  { id: 4, name: 'Scarlett Johansson', photo: 'https://m.media-amazon.com/images/M/MV5BMTM3OTUwMDYwNl5BMl5BanBnXkFtZTcwNTUyNzc3Nw@@._V1_.jpg', nationality: 'Mỹ', knownFor: 'Black Widow, Lucy' },
-  { id: 5, name: 'Leonardo DiCaprio', photo: 'https://m.media-amazon.com/images/M/MV5BMjI0MTg3MzI0M15BMl5BanBnXkFtZTcwMzQyODU2Mw@@._V1_.jpg', nationality: 'Mỹ', knownFor: 'Titanic, Inception, The Revenant' },
-  { id: 6, name: 'Ngô Thanh Vân', photo: 'https://upload.wikimedia.org/wikipedia/commons/f/fe/Ngo_Thanh_Van_1.png', nationality: 'Việt Nam', knownFor: 'Hai Phượng, The Old Guard' },
-  { id: 7, name: 'Keanu Reeves', photo: 'https://m.media-amazon.com/images/M/MV5BNGJmMWEzOGQtMWZkNS00MGNiLTk5NGEtYzg1YzAyZTgzZTZmXkEyXkFqcGdeQXVyMTE1MTYxNDAw._V1_.jpg', nationality: 'Canada', knownFor: 'The Matrix, John Wick' },
-  { id: 8, name: 'Cate Blanchett', photo: 'https://m.media-amazon.com/images/M/MV5BMTc1MDI0MDg1NV5BMl5BanBnXkFtZTgwMDM3OTAzMTE@._V1_.jpg', nationality: 'Úc', knownFor: 'Elizabeth, Lord of the Rings' },
-  { id: 9, name: 'Choi Woo-Shik', photo: 'https://m.media-amazon.com/images/M/MV5BYzhjMjZmYjgtY2M0NS00ZTU3LTk0NzctODA0YzMwY2NlZjkyXkEyXkFqcGdeQXVyNTc0NTgxNjM@._V1_.jpg', nationality: 'Hàn Quốc', knownFor: 'Parasite, Train to Busan' },
-  { id: 10, name: 'Jennifer Lawrence', photo: 'https://m.media-amazon.com/images/M/MV5BOTU3NDE5MDQ4MV5BMl5BanBnXkFtZTgwMzE5ODQ3MDI@._V1_.jpg', nationality: 'Mỹ', knownFor: 'The Hunger Games, Silver Linings Playbook' },
-  { id: 11, name: 'Tom Holland', photo: 'https://m.media-amazon.com/images/M/MV5BNzZiNTEyNTItYjNhMS00YjI2LWIwMWQtZmYwYTRlNjMyZTJjXkEyXkFqcGdeQXVyMTExNzQzMDE0._V1_.jpg', nationality: 'Anh', knownFor: 'Spider-Man, Avengers' },
-  { id: 12, name: 'Florence Pugh', photo: 'https://m.media-amazon.com/images/M/MV5BNTk5ZmM5NGMtMTg4ZC00MmVlLWEzMGQtNGNiNzEyNjY0MWE5XkEyXkFqcGdeQXVyMTI4MTcwOTcy._V1_.jpg', nationality: 'Anh', knownFor: 'Black Widow, Little Women' },
-  { id: 13, name: 'Ryan Gosling', photo: 'https://m.media-amazon.com/images/M/MV5BMTQzMjkwNTQ2OF5BMl5BanBnXkFtZTgwNTQ4MTQ4MTE@._V1_.jpg', nationality: 'Canada', knownFor: 'La La Land, Blade Runner 2049' },
-  { id: 14, name: 'Emma Stone', photo: 'https://m.media-amazon.com/images/M/MV5BMjI4NjM1NDkyN15BMl5BanBnXkFtZTgwODgyNTY1MjE@._V1.jpg', nationality: 'Mỹ', knownFor: 'La La Land, Easy A' },
-  { id: 15, name: 'Châu Tinh Trì', photo: 'https://upload.wikimedia.org/wikipedia/commons/a/a4/Stephen_Chow_in_2004.jpg', nationality: 'Trung Quốc', knownFor: 'Kung Fu Hustle, Shaolin Soccer' },
-  { id: 16, name: 'Viola Davis', photo: 'https://m.media-amazon.com/images/M/MV5BNzUxNjM4ODI1OV5BMl5BanBnXkFtZTgwNTEwNDE2OTE@._V1_.jpg', nationality: 'Mỹ', knownFor: 'The Help, Fences' },
-  { id: 17, name: 'Anthony Hopkins', photo: 'https://m.media-amazon.com/images/M/MV5BMTg5ODk1NTc5Nl5BMl5BanBnXkFtZTYwMjAwOTI4._V1_FMjpg_UX1000_.jpg', nationality: 'Anh', knownFor: 'The Silence of the Lambs, The Father' },
-  { id: 18, name: 'Satoshi Tsumabuki', photo: 'https://m.media-amazon.com/images/M/MV5BMTgzMDczODIwNF5BMl5BanBnXkFtZTgwOTkzMTU5NTE@._V1_.jpg', nationality: 'Nhật Bản', knownFor: 'Waterboys, Villain' },
-  { id: 19, name: 'Tang Wei', photo: 'https://m.media-amazon.com/images/M/MV5BYWQ3ZjQ2YzgtNTZmOS00ZTI2LTgwZjAtOTU2NjkzZGMwYWQxXkEyXkFqcGdeQXVyMjg0MTI5NzQ@._V1_.jpg', nationality: 'Trung Quốc', knownFor: 'Lust, Caution, Decision to Leave' },
-  { id: 20, name: 'Brad Pitt', photo: 'https://m.media-amazon.com/images/M/MV5BMjA1MjE2MTQ2MV5BMl5BanBnXkFtZTcwMjE5MDY0Nw@@._V1_.jpg', nationality: 'Mỹ', knownFor: 'Fight Club, Once Upon a Time in Hollywood' }
-])
+const actors = ref([])
 
-// Tính toán số trang
-const pageArray = computed(() => {
-  const result = []
-  for (let i = 1; i <= totalPages.value; i++) {
-    if (
-      i === 1 || 
-      i === totalPages.value || 
-      (i >= currentPage.value - 1 && i <= currentPage.value + 1)
-    ) {
-      result.push(i)
-    } else if (i === currentPage.value - 2 || i === currentPage.value + 2) {
-      result.push('...')
-    }
+// lookup lists from backend
+const nationalities = ref([])
+const genres = ref([])
+
+// helper: build query params for list endpoint
+const buildParams = () => {
+  const params = {
+    page: currentPage.value,
+    limit: actorsPerPage.value
   }
-  return result
-})
+  if (searchQuery.value?.trim()) params.search = searchQuery.value.trim()
 
-// Kiểm tra xem có filter nào đang active không
-const hasActiveFilters = computed(() => {
-  return filters.value.nationality !== '' || 
-         filters.value.gender !== '' || 
-         filters.value.ageRange !== '' ||
-         filters.value.genre !== ''
-})
+  // send both id and slug/alias variants (increase chance backend will accept one)
+  if (filters.value.nationality) {
+    params.nationality = filters.value.nationality       // slug or id
+    params.nationalityId = filters.value.nationality     // id fallback
+  }
+  if (filters.value.genre) {
+    params.genre = filters.value.genre
+    params.genreId = filters.value.genre
+  }
+  if (filters.value.ageRange) params.ageRange = filters.value.ageRange
 
-// Xử lý khi đổi trang
+  // send both names for sort as some backends expect 'sort', others 'sortBy'
+  const mapped = mapSortOption(sortBy.value)
+  params.sort = mapped
+  params.sortBy = mapped
+  return params
+}
+
+const mapSortOption = (opt) => {
+  switch (opt) {
+    case 'popular': return '-popularity'    // adjust if backend expects different field
+    case 'nameAZ': return 'name'
+    case 'nameZA': return '-name'
+    case 'newest': return '-createdAt'
+    default: return '-createdAt'
+  }
+}
+
+const normalizeActor = (a) => {
+  return {
+    ...a,
+    id: a._id || a.id,
+    photo: a.photoUrl || a.photo || '/placeholder-avatar.png',
+    knownFor: (a.knownFor && Array.isArray(a.knownFor) ? a.knownFor.slice(0,2).map(x => x.title || x.name).join(', ') : (a.knownFor || ''))
+  }
+}
+
+const fetchNationalities = async () => {
+  try {
+    const res = await api.get('/countries')
+    nationalities.value = (res?.data?.data || res?.data || [])
+  } catch (e) {
+    console.warn('fetchNationalities failed', e)
+    nationalities.value = []
+  }
+}
+
+const fetchGenres = async () => {
+  try {
+    const res = await api.get('/categories')
+    genres.value = (res?.data?.data || res?.data || [])
+  } catch (e) {
+    console.warn('fetchGenres failed', e)
+    genres.value = []
+  }
+}
+
+const fetchActors = async () => {
+  try {
+    const params = buildParams()
+    const res = await api.get('/actors', { params })
+    const body = res?.data || {}
+    const arr = body.data || []
+    actors.value = (arr || []).map(normalizeActor)
+    const pg = body.pagination || {}
+    totalActors.value = Number(pg.totalItems ?? actors.value.length)
+    totalPages.value = Number(pg.totalPages ?? Math.max(1, Math.ceil(totalActors.value / actorsPerPage.value)))
+    currentPage.value = Number(pg.page ?? currentPage.value)
+  } catch (err) {
+    console.error('fetchActors error', err)
+    actors.value = []
+    totalActors.value = 0
+    totalPages.value = 1
+    currentPage.value = 1
+  }
+}
+ 
+// pagination controls
 function goToPage(page) {
   if (page === '...' || page < 1 || page > totalPages.value) return
   currentPage.value = page
-  // Trong thực tế, bạn sẽ gọi API để lấy dữ liệu cho trang mới
+  fetchActors()
 }
-
-// Xử lý tìm kiếm
-function handleSearch() {
-  if (searchTimeout.value) {
-    clearTimeout(searchTimeout.value)
+ 
+// pageArray computed for pagination buttons
+const pageArray = computed(() => {
+  const result = []
+  const total = Number(totalPages.value) || 1
+  const current = Number(currentPage.value) || 1
+  for (let i = 1; i <= total; i++) {
+    if (i === 1 || i === total || (i >= current - 1 && i <= current + 1)) {
+      result.push(i)
+    } else if (i === current - 2 || i === current + 2) {
+      result.push('...')
+    }
   }
-  
-  searchTimeout.value = setTimeout(() => {
-    currentPage.value = 1
-    // Trong thực tế, bạn sẽ gọi API để tìm kiếm
-    console.log('Searching for:', searchQuery.value)
-  }, 500)
-}
-
-// Reset tìm kiếm
+  // remove duplicate '...' entries
+  return result.filter((v, idx, arr) => !(v === '...' && arr[idx - 1] === '...'))
+})
+ 
+// helper used by template's "Xóa bộ lọc" button
 function resetSearch() {
   searchQuery.value = ''
   resetFilters()
 }
+ 
+// debounced search handler
+function handleSearch() {
+  if (_searchTimeout) clearTimeout(_searchTimeout)
+  _searchTimeout = setTimeout(() => {
+    currentPage.value = 1
+    fetchActors()
+  }, 350)
+}
 
-// Xử lý khi thay đổi filter
+// apply filters (server-side)
 function applyFilters() {
   currentPage.value = 1
-  // Trong thực tế, bạn sẽ gọi API để lấy dữ liệu theo filter
-  console.log('Applying filters:', filters.value)
+  fetchActors()
 }
 
-// Reset filters
 function resetFilters() {
-  filters.value = {
-    nationality: '',
-    gender: '',
-    ageRange: '',
-    genre: ''
-  }
-  applyFilters()
+  filters.value = { nationality: '', ageRange: '', genre: '' }
+  currentPage.value = 1
+  fetchActors()
 }
 
-// Hàm áp dụng filter và đóng modal
 function applyFiltersAndClose() {
   applyFilters()
   showFilters.value = false
 }
 
-// Hàm reset filter và đóng modal
 function resetFiltersAndClose() {
   resetFilters()
   showFilters.value = false
 }
 
-// Xử lý khi đổi sort
 function applySorting() {
   currentPage.value = 1
-  // Trong thực tế, bạn sẽ gọi API để sắp xếp dữ liệu
-  console.log('Sorting by:', sortBy.value)
+  fetchActors()
 }
 
-// Xem chi tiết diễn viên
 function viewActorDetails(actorId) {
   router.push({ name: 'actor-detail', params: { id: actorId } })
 }
 
-onMounted(() => {
-  // Trong thực tế, bạn sẽ gọi API để lấy dữ liệu
+onMounted(async () => {
+  await Promise.all([fetchNationalities(), fetchGenres()])
+  fetchActors()
+})
+
+// react to immediate nationality change
+watch(() => filters.value.nationality, () => {
+  currentPage.value = 1
+  fetchActors()
 })
 </script>
 

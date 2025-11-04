@@ -7,7 +7,7 @@
           <div class="flex items-center gap-3 mb-3">
             <img 
               v-if="country.flag" 
-              :src="country.flag" 
+              :src="getMediaUrl(country.flag)" 
               :alt="country.name" 
               class="w-8 h-6 object-cover rounded shadow-lg"
             />
@@ -57,7 +57,7 @@
           <span class="text-gray-400 whitespace-nowrap">Sắp xếp:</span>
           <select 
             v-model="sortBy" 
-            @change="fetchMovies()"
+            @change="applySorting"
             class="bg-dark-800 text-white border border-gray-700 rounded-lg px-3 py-2 focus:ring-1 focus:ring-primary-500"
           >
             <option value="latest">Mới nhất</option>
@@ -96,7 +96,7 @@
                   class="w-full bg-dark-700 text-white border border-gray-600 rounded-lg px-3 py-2 focus:ring-1 focus:ring-primary-500"
                 >
                   <option value="">Tất cả thể loại</option>
-                  <option v-for="category in categories" :key="category.id" :value="category.slug">
+                  <option v-for="category in categories" :key="category._id || category.id" :value="category._id || category.id">
                     {{ category.name }}
                   </option>
                 </select>
@@ -150,23 +150,23 @@
       </div>
 
       <!-- Movies grid -->
-      <div v-if="movies.length > 0" class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5 mb-8">
-        <div v-for="movie in movies" :key="movie.id" class="movie-card group">
+      <div v-if="!loading && movies.length > 0" class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5 mb-8">
+        <div v-for="movie in movies" :key="movie._id || movie.id" class="movie-card group">
           <div class="relative overflow-hidden rounded-xl aspect-[2/3] bg-gray-800">
             <img 
               :src="movie.poster" 
               :alt="movie.title" 
               @error="e => e.target.src = '/images/fallback-poster.jpg'"
               class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-              @click="viewMovieDetails(movie.id)" 
+              @click="viewMovieDetails(movie._id || movie.id)" 
             />
             <div class="absolute top-2 right-2 bg-black/70 backdrop-blur-sm px-2 py-1 rounded-lg">
-              <span class="text-yellow-400 text-xs font-semibold">{{ movie.rating }}</span>
+              <span class="text-yellow-400 text-xs font-semibold">{{ movie.ratingDisplay }}</span>
             </div>
             <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-end">
               <div class="p-4 w-full">
                 <button 
-                  @click="viewMovieDetails(movie.id)" 
+                  @click="viewMovieDetails(movie._id || movie.id)" 
                   class="w-full py-2 bg-primary-600 hover:bg-primary-700 rounded-lg text-white text-sm transition"
                 >
                   Xem chi tiết
@@ -175,19 +175,20 @@
             </div>
           </div>
           <div class="mt-2">
-            <h3 class="text-white font-medium truncate cursor-pointer hover:text-primary-500" @click="viewMovieDetails(movie.id)">{{ movie.title }}</h3>
+            <h3 class="text-white font-medium truncate cursor-pointer hover:text-primary-500" @click="viewMovieDetails(movie._id || movie.id)">{{ movie.title }}</h3>
             <div class="flex items-center justify-between">
               <p class="text-gray-400 text-sm">{{ movie.year }}</p>
               <div class="text-xs text-gray-500">
-                {{ movie.categories[0] }}
+                {{ movie.categoryLabel }}
               </div>
             </div>
           </div>
         </div>
       </div>
       
-      <!-- Empty state -->
-      <div v-else class="bg-dark-800 border border-gray-700 rounded-xl p-12 text-center">
+      <div v-if="loading" class="text-center py-12 text-gray-400">Đang tải...</div>
+
+      <div v-else-if="!loading && movies.length === 0" class="bg-dark-800 border border-gray-700 rounded-xl p-12 text-center">
         <svg class="w-16 h-16 mx-auto text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
         </svg>
@@ -218,14 +219,7 @@
             v-for="page in pageArray"
             :key="page"
             @click="goToPage(page)"
-            :class="[
-              'px-4 py-2 rounded-lg', 
-              page === currentPage 
-                ? 'bg-primary-600 text-white' 
-                : page === '...' 
-                  ? 'text-gray-500 cursor-default' 
-                  : 'text-gray-300 hover:bg-dark-700 hover:text-white'
-            ]"
+            :class="[ 'px-4 py-2 rounded-lg', page === currentPage ? 'bg-primary-600 text-white' : (page === '...' ? 'text-gray-500 cursor-default' : 'text-gray-300 hover:bg-dark-700 hover:text-white') ]"
           >
             {{ page }}
           </button>
@@ -251,226 +245,155 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import api from '@/services/api'
 
 const router = useRouter()
 const route = useRoute()
 
-// Tham số từ URL
+// params
 const countrySlug = computed(() => route.params.slug)
 
-// State variables
-const country = ref({
-  name: '',
-  slug: '',
-  flag: ''
-})
+// state
+const country = ref({ _id: null, name: '', slug: '', flag: '' })
 const movies = ref([])
+const loading = ref(false)
 const currentPage = ref(1)
 const totalPages = ref(1)
 const totalMovies = ref(0)
-const moviesPerPage = 12
+const moviesPerPage = ref(12)
 const showFilters = ref(false)
 
-// Sort and filter options
+// sort & filters
 const sortBy = ref('latest')
-const filters = ref({
-  category: '',
-  year: '',
-  minRating: 0
+const filters = ref({ category: '', year: '', minRating: 0 })
+const categories = ref([])
+const years = ref([])
+const hasActiveFilters = computed(() => !!(filters.value.category || filters.value.year || filters.value.minRating > 0))
+
+// helpers
+const getMediaUrl = (u) => {
+  if (!u) return ''
+  if (/^data:|^https?:\/\//.test(u)) return u
+  return `${window.location.origin}${u}`
+}
+
+const mapSortOption = (opt) => {
+  switch (opt) {
+    case 'latest': return '-createdAt'
+    case 'oldest': return 'createdAt'
+    case 'nameAZ': return 'title'
+    case 'nameZA': return '-title'
+    case 'rating': return '-rating.average'
+    case 'popularity': return '-viewCount'
+    default: return '-createdAt'
+  }
+}
+
+// build years
+onMounted(() => {
+  const now = new Date().getFullYear()
+  for (let y = now; y >= 1950; y--) years.value.push(y)
 })
 
-// Computed property to check if any filter is active
-const hasActiveFilters = computed(() => {
-  return filters.value.category !== '' || 
-         filters.value.year !== '' || 
-         filters.value.minRating > 0
-})
+// fetch country info via search endpoint (fallback if no slug route)
+const fetchCountry = async (slug) => {
+  try {
+    if (!slug) return false
+    const res = await api.get('/countries/search', { params: { q: slug } })
+    const list = res?.data?.data || res?.data || []
+    const found = Array.isArray(list) ? list.find(c => c.slug === slug) || list[0] : null
+    if (!found) return false
+    country.value = { _id: found._id || found.id, name: found.name, slug: found.slug, flag: found.flag }
+    document.title = `Phim ${country.value.name}`
+    return true
+  } catch (e) {
+    console.warn('fetchCountry failed', e)
+    return false
+  }
+}
 
-// Data sources
-const categories = [
-  { id: 1, name: 'Hành động', slug: 'hanh-dong' },
-  { id: 2, name: 'Tâm lý', slug: 'tam-ly' },
-  { id: 3, name: 'Kinh dị', slug: 'kinh-di' },
-  { id: 4, name: 'Hài', slug: 'hai' },
-  { id: 5, name: 'Phiêu lưu', slug: 'phieu-luu' },
-  { id: 6, name: 'Khoa học viễn tưởng', slug: 'khoa-hoc-vien-tuong' },
-  { id: 7, name: 'Hoạt hình', slug: 'hoat-hinh' }
-]
+const normalizeMovie = (m) => {
+  const ratingDisplay = (m.rating && typeof m.rating === 'object') ? (m.rating.average != null ? Number(m.rating.average).toFixed(1) : '') : (m.rating != null ? String(m.rating) : '')
+  let catLabel = ''
+  if (Array.isArray(m.categories) && m.categories.length) {
+    const first = m.categories[0]
+    catLabel = (typeof first === 'object') ? (first.name || first.title || '') : first
+  }
+  return {
+    ...m,
+    poster: getMediaUrl(m.poster),
+    ratingDisplay,
+    categoryLabel: catLabel,
+    _id: m._id || m.id
+  }
+}
 
-const countries = [
-  { id: 'us', name: 'Mỹ', slug: 'us', flag: 'https://flagcdn.com/w80/us.png' },
-  { id: 'kr', name: 'Hàn Quốc', slug: 'kr', flag: 'https://flagcdn.com/w80/kr.png' },
-  { id: 'jp', name: 'Nhật Bản', slug: 'jp', flag: 'https://flagcdn.com/w80/jp.png' },
-  { id: 'vn', name: 'Việt Nam', slug: 'vn', flag: 'https://flagcdn.com/w80/vn.png' },
-  { id: 'cn', name: 'Trung Quốc', slug: 'cn', flag: 'https://flagcdn.com/w80/cn.png' },
-  { id: 'tw', name: 'Đài Loan', slug: 'tw', flag: 'https://flagcdn.com/w80/tw.png' },
-  { id: 'th', name: 'Thái Lan', slug: 'th', flag: 'https://flagcdn.com/w80/th.png' },
-  { id: 'uk', name: 'Anh', slug: 'uk', flag: 'https://flagcdn.com/w80/gb.png' }
-]
+// fetch movies by country (type=movie)
+const fetchMovies = async (page = 1) => {
+  if (!country.value.slug) return
+  loading.value = true
+  try {
+    const params = {
+      page,
+      limit: moviesPerPage.value,
+      sortBy: mapSortOption(sortBy.value)
+    }
+    // send only countryId (ObjectId) so backend can match country field
+    params.countryId = country.value._id
 
-const years = [2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016, 2015]
+    if (filters.value.category) params.category = filters.value.category
+    if (filters.value.year) params.year = filters.value.year
+    if (filters.value.minRating) params.minRating = filters.value.minRating
 
-// Tính toán các trang hiển thị trong phân trang
+    const res = await api.get('/movies', { params })
+    const data = res?.data || {}
+    const list = data?.data || []
+    movies.value = list.map(normalizeMovie)
+    totalMovies.value = data?.pagination?.totalItems ?? data?.pagination?.totalItems ?? (list.length || 0)
+    totalPages.value = data?.pagination?.totalPages ?? Math.max(1, Math.ceil((totalMovies.value || 0) / moviesPerPage.value))
+  } catch (err) {
+    console.error('fetchMovies failed', err)
+    movies.value = []
+    totalMovies.value = 0
+    totalPages.value = 1
+  } finally {
+    loading.value = false
+  }
+}
+
+const applySorting = () => {
+  currentPage.value = 1
+  fetchMovies(1)
+}
+
+const applyFiltersAndClose = () => { currentPage.value = 1; fetchMovies(1); showFilters.value = false }
+const resetFiltersAndClose = () => { filters.value = { category: '', year: '', minRating: 0 }; applyFiltersAndClose() }
+
+const goToPage = (page) => {
+  if (page === '...' || page < 1 || page > totalPages.value) return
+  currentPage.value = page
+  fetchMovies(page)
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
 const pageArray = computed(() => {
   const result = []
-  for (let i = 1; i <= totalPages.value; i++) {
-    if (
-      i === 1 || 
-      i === totalPages.value || 
-      (i >= currentPage.value - 1 && i <= currentPage.value + 1)
-    ) {
-      result.push(i)
-    } else if (i === currentPage.value - 2 || i === currentPage.value + 2) {
-      result.push('...')
-    }
+  const total = totalPages.value || 1
+  for (let i = 1; i <= total; i++) {
+    if (i === 1 || i === total || (i >= currentPage.value - 1 && i <= currentPage.value + 1)) result.push(i)
+    else if (i === currentPage.value - 2 || i === currentPage.value + 2) result.push('...')
   }
   return result
 })
 
-// Lấy thông tin quốc gia từ slug
-function getCountryInfo() {
-  const foundCountry = countries.find(c => c.slug === countrySlug.value)
-  if (foundCountry) {
-    country.value = foundCountry
-    document.title = `Phim ${foundCountry.name}`
-  } else {
-    // Nếu không tìm thấy quốc gia, chuyển về trang chủ
-    router.replace('/')
-  }
-}
+const viewMovieDetails = (id) => router.push({ name: 'movie-detail', params: { id } })
 
-// Lấy danh sách phim theo quốc gia
-function fetchMovies() {
-  // Trong thực tế, bạn sẽ gọi API ở đây với các tham số:
-  // - countrySlug: Quốc gia
-  // - page: Trang hiện tại
-  // - sortBy: Cách sắp xếp
-  // - filters: Các bộ lọc
-  
-  // Dữ liệu mẫu - trong thực tế sẽ được lấy từ API
-  const allMovies = [
-    { id: 1, title: 'Avengers: Endgame', poster: 'https://image.tmdb.org/t/p/w500/or06FN3Dka5tukK1e9sl16pB3iy.jpg', year: 2019, rating: 8.4, categories: ['Hành động', 'Phiêu lưu'], country: 'us' },
-    { id: 2, title: 'The Batman', poster: 'https://image.tmdb.org/t/p/w500/74xTEgt7R36Fpooo50r9T25onhq.jpg', year: 2022, rating: 7.8, categories: ['Hành động', 'Phiêu lưu'], country: 'us' },
-    { id: 3, title: 'Parasite', poster: 'https://image.tmdb.org/t/p/w500/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg', year: 2019, rating: 8.5, categories: ['Tâm lý', 'Hài'], country: 'kr' },
-    { id: 4, title: 'Squid Game', poster: 'https://image.tmdb.org/t/p/w500/dDlEmu3EZ0Pgg93K2SVNLCjCSvE.jpg', year: 2021, rating: 7.8, categories: ['Hành động', 'Tâm lý'], country: 'kr' },
-    { id: 5, title: 'Your Name', poster: 'https://image.tmdb.org/t/p/w500/q719jXXEzOoYaps6babgKnONONX.jpg', year: 2016, rating: 8.4, categories: ['Hoạt hình', 'Tâm lý'], country: 'jp' },
-    { id: 6, title: 'Drive My Car', poster: 'https://image.tmdb.org/t/p/w500/7plCxXjMQKNHU71bjzcPS4xFt8H.jpg', year: 2021, rating: 7.6, categories: ['Tâm lý'], country: 'jp' },
-    { id: 7, title: 'Bố Già', poster: 'https://image.tmdb.org/t/p/w500/1ULvY1hIx7xDmZ5YzYOIwLAoUxV.jpg', year: 2021, rating: 8.0, categories: ['Hài', 'Tâm lý'], country: 'vn' },
-    { id: 8, title: 'The Farewell', poster: 'https://image.tmdb.org/t/p/w500/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg', year: 2019, rating: 7.6, categories: ['Tâm lý', 'Hài'], country: 'cn' },
-    { id: 9, title: 'Crouching Tiger, Hidden Dragon', poster: 'https://image.tmdb.org/t/p/w500/7JUEzlCGiXCDMEgLcmcKXBEzSKL.jpg', year: 2000, rating: 7.9, categories: ['Hành động', 'Phiêu lưu'], country: 'cn' },
-    { id: 10, title: 'Bad Genius', poster: 'https://image.tmdb.org/t/p/w500/mWuFbQrXyLk8kSRieDBP2mLGiwd.jpg', year: 2017, rating: 7.6, categories: ['Tâm lý', 'Tội phạm'], country: 'th' },
-    { id: 11, title: '1917', poster: 'https://image.tmdb.org/t/p/w500/iZf0KyrE25z1sage4SYFLCCrMi9.jpg', year: 2019, rating: 8.3, categories: ['Chiến tranh', 'Hành động'], country: 'uk' },
-    { id: 12, title: 'The King\'s Speech', poster: 'https://image.tmdb.org/t/p/w500/i6uCF71JkxVXQVSNb6sQ6ARLU3m.jpg', year: 2010, rating: 7.9, categories: ['Tâm lý', 'Lịch sử'], country: 'uk' }
-  ]
-  
-  // Lọc phim theo quốc gia và các bộ lọc khác
-  let filteredMovies = allMovies.filter(movie => movie.country === country.value.slug)
-  
-  // Áp dụng các bộ lọc
-  if (filters.value.category) {
-    filteredMovies = filteredMovies.filter(movie => 
-      movie.categories.some(cat => 
-        categories.find(c => c.slug === filters.value.category)?.name === cat
-      )
-    )
-  }
-  
-  if (filters.value.year) {
-    filteredMovies = filteredMovies.filter(movie => movie.year === parseInt(filters.value.year))
-  }
-  
-  if (filters.value.minRating > 0) {
-    filteredMovies = filteredMovies.filter(movie => movie.rating >= filters.value.minRating)
-  }
-  
-  // Sắp xếp phim
-  switch(sortBy.value) {
-    case 'latest':
-      filteredMovies.sort((a, b) => b.year - a.year)
-      break
-    case 'oldest':
-      filteredMovies.sort((a, b) => a.year - b.year)
-      break
-    case 'nameAZ':
-      filteredMovies.sort((a, b) => a.title.localeCompare(b.title))
-      break
-    case 'nameZA':
-      filteredMovies.sort((a, b) => b.title.localeCompare(a.title))
-      break
-    case 'rating':
-      filteredMovies.sort((a, b) => b.rating - a.rating)
-      break
-    case 'popularity':
-      // Trong thực tế, sẽ có trường popularity riêng
-      filteredMovies.sort((a, b) => b.rating - a.rating)
-      break
-  }
-  
-  // Cập nhật state
-  movies.value = filteredMovies
-  totalMovies.value = filteredMovies.length
-  totalPages.value = Math.max(1, Math.ceil(totalMovies.value / moviesPerPage))
-  
-  // Đảm bảo currentPage nằm trong phạm vi hợp lệ
-  if (currentPage.value > totalPages.value) {
-    currentPage.value = totalPages.value
-  }
-}
-
-// Xử lý khi đổi trang
-function goToPage(page) {
-  if (page === '...' || page < 1 || page > totalPages.value) return
-  currentPage.value = page
-  fetchMovies()
-  // Cuộn lên đầu trang
-  window.scrollTo({ top: 0, behavior: 'smooth' })
-}
-
-// Xem chi tiết phim
-function viewMovieDetails(movieId) {
-  router.push({ name: 'movie-detail', params: { id: movieId } })
-}
-
-// Áp dụng bộ lọc
-function applyFilters() {
-  currentPage.value = 1
-  fetchMovies()
-}
-
-// Reset bộ lọc
-function resetFilters() {
-  filters.value = {
-    category: '',
-    year: '',
-    minRating: 0
-  }
-  applyFilters()
-}
-
-// Áp dụng bộ lọc và đóng modal
-function applyFiltersAndClose() {
-  applyFilters()
-  showFilters.value = false
-}
-
-// Reset bộ lọc và đóng modal
-function resetFiltersAndClose() {
-  resetFilters()
-  showFilters.value = false
-}
-
-// Theo dõi thay đổi của route.params.slug
-watch(() => route.params.slug, (newSlug) => {
-  if (newSlug) {
-    getCountryInfo()
-    fetchMovies()
-  }
+// watch slug change
+watch(() => countrySlug.value, async (s) => {
+  if (!s) return
+  const ok = await fetchCountry(s)
+  if (ok) fetchMovies(1)
 }, { immediate: true })
-
-onMounted(() => {
-  getCountryInfo()
-  fetchMovies()
-})
 </script>
 
 <style scoped>
