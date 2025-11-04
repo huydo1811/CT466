@@ -298,6 +298,33 @@ class UserService {
       throw new Error(`Lỗi khi lấy thống kê users: ${error.message}`);
     }
   }
+
+  // get history paged or full
+  async getUserHistory(userId, opts = {}) {
+    const user = await User.findById(userId).select('history').lean()
+    if (!user) return []
+    let hist = (user.history || []).slice().reverse() // newest first
+    if (opts.limit) hist = hist.slice(0, opts.limit)
+    return hist
+  }
+
+  async addToHistory(userId, entry) {
+    // entry: { movieId, title, poster, progress, duration }
+    const doc = await User.findByIdAndUpdate(
+      userId,
+      { $push: { history: { $each: [entry] } } },
+      { new: true }
+    )
+    return doc
+  }
+
+  async removeHistoryItem(userId, hid) {
+    await User.findByIdAndUpdate(userId, { $pull: { history: { _id: hid } } })
+  }
+
+  async clearHistory(userId) {
+    await User.findByIdAndUpdate(userId, { $set: { history: [] } })
+  }
 }
 
 export default new UserService();

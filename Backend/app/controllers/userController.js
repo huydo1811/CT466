@@ -1,5 +1,25 @@
-import userService from '../services/userService.js';
-import { asyncHandler } from '../utils/asyncHandler.js';
+import userService from '../services/userService.js'
+import { asyncHandler } from '../utils/asyncHandler.js'
+import fs from 'fs'
+import path from 'path'
+
+const buildFileUrl = (req, filename, folder = 'avatars') => {
+  if (!filename) return ''
+  const rel = `/uploads/${folder}/${filename}`
+  return `${req.protocol}://${req.get('host')}${rel}`
+}
+
+const deleteUploadedFile = (fileUrl, folder = 'avatars') => {
+  try {
+    if (!fileUrl || typeof fileUrl !== 'string') return
+    const segment = `/uploads/${folder}/`
+    const idx = fileUrl.indexOf(segment)
+    if (idx === -1) return
+    const filename = fileUrl.slice(idx + segment.length)
+    const fp = path.join(process.cwd(), 'uploads', folder, filename)
+    if (fs.existsSync(fp)) fs.unlinkSync(fp)
+  } catch (e) { console.warn('deleteUploadedFile fail', e) }
+}
 
 // Lấy tất cả users (admin only)
 export const getAllUsers = asyncHandler(async (req, res) => {
@@ -123,3 +143,61 @@ export const getUserStats = asyncHandler(async (req, res) => {
     data: stats
   });
 });
+
+// Lấy profile current user
+export const getMe = asyncHandler(async (req, res) => {
+  const uid = req.user && (req.user._id || req.user.id)
+  if (!uid) return res.status(401).json({ success: false, message: 'Unauthorized' })
+  const user = await userService.getUserById(uid)
+  res.status(200).json({ success: true, data: user })
+})
+
+// Cập nhật profile current user (accept multipart with avatar)
+export const updateMe = asyncHandler(async (req, res) => {
+  const uid = req.user && (req.user._id || req.user.id)
+  if (!uid) return res.status(401).json({ success: false, message: 'Unauthorized' })
+  
+  const body = req.body || {}
+  const payload = {}
+  if (body.fullName || body.name) payload.fullName = body.fullName ?? body.name
+  if (typeof body.phone !== 'undefined') payload.phone = body.phone || null
+  if (typeof body.bio !== 'undefined') payload.bio = body.bio || ''
+  if (body.birthdate) payload.birthdate = new Date(body.birthdate)
+  
+  // handle avatar file (multer sets req.file)
+  const existing = await userService.getUserById(uid).catch(()=>null)
+  if (req.file && req.file.filename) {
+    if (existing && existing.avatar) deleteUploadedFile(existing.avatar, 'avatars')
+    payload.avatar = buildFileUrl(req, req.file.filename, 'avatars')
+  } else if (body.avatar) {
+    payload.avatar = body.avatar
+  } else if (existing && existing.avatar) {
+    payload.avatar = existing.avatar
+  }
+  
+  const updated = await userService.updateUser(uid, payload)
+  res.status(200).json({ success: true, data: updated })
+})
+
+export const getMyHistory = asyncHandler(async (req, res) => {
+  const uid = req.user && (req.user._id || req.user.id)
+  if (!uid) return res.status(401).json({ success: false, message: 'Unauthorized' })
+  const data = await userService.getUserHistory(uid)
+  res.json({ success: true, data })
+})
+
+export const deleteHistoryItem = asyncHandler(async (req, res) => {
+  const uid = req.user && (req.user._id || req.user.id)
+  const { hid } = req.params
+  if (!uid) return res.status(401).json({ success: false, message: 'Unauthorized' })
+  if (!hid) return res.status(400).json({ success: false, message: 'Missing history id' })
+  await userService.removeHistoryItem(uid, hid)
+  res.json({ success: true })
+})
+
+export const clearMyHistory = asyncHandler(async (req, res) => {
+  const uid = req.user && (req.user._id || req.user.id)
+  if (!uid) return res.status(401).json({ success: false, message: 'Unauthorized' })
+  await userService.clearHistory(uid)
+  res.json({ success: true })
+})

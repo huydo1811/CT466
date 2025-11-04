@@ -11,7 +11,7 @@
           <!-- Avatar with Upload Option -->
           <div class="relative group">
             <div class="w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 border-primary-500">
-              <img :src="user.avatar" alt="Avatar" class="w-full h-full object-cover" />
+              <img :src="getMediaUrl(user.avatar)" alt="Avatar" class="w-full h-full object-cover" />
             </div>
             <div class="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition cursor-pointer" @click="triggerAvatarUpload">
               <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -190,7 +190,7 @@
     </form>
     
     <!-- Change Password Section -->
-    <div class="mt-8 sm:mt-12 pt-6 sm:pt-8 border-t border-gray-700">
+    <div v-if="!user.googleId" class="mt-8 sm:mt-12 pt-6 sm:pt-8 border-t border-gray-700">
       <h2 class="text-lg sm:text-xl font-semibold text-white mb-4 sm:mb-6">Thay đổi mật khẩu</h2>
       
       <form @submit.prevent="updatePassword" class="grid grid-cols-1 gap-4 sm:gap-6">
@@ -372,6 +372,7 @@
 <script setup>
 import { ref, reactive, onMounted, markRaw } from 'vue'
 import { useRouter } from 'vue-router'
+import api from '@/services/api'
 
 const router = useRouter()
 const avatarInput = ref(null)
@@ -379,263 +380,175 @@ const avatarInput = ref(null)
 // Tab navigation
 const activeTab = ref('personal')
 const tabs = [
-  { 
-    id: 'personal', 
-    name: 'Thông tin cá nhân',
-    icon: markRaw({
-      template: `
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-5 h-5">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zm-4 7a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-        </svg>
-      `
-    })
-  },
-  { 
-    id: 'history', 
-    name: 'Lịch sử xem',
-    icon: markRaw({
-      template: `
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-5 h-5">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      `
-    })
-  },
-  { 
-    id: 'favorites', 
-    name: 'Phim yêu thích',
-    icon: markRaw({
-      template: `
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-5 h-5">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-        </svg>
-      `
-    })
-  }
+  { id: 'personal', name: 'Thông tin cá nhân', icon: markRaw({ template: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zm-4 7a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>` }) },
+  { id: 'history', name: 'Lịch sử xem', icon: markRaw({ template: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>` }) },
+  { id: 'favorites', name: 'Phim yêu thích', icon: markRaw({ template: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>` }) }
 ]
 
-// Mock user data (Trong thực tế sẽ được lấy từ API)
+// user + form state
+// safe default to avoid null access in template
 const user = ref({
-  id: 1,
-  name: 'Nguyễn Văn A',
-  email: 'nguyenvana@example.com',
-  avatar: 'https://i.pravatar.cc/300?img=8',
-  phone: '0912345678',
-  birthdate: '1995-05-15',
-  bio: 'Là một người yêu thích điện ảnh, đặc biệt các thể loại hành động và khoa học viễn tưởng.',
-  createdAt: '2022-10-15T08:30:00Z',
-  role: 'member',
-  stats: {
-    watched: 48,
-    favorites: 15,
-    ratings: 27,
-    comments: 8
-  }
-})
-
-// Form data
-const form = reactive({
+  _id: null,
   name: '',
+  fullName: '',
   email: '',
+  avatar: '',
   phone: '',
-  birthdate: '',
-  bio: ''
+  birthdate: null,
+  bio: '',
+  createdAt: null,
+  role: 'user',
+  googleId: null,
+  stats: { watched:0, favorites:0, ratings:0, comments:0 },
+  history: [],
+  favorites: []
 })
 
-// Password form
-const passwordForm = reactive({
-  current: '',
-  new: '',
-  confirm: ''
-})
-
-// UI States
+const form = reactive({ name: '', email: '', phone: '', birthdate: '', bio: '' })
+const passwordForm = reactive({ current: '', new: '', confirm: '' })
 const isUpdating = ref(false)
 const isUpdatingPassword = ref(false)
 const isDeletingAccount = ref(false)
 const confirmDeleteAccount = ref(false)
 const showPassword = ref(false)
 
-// Mock watch history data
-const watchHistory = ref([
-  {
-    id: 101,
-    title: 'Spider-Man: No Way Home',
-    poster: 'https://image.tmdb.org/t/p/w500/1g0dhYtq4irTY1GPXvft6k4YLjm.jpg',
-    year: 2021,
-    duration: '148 min',
-    watchedAt: '2023-08-15T14:30:00Z',
-    progress: 100
-  },
-  {
-    id: 102,
-    title: 'The Batman',
-    poster: 'https://image.tmdb.org/t/p/w500/74xTEgt7R36Fpooo50r9T25onhq.jpg',
-    year: 2022,
-    duration: '176 min',
-    watchedAt: '2023-08-10T20:15:00Z',
-    progress: 85
-  },
-  {
-    id: 103,
-    title: 'Dune',
-    poster: 'https://image.tmdb.org/t/p/w500/d5NXSklXo0qyIYkgV94XAgMIckC.jpg',
-    year: 2021,
-    duration: '155 min',
-    watchedAt: '2023-07-28T19:00:00Z',
-    progress: 100
-  }
-])
+// watchHistory & favorites now loaded from backend
+const watchHistory = ref([])
+const favorites = ref([])
 
-// Mock favorites data
-const favorites = ref([
-  {
-    id: 201,
-    title: 'Avatar: The Way of Water',
-    poster: 'https://image.tmdb.org/t/p/w500/t6HIqrRAclMCA60NsSmeqe9RmNV.jpg',
-    rating: 7.6,
-    year: 2022,
-    categories: ['Khoa học viễn tưởng', 'Phiêu lưu']
-  },
-  {
-    id: 202,
-    title: 'John Wick: Chapter 4',
-    poster: 'https://image.tmdb.org/t/p/w500/vZloFAK7NmvMGKE7VkF5UHaz0I.jpg',
-    rating: 7.8,
-    year: 2023,
-    categories: ['Hành động', 'Tội phạm']
-  },
-  {
-    id: 203,
-    title: 'Everything Everywhere All at Once',
-    poster: 'https://image.tmdb.org/t/p/w500/w3LxiVYdWWRvEVdn5RYq6jIqkb1.jpg',
-    rating: 7.9,
-    year: 2022,
-    categories: ['Hành động', 'Phiêu lưu', 'Khoa học viễn tưởng']
-  },
-  {
-    id: 204,
-    title: 'Top Gun: Maverick',
-    poster: 'https://image.tmdb.org/t/p/w500/62HCnUTziyWcpDaBO2i1DX17ljH.jpg',
-    rating: 8.3,
-    year: 2022,
-    categories: ['Hành động', 'Kịch tính']
-  }
-])
-
-// Initialize form data from user
 function resetForm() {
-  form.name = user.value.name
-  form.email = user.value.email
-  form.phone = user.value.phone
-  form.birthdate = user.value.birthdate
-  form.bio = user.value.bio
+  form.name = user.value?.fullName || user.value?.name || ''
+  form.email = user.value?.email || ''
+  form.phone = user.value?.phone || ''
+  form.birthdate = user.value?.birthdate ? new Date(user.value.birthdate).toISOString().slice(0,10) : ''
+  form.bio = user.value?.bio || ''
+}
+
+const loadProfile = async () => {
+  try {
+    // use auth/profile endpoint (see Backend/app/controllers/authController.js -> getProfile)
+    const res = await api.get('/auth/profile')
+    const u = res?.data?.data || res?.data || null
+    if (u) {
+      user.value = u
+      // history stored on user model (see Backend/app/models/User.js -> history subdocs)
+      watchHistory.value = Array.isArray(u.history) ? u.history.map(h => ({
+        id: h._id || h.id,
+        title: h.title || h.movieTitle || '',
+        poster: h.poster || h.moviePoster || '',
+        year: h.year || '',
+        duration: h.duration || '',
+        watchedAt: h.watchedAt || h.createdAt || null,
+        progress: h.progress ?? 0
+      })) : []
+      // favorites if available from API
+      favorites.value = Array.isArray(u.favorites) ? u.favorites : (u.favoriteMovies || [])
+      resetForm()
+    }
+  } catch (err) {
+    console.error('load profile failed', err)
+  }
 }
 
 // Format date
 function formatDate(dateString) {
+  if (!dateString) return '-'
   const date = new Date(dateString)
-  return new Intl.DateTimeFormat('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  }).format(date)
+  return new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date)
 }
 
 // Avatar upload
-function triggerAvatarUpload() {
-  avatarInput.value.click()
-}
-
+function triggerAvatarUpload() { avatarInput.value.click() }
+let avatarFile = null
 function uploadAvatar(event) {
-  const file = event.target.files[0]
+  const file = event.target.files?.[0]
   if (!file) return
-  
-  // Trong môi trường thực tế, bạn sẽ upload file lên server
-  // Ở đây chỉ đơn giản tạo một URL tạm thời để hiển thị
+  avatarFile = file
   const reader = new FileReader()
-  reader.onload = (e) => {
-    user.value.avatar = e.target.result
-  }
+  reader.onload = (e) => { if (!user.value) user.value = {}; user.value.avatar = e.target.result }
   reader.readAsDataURL(file)
 }
 
-// Update profile
+// Update profile (unchanged, still uses /users/me PUT)
 async function updateProfile() {
   isUpdating.value = true
-  
-  // Giả lập API call
-  await new Promise(resolve => setTimeout(resolve, 1000))
-  
-  // Cập nhật dữ liệu người dùng
-  user.value.name = form.name
-  user.value.phone = form.phone
-  user.value.birthdate = form.birthdate
-  user.value.bio = form.bio
-  
-  isUpdating.value = false
-  // Hiển thị thông báo thành công (có thể thêm vào sau)
+  try {
+    if (avatarFile) {
+      const fd = new FormData()
+      fd.append('fullName', form.name)
+      fd.append('phone', form.phone || '')
+      fd.append('birthdate', form.birthdate || '')
+      fd.append('bio', form.bio || '')
+      fd.append('avatar', avatarFile)
+      const res = await api.put('/users/me', fd)
+      user.value = res?.data?.data || user.value
+      avatarFile = null
+    } else {
+      const payload = { fullName: form.name, phone: form.phone, birthdate: form.birthdate, bio: form.bio, avatar: user.value?.avatar }
+      const res = await api.put('/users/me', payload)
+      user.value = res?.data?.data || user.value
+    }
+    resetForm()
+    alert('Cập nhật thành công')
+  } catch (e) {
+    console.error('update profile failed', e)
+    alert(e?.response?.data?.message || 'Cập nhật thất bại')
+  } finally { isUpdating.value = false }
 }
 
-// Update password
+// Update password (unchanged)
 async function updatePassword() {
-  // Validate password
-  if (passwordForm.new !== passwordForm.confirm) {
-    alert('Mật khẩu xác nhận không khớp')
-    return
-  }
-  
-  if (!passwordForm.current || !passwordForm.new) {
-    alert('Vui lòng nhập đầy đủ thông tin')
-    return
-  }
-  
+  if (passwordForm.new !== passwordForm.confirm) { alert('Mật khẩu xác nhận không khớp'); return }
+  if (!passwordForm.current || !passwordForm.new) { alert('Vui lòng nhập đầy đủ thông tin'); return }
   isUpdatingPassword.value = true
-  
-  // Giả lập API call
   await new Promise(resolve => setTimeout(resolve, 1000))
-  
-  // Reset form
-  passwordForm.current = ''
-  passwordForm.new = ''
-  passwordForm.confirm = ''
-  
+  passwordForm.current = passwordForm.new = passwordForm.confirm = ''
   isUpdatingPassword.value = false
-  // Hiển thị thông báo thành công (có thể thêm vào sau)
 }
 
-// History management
-function removeFromHistory(id) {
-  watchHistory.value = watchHistory.value.filter(item => item.id !== id)
+// History management: call backend endpoints if available, fallback to local update
+async function removeFromHistory(id) {
+  try {
+    // support DELETE /users/me/history/:id
+    await api.delete(`/users/me/history/${id}`)
+    watchHistory.value = watchHistory.value.filter(item => (item.id || item._id) !== id)
+  } catch (err) {
+    console.warn('removeFromHistory API failed, falling back to client-side filter', err)
+    watchHistory.value = watchHistory.value.filter(item => (item.id || item._id) !== id)
+  }
 }
 
-function clearHistory() {
-  if (confirm('Bạn có chắc muốn xóa toàn bộ lịch sử xem?')) {
+async function clearHistory() {
+  if (!confirm('Bạn có chắc muốn xóa toàn bộ lịch sử xem?')) return
+  try {
+    // support DELETE /users/me/history (bulk)
+    await api.delete('/users/me/history')
+    watchHistory.value = []
+  } catch (err) {
+    console.warn('clearHistory API failed, falling back to client-side clear', err)
     watchHistory.value = []
   }
 }
 
-// Favorites management
-
-
+// Delete account (unchanged)
 async function deleteAccount() {
   isDeletingAccount.value = true
-  
-  // Giả lập API call
   await new Promise(resolve => setTimeout(resolve, 2000))
-  
   isDeletingAccount.value = false
   confirmDeleteAccount.value = false
-  
-  // Đăng xuất và đưa người dùng về trang chủ
   router.push({ name: 'home' })
 }
 
-onMounted(() => {
-  // Initialize form with user data
-  resetForm()
-  // Set document title
-  document.title = `Tài khoản của ${user.value.name}`
+// helper to normalize urls
+const getMediaUrl = (u) => {
+  if (!u) return ''
+  if (/^data:|^https?:\/\//.test(u)) return u
+  return `${window.location.origin}${u}`
+}
+
+onMounted(async () => {
+  await loadProfile()
+  document.title = `Tài khoản của ${user.value?.fullName || user.value?.name || 'người dùng'}`
 })
 </script>
 

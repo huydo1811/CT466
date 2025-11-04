@@ -41,6 +41,30 @@ const userSchema = new mongoose.Schema({
     default: null
   },
 
+  // watch history: lưu dưới dạng subdocuments để dễ truy vấn / xóa
+  history: [
+    {
+      _id: { type: mongoose.Schema.Types.ObjectId, auto: true },
+      movieId: { type: mongoose.Schema.Types.ObjectId, ref: 'Movie', required: true },
+      title: { type: String, default: '' },
+      poster: { type: String, default: '' },
+      watchedAt: { type: Date, default: Date.now },
+      progress: { type: Number, default: 0 }, // percent
+      duration: { type: String, default: '' } // optional
+    }
+  ],
+  
+  // profile fields
+  phone: { type: String, default: null },
+  birthdate: { type: Date, default: null },
+  bio: { type: String, default: '' },
+  stats: {
+    watched: { type: Number, default: 0 },
+    favorites: { type: Number, default: 0 },
+    ratings: { type: Number, default: 0 },
+    comments: { type: Number, default: 0 }
+  },
+
   // Phân quyền đơn giản
   role: {
     type: String,
