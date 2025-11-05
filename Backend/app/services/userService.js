@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import User from '../models/User.js';
+import Movie from '../models/Movie.js' // add at top if not present
 
 class UserService {
   // Lấy tất cả users (admin only)
@@ -64,10 +65,17 @@ class UserService {
         throw new Error('ID không hợp lệ');
       }
 
-      const user = await User.findById(id);
+      // populate favorites and return plain object for frontend
+      const user = await User.findById(id)
+        .populate({ path: 'favorites', select: 'title poster slug year' })
+        .lean();
+
       if (!user) {
         throw new Error('Không tìm thấy user');
       }
+      // ensure stats exist and favorites count matches
+      user.stats = user.stats || {}
+      user.stats.favorites = user.stats.favorites || (Array.isArray(user.favorites) ? user.favorites.length : 0)
       return user;
     } catch (error) {
       throw new Error(`Lỗi khi lấy thông tin user: ${error.message}`);
@@ -324,6 +332,56 @@ class UserService {
 
   async clearHistory(userId) {
     await User.findByIdAndUpdate(userId, { $set: { history: [] } })
+  }
+
+  async addFavorite(userId, movieId) {
+    try {
+      if (!mongoose.Types.ObjectId.isValid(movieId)) throw new Error('Movie ID không hợp lệ')
+      const movie = await Movie.findById(movieId).select('_id title poster')
+      if (!movie) throw new Error('Movie không tồn tại')
+
+      const user = await User.findById(userId)
+      if (!user) throw new Error('User không tồn tại')
+
+      const exists = (user.favorites || []).some(f => String(f) === String(movieId))
+      if (!exists) {
+        user.favorites = user.favorites || []
+        user.favorites.push(movie._id)
+        user.stats = user.stats || {}
+        user.stats.favorites = (user.stats.favorites || 0) + 1
+        await user.save()
+      }
+      return await User.findById(userId).populate('favorites', 'title poster slug').lean()
+    } catch (error) {
+      throw new Error(`Lỗi khi thêm yêu thích: ${error.message}`)
+    }
+  }
+
+  async removeFavorite(userId, movieId) {
+    try {
+      if (!mongoose.Types.ObjectId.isValid(movieId)) throw new Error('Movie ID không hợp lệ')
+      const user = await User.findById(userId)
+      if (!user) throw new Error('User không tồn tại')
+
+      const prevCount = (user.favorites || []).length
+      user.favorites = (user.favorites || []).filter(f => String(f) !== String(movieId))
+      if ((user.stats?.favorites || 0) > 0 && user.favorites.length !== prevCount) {
+        user.stats.favorites = Math.max(0, (user.stats.favorites || 0) - 1)
+      }
+      await user.save()
+      return await User.findById(userId).populate('favorites', 'title poster slug').lean()
+    } catch (error) {
+      throw new Error(`Lỗi khi xóa yêu thích: ${error.message}`)
+    }
+  }
+
+  async getFavorites(userId) {
+    try {
+      const user = await User.findById(userId).populate('favorites', 'title poster slug year').lean()
+      return (user && user.favorites) ? user.favorites : []
+    } catch (error) {
+      throw new Error(`Lỗi khi lấy favorites: ${error.message}`)
+    }
   }
 }
 

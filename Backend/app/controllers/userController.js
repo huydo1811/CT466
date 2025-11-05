@@ -201,3 +201,49 @@ export const clearMyHistory = asyncHandler(async (req, res) => {
   await userService.clearHistory(uid)
   res.json({ success: true })
 })
+
+// Lấy danh sách favorite của user hiện tại
+export async function getMyFavorites(req, res) {
+  try {
+    const uid = req.user && (req.user._id || req.user.id)
+    if (!uid) return res.status(401).json({ success: false, message: 'Unauthorized' })
+
+    const favs = await userService.getFavorites(uid)
+    return res.status(200).json({ success: true, data: favs })
+  } catch (err) {
+    console.error('getMyFavorites error', err)
+    return res.status(500).json({ success: false, message: err.message || 'Server error' })
+  }
+}
+
+// Thêm movie vào favorites của user
+export async function addFavorite(req, res) {
+  try {
+    const uid = req.user && (req.user._id || req.user.id)
+    const { mid } = req.params
+    if (!uid) return res.status(401).json({ success: false, message: 'Unauthorized' })
+    if (!mid) return res.status(400).json({ success: false, message: 'Missing movieId' })
+
+    const updated = await userService.addFavorite(uid, mid)
+    return res.status(200).json({ success: true, data: updated.favorites || updated })
+  } catch (err) {
+    console.error('addFavorite error', err)
+    return res.status(500).json({ success: false, message: err.message || 'Server error' })
+  }
+}
+
+// Xóa movie khỏi favorites của user
+export async function removeFavorite(req, res) {
+  try {
+    const uid = req.user && (req.user._id || req.user.id)
+    const { mid } = req.params
+    if (!uid) return res.status(401).json({ success: false, message: 'Unauthorized' })
+    if (!mid) return res.status(400).json({ success: false, message: 'Missing movieId' })
+
+    const updated = await userService.removeFavorite(uid, mid)
+    return res.status(200).json({ success: true, data: updated.favorites || updated })
+  } catch (err) {
+    console.error('removeFavorite error', err)
+    return res.status(500).json({ success: false, message: err.message || 'Server error' })
+  }
+}

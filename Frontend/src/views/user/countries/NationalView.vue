@@ -338,8 +338,8 @@ const fetchMovies = async (page = 1) => {
       limit: moviesPerPage.value,
       sortBy: mapSortOption(sortBy.value)
     }
-    // send only countryId (ObjectId) so backend can match country field
-    params.countryId = country.value._id
+    // send country id using the param name backend expects
+    params.country = country.value._id
 
     if (filters.value.category) params.category = filters.value.category
     if (filters.value.year) params.year = filters.value.year

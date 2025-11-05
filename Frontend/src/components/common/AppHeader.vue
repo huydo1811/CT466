@@ -191,7 +191,7 @@ import api from '@/services/api'
         </button>
 
         <!-- Desktop Nav (center) -->
-        <div class="hidden lg:flex items-center mx-auto space-x-6 pl-2 text-lg">
+        <div class="hidden lg:flex items-center mx-auto space-x-6 pl-2 text-base">
           <RouterLink to="/" exact-active-class="nav-link-active" class="nav-link">
             <span>Trang chủ</span><div class="nav-underline"></div>
           </RouterLink>

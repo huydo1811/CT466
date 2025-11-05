@@ -1,5 +1,6 @@
 import User from '../models/User.js';
 import authService from '../services/authService.js';
+import userService from '../services/userService.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 // Đăng ký
@@ -56,10 +57,12 @@ export const login = asyncHandler(async (req, res) => {
 
 // Get profile
 export const getProfile = asyncHandler(async (req, res) => {
-  res.status(200).json({
-    success: true,
-    data: req.user
-  });
+  const uid = req.user && (req.user._id || req.user.id)
+  if (!uid) return res.status(401).json({ success: false, message: 'Unauthorized' })
+
+  // return populated user (includes favorites)
+  const user = await userService.getUserById(uid)
+  res.status(200).json({ success: true, data: user })
 });
 
 // Update profile

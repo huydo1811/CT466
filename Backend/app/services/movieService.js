@@ -1,6 +1,9 @@
 import Movie from '../models/Movie.js';
 import fs from 'fs'
 import path from 'path'
+import mongoose from 'mongoose'
+import Category from '../models/Category.js'
+import reviewService from './reviewService.js'
  
 const uploadsDir = path.join(process.cwd(), 'uploads', 'movies')
 
@@ -54,7 +57,29 @@ class MovieService {
       }
       
       // Other filters
-      if (category) query.categories = category;
+      // category: accept "id", "id1,id2", array of ids, or slug/name values
+      if (category) {
+        let cats = Array.isArray(category) ? category : String(category).split(',').map(s => s.trim()).filter(Boolean)
+        if (cats.length) {
+          // split objectId-like and name-like candidates
+          const idCandidates = cats.filter(c => mongoose.Types.ObjectId.isValid(String(c))).map(c => new mongoose.Types.ObjectId(String(c)))
+          const nameCandidates = cats.filter(c => !mongoose.Types.ObjectId.isValid(String(c)))
+
+          const matchedIds = [...idCandidates]
+          if (nameCandidates.length) {
+            const found = await Category.find({
+              $or: [
+                { slug: { $in: nameCandidates } },
+                { name: { $in: nameCandidates } }
+              ]
+            }).select('_id').lean()
+            found.forEach(f => { if (f && f._id) matchedIds.push(new mongoose.Types.ObjectId(String(f._id))) })
+          }
+
+          if (matchedIds.length) query.categories = { $in: matchedIds }
+          else query.categories = { $in: [] } // ensure no results if nothing matched
+        }
+      }
       if (country) query.country = country;
       if (year) query.year = year;
       if (type) query.type = type;
@@ -98,6 +123,17 @@ class MovieService {
       if (!movie) {
         throw new Error('Phim không tồn tại hoặc đã bị ẩn');
       }
+
+      // cập nhật rating từ reviews
+      try {
+        const stats = await reviewService.getMovieRatingStats(movie._id)
+        movie.rating = movie.rating || { average: 0, count: 0 }
+        movie.rating.average = stats.averageRating || 0
+        movie.rating.count = stats.totalReviews || 0
+      } catch (e) {
+        // ignore nếu aggregate lỗi
+        console.warn('Không thể lấy stats reviews cho movie:', movie._id, e.message)
+      }
       
       return movie;
     } catch (error) {
@@ -113,6 +149,16 @@ class MovieService {
       
       if (!movie) {
         throw new Error('Phim không tồn tại');
+      }
+
+      // cập nhật rating từ reviews (chi tiết)
+      try {
+        const stats = await reviewService.getMovieRatingStats(movie._id)
+        movie.rating = movie.rating || { average: 0, count: 0 }
+        movie.rating.average = stats.averageRating || 0
+        movie.rating.count = stats.totalReviews || 0
+      } catch (e) {
+        console.warn('Không thể lấy stats reviews cho movie:', movie._id, e.message)
       }
       
       return movie;

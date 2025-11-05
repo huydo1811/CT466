@@ -53,6 +53,10 @@ const userSchema = new mongoose.Schema({
       duration: { type: String, default: '' } // optional
     }
   ],
+  // favorite movies
+  favorites: [
+    { type: mongoose.Schema.Types.ObjectId, ref: 'Movie' }
+  ],
   
   // profile fields
   phone: { type: String, default: null },

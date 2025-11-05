@@ -2,6 +2,7 @@ import movieService from '../services/movieService.js';
 import mongoose from 'mongoose';
 import Movie from '../models/Movie.js'
 import asyncHandler from '../middleware/asyncHandler.js'
+import reviewService from '../services/reviewService.js'
 
 // Helper validate ObjectId
 const isValidObjectId = (id) => {
@@ -48,18 +49,54 @@ export const getAllMovies = asyncHandler(async (req, res) => {
 // Lấy phim theo slug (Public)
 export const getMovieBySlug = asyncHandler(async (req, res) => {
   const { slug } = req.params;
-  
+
   const movie = await movieService.getMovieBySlug(slug);
-  
-  res.status(200).json({
-    success: true,
-    message: 'Lấy thông tin phim thành công',
-    data: movie
-  });
+  if (!movie) {
+    return res.status(404).json({ success: false, message: 'Không tìm thấy phim' });
+  }
+
+  // attach reviews + ratingStats (lấy nhiều review để hiển thị)
+  try {
+    const rev = await reviewService.getMovieReviews(movie._id || movie.id, { page: 1, limit: 1000 });
+    const obj = movie.toObject ? movie.toObject() : (movie || {});
+    obj.reviews = rev.reviews || [];
+    obj.ratingStats = rev.ratingStats || {};
+    // ensure movie.rating reflects aggregated value if available
+    if (obj.ratingStats && obj.ratingStats.averageRating != null) {
+      obj.rating = { average: obj.ratingStats.averageRating, count: obj.ratingStats.totalReviews ?? obj.rating.count }
+    }
+    return res.status(200).json({ success: true, data: obj });
+  } catch (err) {
+    // fallback: trả movie không có reviews nếu lỗi reviews
+    return res.status(200).json({ success: true, data: movie });
+  }
+});
+
+// Lấy phim theo ID (Public)
+export const getMovieById = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const movie = await movieService.getMovieById(id);
+  if (!movie) {
+    return res.status(404).json({ success: false, message: 'Không tìm thấy phim' });
+  }
+
+  try {
+    const rev = await reviewService.getMovieReviews(movie._id || movie.id, { page: 1, limit: 1000 });
+    const obj = movie.toObject ? movie.toObject() : (movie || {});
+    obj.reviews = rev.reviews || [];
+    obj.ratingStats = rev.ratingStats || {};
+    if (obj.ratingStats && obj.ratingStats.averageRating != null) {
+      obj.rating = { average: obj.ratingStats.averageRating, count: obj.ratingStats.totalReviews ?? obj.rating.count }
+    }
+    return res.status(200).json({ success: true, data: obj });
+  } catch (err) {
+    return res.status(200).json({ success: true, data: movie });
+  }
 });
 
 // Lấy phim theo ID (Admin)
-export const getMovieById = asyncHandler(async (req, res) => {
+export const getMovieByIdAdmin = asyncHandler(async (req, res) => {
   const { id } = req.params;
   
   if (!isValidObjectId(id)) {

@@ -324,7 +324,17 @@
     </div>
     
     <div v-if="favorites.length > 0" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-5">
-      <!-- ... giữ nguyên grid favorites ... -->
+      <div v-for="item in favorites" :key="item._id || item.id" class="group bg-dark-800 rounded-lg overflow-hidden border border-gray-700">
+        <RouterLink :to="{ name: 'movie-detail', params: { id: (item._id || item.id) } }" class="block">
+          <div class="w-full h-40 sm:h-44 md:h-48 overflow-hidden">
+            <img :src="getMediaUrl(item.poster || item.moviePoster || item.posterUrl)" :alt="item.title || item.name" class="w-full h-full object-cover transition-transform group-hover:scale-105" />
+          </div>
+          <div class="p-3">
+            <h3 class="text-sm sm:text-base font-medium text-white truncate">{{ item.title || item.name }}</h3>
+            <div class="text-xs text-gray-400 mt-1">{{ item.year || '' }}</div>
+          </div>
+        </RouterLink>
+      </div>
     </div>
     
     <div v-else class="text-center py-8 sm:py-12 bg-dark-900/50 rounded-xl border border-gray-800">

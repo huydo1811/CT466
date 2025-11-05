@@ -1,23 +1,30 @@
+import mongoose from 'mongoose'
 import Review from '../models/Review.js';
 import Movie from '../models/Movie.js';
 import User from '../models/User.js';
 
 class ReviewService {
-  
+
+  _toObjectId(val) {
+    if (!val) return null;
+    const s = String(val);
+    return mongoose.Types.ObjectId.isValid(s) ? new mongoose.Types.ObjectId(s) : null;
+  }
+
   // User tạo/cập nhật review
   async createOrUpdateReview(userId, movieId, reviewData) {
     try {
       const { rating, comment } = reviewData;
-      
+
       // Kiểm tra movie tồn tại
       const movie = await Movie.findById(movieId);
       if (!movie) {
         throw new Error('Phim không tồn tại');
       }
-      
+
       // Kiểm tra user đã review chưa
       let review = await Review.findOne({ user: userId, movie: movieId });
-      
+
       if (review) {
         // Update review cũ
         review.rating = rating;
@@ -32,37 +39,58 @@ class ReviewService {
           comment
         });
       }
-      
+
       // Cập nhật rating của movie
       await this.updateMovieRating(movieId);
-      
+
       // Populate data để return
       return await Review.findById(review._id)
         .populate('user', 'username fullName avatar')
         .populate('movie', 'title poster');
-        
+
     } catch (error) {
       throw new Error(`Lỗi khi tạo review: ${error.message}`);
     }
   }
-  
+
+  // compute rating stats for a movie
+  async getMovieRatingStats(movieId) {
+    try {
+      const mId = mongoose.Types.ObjectId.isValid(String(movieId)) ? new mongoose.Types.ObjectId(String(movieId)) : null;
+      if (!mId) return { totalReviews: 0, averageRating: 0 };
+
+      const agg = await Review.aggregate([
+        { $match: { movie: mId, isPublished: true } },
+        { $group: { _id: '$movie', totalReviews: { $sum: 1 }, averageRating: { $avg: '$rating' } } }
+      ]).exec();
+
+      if (!agg || !agg.length) return { totalReviews: 0, averageRating: 0 };
+      return {
+        totalReviews: agg[0].totalReviews || 0,
+        averageRating: Number((agg[0].averageRating || 0).toFixed(1))
+      };
+    } catch (error) {
+      throw new Error(`Lỗi khi tính stats review: ${error.message}`);
+    }
+  }
+
   // Cập nhật rating tự động cho movie
   async updateMovieRating(movieId) {
     try {
-      const stats = await Review.getMovieRatingStats(movieId);
-      
+      const stats = await this.getMovieRatingStats(movieId);
+
       await Movie.findByIdAndUpdate(movieId, {
         'rating.average': stats.averageRating,
         'rating.count': stats.totalReviews
       });
-      
+
       return stats;
     } catch (error) {
       console.error('Error updating movie rating:', error);
       throw new Error('Lỗi khi cập nhật rating phim');
     }
   }
-  
+
   // Lấy reviews của một movie
   async getMovieReviews(movieId, options = {}) {
     try {
@@ -73,25 +101,44 @@ class ReviewService {
         sortOrder = -1,
         rating // Filter by rating (1-5)
       } = options;
-      
+
       const skip = (page - 1) * limit;
-      let query = { movie: movieId, isPublished: true };
-      
+
+      // chuyển movieId an toàn sang ObjectId nếu có thể
+      const mId = this._toObjectId(movieId);
+
+      let query = { isPublished: true };
+      if (mId) query.movie = mId;
+      else if (movieId) query.movie = String(movieId);
+
       if (rating) {
         query.rating = rating;
       }
-      
+
       const reviews = await Review.find(query)
         .populate('user', 'username fullName avatar')
         .sort({ [sortBy]: sortOrder })
         .skip(skip)
         .limit(parseInt(limit));
-      
+
       const total = await Review.countDocuments(query);
-      
-      // Lấy rating stats
-      const ratingStats = await Review.getMovieRatingStats(movieId);
-      
+
+      // Lấy rating stats chỉ khi movieId hợp lệ
+      let ratingStats = { totalReviews: 0, averageRating: 0 };
+      if (mId) {
+        const agg = await Review.aggregate([
+          { $match: { movie: mId, isPublished: true } },
+          { $group: { _id: '$movie', totalReviews: { $sum: 1 }, averageRating: { $avg: '$rating' } } }
+        ]).exec().catch(() => []);
+
+        if (agg && agg.length) {
+          ratingStats = {
+            totalReviews: agg[0].totalReviews || 0,
+            averageRating: Number((agg[0].averageRating || 0).toFixed(1))
+          };
+        }
+      }
+
       return {
         reviews,
         ratingStats,
@@ -106,7 +153,7 @@ class ReviewService {
       throw new Error(`Lỗi khi lấy reviews: ${error.message}`);
     }
   }
-  
+
   // Lấy review của user cho movie cụ thể
   async getUserReviewForMovie(userId, movieId) {
     try {
@@ -115,7 +162,7 @@ class ReviewService {
       throw new Error(`Lỗi khi lấy review của user: ${error.message}`);
     }
   }
-  
+
   // Lấy tất cả reviews của user
   async getUserReviews(userId, options = {}) {
     try {
@@ -125,17 +172,17 @@ class ReviewService {
         sortBy = 'createdAt',
         sortOrder = -1
       } = options;
-      
+
       const skip = (page - 1) * limit;
-      
+
       const reviews = await Review.find({ user: userId, isPublished: true })
         .populate('movie', 'title poster slug')
         .sort({ [sortBy]: sortOrder })
         .skip(skip)
         .limit(parseInt(limit));
-      
+
       const total = await Review.countDocuments({ user: userId, isPublished: true });
-      
+
       return {
         reviews,
         pagination: {
@@ -149,47 +196,47 @@ class ReviewService {
       throw new Error(`Lỗi khi lấy reviews của user: ${error.message}`);
     }
   }
-  
+
   // Xóa review
   async deleteReview(reviewId, userId) {
     try {
       const review = await Review.findOne({ _id: reviewId, user: userId });
-      
+
       if (!review) {
         throw new Error('Review không tồn tại hoặc bạn không có quyền xóa');
       }
-      
+
       const movieId = review.movie;
-      
+
       await Review.findByIdAndDelete(reviewId);
-      
+
       // Cập nhật lại rating của movie
       await this.updateMovieRating(movieId);
-      
+
       return review;
     } catch (error) {
       throw new Error(`Lỗi khi xóa review: ${error.message}`);
     }
   }
-  
+
   // Admin xóa review
   async adminDeleteReview(reviewId) {
     try {
       const review = await Review.findByIdAndDelete(reviewId);
-      
+
       if (!review) {
         throw new Error('Review không tồn tại');
       }
-      
+
       // Cập nhật lại rating của movie
       await this.updateMovieRating(review.movie);
-      
+
       return review;
     } catch (error) {
       throw new Error(`Lỗi khi xóa review: ${error.message}`);
     }
   }
-  
+
   // Lấy thống kê reviews
   async getReviewStats() {
     try {
@@ -208,7 +255,7 @@ class ReviewService {
           }
         }
       ]);
-      
+
       // Rating distribution
       const ratingDistribution = await Review.aggregate([
         { $match: { isPublished: true } },
@@ -220,7 +267,7 @@ class ReviewService {
         },
         { $sort: { _id: 1 } }
       ]);
-      
+
       // Top reviewers
       const topReviewers = await Review.aggregate([
         { $match: { isPublished: true } },
@@ -251,7 +298,7 @@ class ReviewService {
         { $sort: { reviewCount: -1 } },
         { $limit: 10 }
       ]);
-      
+
       return {
         overview: stats[0] || {
           totalReviews: 0,
