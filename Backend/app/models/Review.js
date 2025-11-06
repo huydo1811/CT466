@@ -90,4 +90,16 @@ reviewSchema.methods.updateHelpfulVotes = function(increment = true) {
   return this.save();
 };
 
+const reportSchema = new mongoose.Schema({
+  reporter: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  reason: { type: String, required: true },
+  details: { type: String, default: '' },
+  isHandled: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now }
+}, { _id: true });
+
+reviewSchema.add({
+  reports: { type: [reportSchema], default: [] }
+});
+
 export default mongoose.model('Review', reviewSchema);

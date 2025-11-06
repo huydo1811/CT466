@@ -1,4 +1,6 @@
 import express from 'express';
+const router = express.Router()
+
 import {
   createOrUpdateReview,
   getMovieReviews,
@@ -6,27 +8,36 @@ import {
   getUserReviews,
   deleteReview,
   adminDeleteReview,
-  getReviewStats
-} from '../controllers/reviewController.js';
-import { protect, authorize } from '../middleware/auth.js';
+  getReviewStats,
+  reportReview,
+  getAdminReviews,
+  updateReview,
+  markReviewed
+} from '../controllers/reviewController.js'
 
-const router = express.Router();
+import { protect, authorize } from '../middleware/auth.js'
+import { markReportHandled } from '../controllers/reviewController.js'
 
-// Public routes
-router.get('/movie/:movieId', getMovieReviews);         // Lấy reviews của phim
+// admin route: mark single report handled
+router.post('/admin/:reviewId/reports/:reportId/handle', protect, authorize('admin'), markReportHandled)
 
-// Protected routes - User
-router.use(protect);
+// public / protected routes
+router.get('/movie/:movieId', getMovieReviews)
+router.post('/movie/:movieId', protect, createOrUpdateReview)
+router.get('/movie/:movieId/user', protect, getUserReviewForMovie)
+router.get('/user', protect, getUserReviews)
+router.delete('/:id', protect, deleteReview)
+router.post('/:id/report', protect, reportReview)
 
-router.post('/movie/:movieId', createOrUpdateReview);   // Tạo/cập nhật review
-router.get('/movie/:movieId/user', getUserReviewForMovie); // Review của user cho phim
-router.get('/user', getUserReviews);                    // Tất cả reviews của user
-router.delete('/:reviewId', deleteReview);              // Xóa review của mình
+// admin routes: ensure protect + authorize('admin')
+router.get('/admin', protect, authorize('admin'), getAdminReviews)
+router.get('/admin/stats', protect, authorize('admin'), getReviewStats)
+router.delete('/admin/:id', protect, authorize('admin'), adminDeleteReview)
 
-// Admin routes
-router.use(authorize('admin'));
+// add PATCH for update (owner or admin)
+router.patch('/:id', protect, updateReview)
 
-router.get('/admin/stats', getReviewStats);             // Thống kê reviews
-router.delete('/admin/:reviewId', adminDeleteReview);   // Admin xóa review
+// admin mark-reviewed (mark review + its reports as handled)
+router.post('/admin/:id/mark-reviewed', protect, authorize('admin'), markReviewed)
 
-export default router;
+export default router

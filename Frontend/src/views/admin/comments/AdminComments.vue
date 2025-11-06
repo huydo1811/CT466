@@ -79,9 +79,9 @@
               <td colspan="8" class="px-4 py-6 text-slate-400">Không có bình luận phù hợp.</td>
             </tr>
 
-            <tr v-for="r in paged" :key="r.id" class="hover:bg-slate-700/20 align-top">
+            <tr v-for="r in paged" :key="r._id || r.id" class="hover:bg-slate-700/20 align-top">
               <td class="px-4 py-3">
-                <input type="checkbox" v-model="selected" :value="r.id" class="w-4 h-4" />
+                <input type="checkbox" v-model="selected" :value="r._id || r.id" class="w-4 h-4" />
               </td>
 
               <td class="px-4 py-3">
@@ -92,7 +92,6 @@
               <td class="px-4 py-3">
                 <div class="text-sm text-slate-200">{{ r.movie.title }}</div>
                 <div class="text-xs text-slate-400">{{ formatDate(r.createdAt) }}</div>
-                <div class="text-xs text-slate-400 mt-1">Phản hồi: <span class="font-medium text-slate-200">{{ r.replies?.length || 0 }}</span></div>
               </td>
 
               <td class="px-4 py-3">
@@ -105,7 +104,7 @@
 
               <td class="px-4 py-3">
                 <div v-if="r.reviewed" class="text-xs bg-emerald-600/20 text-emerald-300 px-2 py-0.5 rounded">Đã xử lý</div>
-                <div v-else-if="r.reported" class="text-xs bg-yellow-600/20 text-yellow-300 px-2 py-0.5 rounded">Đã báo cáo</div>
+                <div v-else-if="r.reported" class="text-xs bg-yellow-600/20 text-yellow-300 px-2 py-0.5 rounded">Đã báo cáo ({{ r.reports?.length || 0 }})</div>
                 <div v-else class="text-xs text-slate-400">-</div>
               </td>
 
@@ -118,12 +117,6 @@
                   <button @click="viewDetail(r)" class="text-blue-400 hover:text-blue-300 p-2 rounded" title="Xem chi tiết">
                     <!-- eye icon -->
                     <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
-                  </button>
-
-                  <button @click="togglePublish(r)" :class="r.isPublished ? 'text-rose-400' : 'text-emerald-400' " class="p-2 rounded" :title="r.isPublished ? 'Ẩn' : 'Hiện'">
-                    <!-- eye-off / eye icon switch -->
-                    <svg v-if="r.isPublished" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0112 19c-7 0-11-7-11-7a21.79 21.79 0 015.23-6.02"/><path d="M1 1l22 22"/></svg>
-                    <svg v-else class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
                   </button>
 
                   <button @click="confirmDelete(r)" class="text-red-400 hover:text-red-300 p-2 rounded" title="Xóa">
@@ -184,7 +177,14 @@
           <div v-if="current?.reports?.length" class="space-y-2">
             <h4 class="text-sm text-slate-300">Lý do báo cáo</h4>
             <ul class="text-sm text-slate-400 space-y-1">
-              <li v-for="(rep, i) in current.reports" :key="i">- {{ rep }}</li>
+              <li v-for="(rep, i) in current.reports" :key="rep._id || i" class="bg-slate-800 p-2 rounded">
+                <div class="flex items-center justify-between">
+                  <div class="text-sm text-slate-200"><strong>{{ rep.reason || rep.reasonText || 'Lý do' }}</strong></div>
+                  <div class="text-xs text-slate-400">{{ rep.reporterName || rep.reporter || '' }} • {{ formatDate(rep.createdAt) }}</div>
+                </div>
+                <div class="text-sm text-slate-400 mt-1">{{ rep.details || '' }}</div>
+                <div v-if="rep.isHandled" class="text-xs text-emerald-300 mt-1">Đã xử lý</div>
+              </li>
             </ul>
           </div>
 
@@ -223,6 +223,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import api from '@/services/api' // axios instance with baseURL '/api' and auth
 
 const loading = ref(true)
 const q = ref('')
@@ -232,39 +233,80 @@ const reportedOnly = ref(false)
 const page = ref(1)
 const perPage = ref(10)
 
-const comments = ref([]) // list of reviews/comments from API
+const comments = ref([]) // populated from backend
 const selected = ref([])
 const selectAll = ref(false)
 
 const showDetail = ref(false)
 const current = ref(null)
 
-// mock data
-const mock = () => ([
-  { id: 'r1', user: { id:'u1', name:'Alice', username:'alice01', avatar:'' }, movie: { id:'m1', title:'Movie A' }, rating: 5, comment: 'Tuyệt vời!', reported: false, reports:[], reviewed:false, replies:[], isPublished:true, createdAt:'2025-10-20' },
-  { id: 'r2', user: { id:'u2', name:'Bob', username:'bob' }, movie: { id:'m2', title:'Movie B' }, rating: 2, comment: 'Có nhiều lỗi.', reported: true, reports:['Nội dung không phù hợp'], reviewed:false, replies:[{id:'rp1', user:{name:'Mod',username:'mod'}, comment:'Đã kiểm tra, cảm ơn', isPublished:true, createdAt:'2025-10-22'}], isPublished:true, createdAt:'2025-10-21' },
-  { id: 'r3', user: { id:'u3', name:'Charlie', username:'char' }, movie: { id:'m1', title:'Movie A' }, rating: 1, comment: 'Spam link http://...', reported: true, reports:['Spam'], reviewed:false, replies:[], isPublished:false, createdAt:'2025-10-15' }
-])
-
+// fetch comments from backend admin endpoint
 const fetchComments = async () => {
   loading.value = true
   try {
-    // TODO: fetch from /api/admin/reviews
-    comments.value = mock()
-  } finally { loading.value = false }
+    // backend expected endpoint: GET /api/admin/reviews  OR adjust to /api/reviews?admin=1
+    const params = {
+      page: page.value,
+      limit: perPage.value,
+      q: q.value || undefined,
+      rating: ratingFilter.value || undefined,
+      status: statusFilter.value || undefined,
+      reportedOnly: reportedOnly.value || undefined
+    }
+    // try common admin path first
+    let res
+    try {
+      // prefer admin list under reviews router: GET /api/reviews/admin
+      res = await api.get('/reviews/admin', { params })
+    } catch (err) {
+      console.log('fetchComments admin path failed, fallback to /reviews with admin param', err)
+      res = await api.get('/reviews', { params: { ...params, admin: true } })
+    }
+
+    const data = res?.data?.data || res?.data || []
+    // normalize items: ensure _id/id, reports array, reported/reviewed flags and reporterName
+    const items = Array.isArray(data) ? data : (data.items || [])
+    comments.value = items.map(i => {
+      const id = i._id || i.id
+      const reportsRaw = i.reports || []
+      const reports = reportsRaw.map(r => ({
+        _id: r._id || r.id,
+        reason: r.reason || (typeof r === 'string' ? r : ''),
+        details: r.details || '',
+        isHandled: !!r.isHandled,
+        createdAt: r.createdAt || r.createdAt,
+        reporter: (r.reporter && (r.reporter.fullName || r.reporter.username)) || r.reporter || null,
+        reporterName: (r.reporter && (r.reporter.fullName || r.reporter.username)) || r.reporterName || null
+      }))
+      return {
+        ...i,
+        _id: id,
+        id,
+        reports,
+        reported: reports.length > 0,
+        reviewed: reports.some(rr => rr.isHandled)
+      }
+    })
+  } catch (err) {
+    console.error('fetchComments error', err)
+    comments.value = []
+  } finally {
+    loading.value = false
+  }
 }
 
 onMounted(fetchComments)
 
 const filtered = computed(() => {
+  // server returns already filtered/paginated; local computed kept for UI safety if list is local
   let list = comments.value.slice().sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt))
   if (q.value) {
     const t = q.value.toLowerCase()
-    list = list.filter(r => (r.user.name||'').toLowerCase().includes(t) || (r.user.username||'').toLowerCase().includes(t) || (r.movie.title||'').toLowerCase().includes(t) || (r.comment||'').toLowerCase().includes(t))
+    list = list.filter(r => (r.user?.name||'').toLowerCase().includes(t) || (r.user?.username||'').toLowerCase().includes(t) || (r.movie?.title||'').toLowerCase().includes(t) || (r.comment||'').toLowerCase().includes(t))
   }
   if (ratingFilter.value) list = list.filter(r => r.rating === Number(ratingFilter.value))
   if (statusFilter.value) list = list.filter(r => (statusFilter.value === 'published') ? r.isPublished : !r.isPublished)
-  if (reportedOnly.value) list = list.filter(r => r.reported)
+  if (reportedOnly.value) list = list.filter(r => r.reports && r.reports.length)
   return list
 })
 
@@ -272,62 +314,103 @@ const total = computed(() => filtered.value.length)
 const pages = computed(() => Math.max(1, Math.ceil(total.value / perPage.value)))
 const paged = computed(() => filtered.value.slice((page.value-1)*perPage.value, (page.value-1)*perPage.value + perPage.value))
 
-watch([q, ratingFilter, statusFilter, reportedOnly], () => page.value = 1)
+watch([q, ratingFilter, statusFilter, reportedOnly, page, perPage], () => {
+  // re-fetch from server when filters/pagination change
+  page.value = Math.max(1, page.value)
+  void fetchComments()
+})
 
 const anySelected = computed(() => selected.value.length > 0)
 
 const toggleSelectAll = () => {
-  if (selectAll.value) selected.value = paged.value.map(x => x.id)
+  if (selectAll.value) selected.value = paged.value.map(x => x._id || x.id)
   else selected.value = []
 }
 
 watch(paged, () => {
-  // if current page items change, keep selectAll consistent
-  const ids = paged.value.map(x => x.id)
+  const ids = paged.value.map(x => x._id || x.id)
   selectAll.value = ids.length && ids.every(id => selected.value.includes(id))
 })
 
 const viewDetail = (r) => { current.value = r; showDetail.value = true }
 const closeDetail = () => { showDetail.value = false; current.value = null }
 
-const togglePublish = (r) => {
-  const id = r?.id
+const togglePublish = async (r) => {
+  const id = r?._id || r?.id
   if (!id) return
-  const idx = comments.value.findIndex(x => x.id === id)
-  if (idx < 0) return
-  // confirm when hiding
-  if (comments.value[idx].isPublished) {
-    if (!confirm('Bạn có chắc muốn ẩn bình luận này?')) return
-    comments.value[idx].isPublished = false
-  } else comments.value[idx].isPublished = true
-}
-
-const confirmDelete = (r) => {
-  if (!confirm('Xóa vĩnh viễn bình luận này?')) return deleteComment(r)
-}
-const deleteComment = (r) => { comments.value = comments.value.filter(x => x.id !== r.id); closeDetail() }
-
-const markReviewed = (r) => {
-  if (!r) return
-  const idx = comments.value.findIndex(x => x.id === r.id)
-  if (idx >= 0) {
-    comments.value[idx].reported = false
-    comments.value[idx].reviewed = true
+  try {
+    // try PATCH to toggle isPublished
+    await api.patch(`/reviews/${id}`, { isPublished: !r.isPublished })
+    r.isPublished = !r.isPublished
+  } catch (err) {
+    console.warn('togglePublish fallback (no API) — updating locally', err)
+    r.isPublished = !r.isPublished
   }
-  if (current.value && current.value.id === r.id) current.value = comments.value[idx]
 }
 
-const bulkHide = () => {
+const confirmDelete = async (r) => {
+  if (!confirm('Xóa vĩnh viễn bình luận này?')) return
+  await deleteComment(r)
+}
+const deleteComment = async (r) => {
+  const id = r?._id || r?.id
+  if (!id) return
+  try {
+    // admin delete endpoint (reviewRoutes exports DELETE /admin/:id under /api/reviews)
+    await api.delete(`/reviews/admin/${id}`)
+    comments.value = comments.value.filter(x => (x._id || x.id) !== id)
+    closeDetail()
+  } catch (err) {
+    console.warn('deleteComment failed, fallback local', err)
+    comments.value = comments.value.filter(x => (x._id || x.id) !== id)
+    closeDetail()
+  }
+}
+
+const markReviewed = async (r) => {
+  const id = r?._id || r?.id
+  if (!id) return
+  try {
+    // try mark endpoint, fallback to patch
+    try {
+      await api.post(`/reviews/admin/${id}/mark-reviewed`)
+    } catch {
+      await api.patch(`/reviews/${id}`, { reviewed: true })
+    }
+    r.reviewed = true
+    r.reports = []
+  } catch (err) {
+    console.warn('markReviewed failed, update locally', err)
+    r.reviewed = true
+    r.reports = []
+  }
+}
+
+const bulkHide = async () => {
   if (!anySelected.value) return
   if (!confirm(`Ẩn ${selected.value.length} bình luận đã chọn?`)) return
-  comments.value = comments.value.map(c => selected.value.includes(c.id) ? { ...c, isPublished:false } : c)
+  const ids = [...selected.value]
+  // optimistic local update + try server
+  comments.value = comments.value.map(c => ids.includes(c._id || c.id) ? { ...c, isPublished: false } : c)
   selected.value = []
+  try {
+    await api.patch('/reviews/bulk', { ids, action: 'hide' })
+  } catch (err) {
+    console.warn('bulkHide API failed', err)
+  }
 }
-const bulkDelete = () => {
+
+const bulkDelete = async () => {
   if (!anySelected.value) return
   if (!confirm(`Xóa vĩnh viễn ${selected.value.length} bình luận đã chọn?`)) return
-  comments.value = comments.value.filter(c => !selected.value.includes(c.id))
+  const ids = [...selected.value]
+  comments.value = comments.value.filter(c => !ids.includes(c._id || c.id))
   selected.value = []
+  try {
+    await api.post('/reviews/admin/bulk-delete', { ids })
+  } catch (err) {
+    console.warn('bulkDelete API failed', err)
+  }
 }
 
 const formatDate = (d) => {
@@ -335,9 +418,8 @@ const formatDate = (d) => {
   try { return new Date(d).toLocaleString('vi-VN') } catch { return d }
 }
 
-// Add reply moderation helpers in script
 const toggleReplyPublish = (reply, parent) => {
-  const p = comments.value.find(x => x.id === parent.id)
+  const p = comments.value.find(x => (x._id || x.id) === (parent._id || parent.id))
   if (!p) return
   const idx = (p.replies||[]).findIndex(r => r.id === reply.id)
   if (idx < 0) return
@@ -345,16 +427,15 @@ const toggleReplyPublish = (reply, parent) => {
     if (!confirm('Bạn có chắc muốn ẩn phản hồi này?')) return
     p.replies[idx].isPublished = false
   } else p.replies[idx].isPublished = true
-  // update current if opened
-  if (current.value && current.value.id === p.id) current.value = p
+  if (current.value && (current.value._id || current.value.id) === (p._id || p.id)) current.value = p
 }
 
 const deleteReply = (reply, parent) => {
   if (!confirm('Xóa phản hồi này?')) return
-  const p = comments.value.find(x => x.id === parent.id)
+  const p = comments.value.find(x => (x._id || x.id) === (parent._id || parent.id))
   if (!p) return
   p.replies = (p.replies || []).filter(r => r.id !== reply.id)
-  if (current.value && current.value.id === p.id) current.value = p
+  if (current.value && (current.value._id || current.value.id) === (p._id || p.id)) current.value = p
 }
 </script>
 

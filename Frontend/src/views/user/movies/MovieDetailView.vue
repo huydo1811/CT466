@@ -2,7 +2,7 @@
 import { ref, onMounted, watch, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '@/services/api'
-
+ 
 const router = useRouter()
 const route = useRoute()
 
@@ -51,6 +51,28 @@ const submittingReview = ref(false)
 const isAuthenticated = computed(() => {
   return !!(localStorage.getItem('token') || api.defaults.headers.common['Authorization'])
 })
+
+// current user info (for marking "bạn")
+const currentUser = ref(null)
+const currentUserId = ref(null)
+
+const fetchCurrentUser = async () => {
+  try {
+    if (!isAuthenticated.value) {
+      currentUser.value = null
+      currentUserId.value = null
+      return
+    }
+    const res = await api.get('/users/me')
+    const u = res?.data?.data || res?.data || null
+    currentUser.value = u
+    currentUserId.value = u?._id || u?.id || null
+  } catch (e) {
+    console.warn('fetchCurrentUser failed', e)
+    currentUser.value = null
+    currentUserId.value = null
+  }
+}
 
 const isFavorited = ref(false)
 
@@ -369,11 +391,67 @@ const formattedReleaseDate = computed(() => {
 onMounted(() => {
   const id = route.params.id
   if (id) fetchMovie(id)
+  fetchCurrentUser()
 })
 
 watch(() => route.params.id, (newId) => {
   if (newId) fetchMovie(newId)
 })
+
+// re-fetch current user when auth changes
+watch(isAuthenticated, (v) => {
+  if (v) fetchCurrentUser()
+  else { currentUser.value = null; currentUserId.value = null }
+})
+
+// report UI state
+const reportModalVisible = ref(false)
+const reportTarget = ref(null) // review object
+const reportReason = ref('')
+const reportDetails = ref('')
+const reportSubmitting = ref(false)
+const reportOptions = [
+  'Spam / quảng cáo',
+  'Ngôn ngữ xúc phạm / chửi bậy',
+  'Quấy rối / tấn công cá nhân',
+  'Nội dung khiêu dâm',
+  'Khác'
+]
+
+const openReportModal = (review) => {
+  reportTarget.value = review
+  reportReason.value = ''
+  reportDetails.value = ''
+  reportModalVisible.value = true
+}
+
+const closeReportModal = () => {
+  reportModalVisible.value = false
+  reportTarget.value = null
+}
+
+const submitReport = async () => {
+  if (!isAuthenticated.value) {
+    router.push({ name: 'login', query: { redirect: route.fullPath } })
+    return
+  }
+  if (!reportTarget.value || !reportReason.value) return
+  reportSubmitting.value = true
+  try {
+    await api.post(`/reviews/${reportTarget.value._id}/report`, {
+      reason: reportReason.value,
+      details: reportDetails.value
+    })
+    // optional: show success (use alert for simplicity)
+    alert('Báo cáo đã gửi tới quản trị viên.')
+    closeReportModal()
+  } catch (err) {
+    console.error('submitReport error', err)
+    alert('Gửi báo cáo thất bại.')
+  } finally {
+    reportSubmitting.value = false
+  }
+}
 </script>
 
 <!-- Template changes: replace trailer/button/cast/similar/reviews parts -->
@@ -550,7 +628,7 @@ watch(() => route.params.id, (newId) => {
 
                 <div class="flex justify-between">
                   <span class="text-gray-400">Thời lượng</span>
-                  <span class="text-white text-right">{{ movie.duration }}</span>
+                  <span class="text-white text-right">{{ movie.duration }} phút</span>
                 </div>
                 <div class="border-b border-gray-700"></div>
 
@@ -590,27 +668,44 @@ watch(() => route.params.id, (newId) => {
 
           <!-- SHOW all reviews first -->
           <div class="space-y-6 mb-6">
-            <div v-for="review in movie.reviews" :key="review._id || review.id" class="bg-dark-800 border border-gray-800 rounded-xl p-6">
-              <div class="flex justify-between items-center mb-4">
-                <div class="flex items-center">
-                  <div class="w-10 h-10 bg-primary-600 rounded-full flex items-center justify-center text-white font-medium">
-                    {{ (review.user?.username || review.author || 'U').charAt(0).toUpperCase() }}
-                  </div>
-                  <div class="ml-3">
-                    <h4 class="text-white font-medium">{{ review.user?.username || review.author || 'Người dùng' }}</h4>
-                    <p class="text-gray-400 text-sm">{{ new Date(review.createdAt || review.date).toLocaleDateString() }}</p>
+            <div v-for="review in movie.reviews" :key="review._id || review.id" class="relative bg-dark-800 border border-gray-800 rounded-xl p-6 overflow-hidden">
+              <!-- avatar + meta -->
+              <div class="flex items-start gap-3 mb-3">
+                <div class="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
+                  <img v-if="review.user?.avatar" :src="getMediaUrl(review.user.avatar)" alt="avatar" class="w-full h-full object-cover" />
+                  <div v-else class="w-full h-full bg-primary-600 flex items-center justify-center text-white font-medium">
+                    {{ (review.user?.fullName || review.author || 'U').charAt(0).toUpperCase() }}
                   </div>
                 </div>
-                <div class="flex items-center px-3 py-1 bg-yellow-400/10 rounded-lg">
-                  <svg class="w-4 h-4 text-yellow-400 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-                  </svg>
-                  <span class="text-white font-medium">{{ review.rating }}/5</span>
+                <div class="flex-1">
+                  <h4 class="text-white font-medium">
+                    {{ review.user?.fullName || review.author || 'Người dùng' }}
+                    <span v-if="currentUserId && String(review.user?._id || review.user?.id) === String(currentUserId)" class=" text-xs text-primary-400">(bạn)</span>
+                  </h4>
+                  <p class="text-gray-400 text-sm">{{ new Date(review.updatedAt || review.date).toLocaleDateString() }}</p>
                 </div>
               </div>
-              <p class="text-gray-300">{{ review.comment || review.content }}</p>
+
+              <!-- comment -->
+              <p class="text-gray-300 mb-4 leading-relaxed whitespace-pre-line">{{ review.comment || review.content }}</p>
+
+              <!-- rating badge + report button (absolute top-right) -->
+              <div class="absolute top-4 right-4 flex items-center gap-3">
+                <div class="flex items-center gap-2 bg-black/70 px-3 py-1 rounded-full shadow-sm">
+                  <svg class="w-4 h-4 text-yellow-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                  </svg>
+                  <span class="text-white font-semibold text-sm">{{ review.rating }}/5</span>
+                </div>
+
+                <button type="button" @click="openReportModal(review)" class="w-9 h-9 bg-red-600 hover:bg-red-500 text-white rounded-full flex items-center justify-center shadow" title="Báo cáo bình luận">
+                  <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.681-1.36 3.446 0l6.518 11.59c.75 1.334-.213 2.95-1.724 2.95H3.463c-1.51 0-2.475-1.616-1.724-2.95L8.257 3.1zM11 13a1 1 0 10-2 0 1 1 0 002 0zm-1-8a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5z" clip-rule="evenodd"/>
+                  </svg>
+                </button>
+              </div>
             </div>
-            <div v-if="!movie.reviews || movie.reviews.length === 0" class="text-gray-500">Chưa có đánh giá nào.</div>
+             <div v-if="!movie.reviews || movie.reviews.length === 0" class="text-gray-500">Chưa có đánh giá nào.</div>
           </div>
 
           <!-- Then show user's form -->
@@ -661,6 +756,29 @@ watch(() => route.params.id, (newId) => {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Report Modal -->
+    <div v-if="reportModalVisible" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+      <div class="bg-dark-800 rounded-xl p-6 w-full max-w-md">
+        <h3 class="text-lg font-semibold text-white mb-3">Báo cáo bình luận</h3>
+        <p class="text-black-400 mb-3">Chọn lý do báo cáo cho bình luận của <strong>{{ reportTarget?.user?.fullName || 'Người dùng' }}</strong></p>
+        <div class="mb-3">
+          <select v-model="reportReason" class="w-full p-2 bg-dark-700 text-black rounded">
+            <option value="" disabled>Chọn lý do</option>
+            <option v-for="opt in reportOptions" :key="opt" :value="opt">{{ opt }}</option>
+          </select>
+        </div>
+        <div class="mb-4">
+          <textarea v-model="reportDetails" rows="4" class="w-full p-2 bg-dark-700 text-black rounded" placeholder="Mô tả chi tiết (tùy chọn)"></textarea>
+        </div>
+        <div class="flex justify-end gap-2">
+          <button @click="closeReportModal" class="btn-outline py-2 px-4">Hủy</button>
+          <button @click="submitReport" :disabled="reportSubmitting" class="btn-primary py-2 px-4">
+            {{ reportSubmitting ? 'Đang gửi...' : 'Gửi báo cáo' }}
+          </button>
         </div>
       </div>
     </div>

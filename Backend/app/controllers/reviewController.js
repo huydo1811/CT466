@@ -1,6 +1,7 @@
 import reviewService from '../services/reviewService.js';
-import { asyncHandler } from '../utils/asyncHandler.js';
 import mongoose from 'mongoose';
+import Review from '../models/Review.js'
+import { asyncHandler } from '../utils/asyncHandler.js'
 
 const isValidObjectId = (id) => {
   return mongoose.Types.ObjectId.isValid(id) && /^[0-9a-fA-F]{24}$/.test(id);
@@ -161,3 +162,154 @@ export const getReviewStats = asyncHandler(async (req, res) => {
     data: stats
   });
 });
+
+// Báo cáo review (Protected)
+export const reportReview = asyncHandler(async (req, res) => {
+  const reviewId = req.params.id
+  const userId = req.user && (req.user._id || req.user.id)
+  const { reason, details } = req.body
+
+  if (!reason || !String(reason).trim()) {
+    return res.status(400).json({ success: false, message: 'Vui lòng chọn lý do báo cáo' })
+  }
+
+  const review = await Review.findById(reviewId)
+  if (!review) return res.status(404).json({ success: false, message: 'Review không tồn tại' })
+
+  review.reports = review.reports || []
+  review.reports.push({ reporter: userId, reason: String(reason).trim(), details: String(details || '') })
+  await review.save()
+
+  // trả lại report vừa tạo
+  const last = review.reports[review.reports.length - 1]
+  return res.status(200).json({ success: true, data: last })
+})
+
+// Lấy danh sách review cho admin (Admin only)
+export const getAdminReviews = asyncHandler(async (req, res) => {
+  const page = Math.max(1, Number(req.query.page) || 1)
+  const limit = Math.max(1, Number(req.query.limit) || 20)
+  const skip = (page - 1) * limit
+
+  const match = {}
+
+  if (req.query.q) {
+    const q = String(req.query.q).trim()
+    match.$or = [
+      { comment: { $regex: q, $options: 'i' } },
+      { 'user.username': { $regex: q, $options: 'i' } },
+      { 'user.fullName': { $regex: q, $options: 'i' } }
+    ]
+    // note: this $or on subfields is for readability; below we also allow populate-filter fallback
+  }
+
+  if (req.query.rating) match.rating = Number(req.query.rating)
+  if (req.query.status === 'hidden') match.isPublished = false
+  if (req.query.status === 'published') match.isPublished = true
+  if (req.query.reportedOnly === 'true' || req.query.reportedOnly === '1') 
+    // only reviews that have at least one report with isHandled === false
+    match['reports'] = { $elemMatch: { isHandled: false } }
+
+  // build aggregation to allow text search on populated fields
+  const agg = []
+  if (Object.keys(match).length) agg.push({ $match: match })
+  agg.push({ $sort: { createdAt: -1 } })
+  agg.push({ $skip: skip })
+  agg.push({ $limit: limit })
+
+  // lookup user and movie for admin view
+  agg.push(
+    {
+      $lookup: {
+        from: 'users',
+        localField: 'user',
+        foreignField: '_id',
+        as: 'user'
+      }
+    },
+    { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+    {
+      $lookup: {
+        from: 'movies',
+        localField: 'movie',
+        foreignField: '_id',
+        as: 'movie'
+      }
+    },
+    { $unwind: { path: '$movie', preserveNullAndEmptyArrays: true } }
+  )
+
+  const [items, countRes] = await Promise.all([
+    Review.aggregate(agg).exec(),
+    Review.countDocuments(match)
+  ])
+
+  const total = countRes || 0
+  const totalPages = Math.max(1, Math.ceil(total / limit))
+
+  return res.status(200).json({
+    success: true,
+    data: items,
+    pagination: { page, limit, totalPages, totalItems: total }
+  })
+})
+
+export const markReportHandled = asyncHandler(async (req, res) => {
+  const { reviewId, reportId } = req.params
+  if (!reviewId || !reportId) return res.status(400).json({ success: false, message: 'Missing params' })
+
+  const review = await Review.findById(reviewId)
+  if (!review) return res.status(404).json({ success: false, message: 'Review not found' })
+
+  const report = review.reports.id(reportId)
+  if (!report) return res.status(404).json({ success: false, message: 'Report not found' })
+
+  report.isHandled = true
+  await review.save()
+
+  return res.status(200).json({ success: true, data: report })
+})
+
+export const updateReview = asyncHandler(async (req, res) => {
+  const id = req.params.id
+  if (!isValidObjectId(id)) return res.status(400).json({ success: false, message: 'ID review không hợp lệ' })
+
+  const review = await Review.findById(id)
+  if (!review) return res.status(404).json({ success: false, message: 'Review không tồn tại' })
+
+  const userId = req.user && (req.user._id || req.user.id)
+  const isAdmin = Array.isArray(req.user?.roles) ? req.user.roles.includes('admin') : req.user?.role === 'admin'
+
+  // only owner or admin can update
+  if (!isAdmin && String(review.user) !== String(userId)) {
+    return res.status(403).json({ success: false, message: 'Không có quyền cập nhật review này' })
+  }
+
+  const allowed = ['comment', 'rating', 'isPublished', 'reviewed']
+  allowed.forEach(k => {
+    if (typeof req.body[k] !== 'undefined') review[k] = req.body[k]
+  })
+
+  await review.save()
+  const populated = await Review.findById(review._id).populate('user', 'username fullName avatar').populate('movie', 'title poster slug')
+  return res.status(200).json({ success: true, data: populated })
+})
+
+export const markReviewed = asyncHandler(async (req, res) => {
+  const id = req.params.id
+  if (!isValidObjectId(id)) return res.status(400).json({ success: false, message: 'ID review không hợp lệ' })
+
+  // admin only — authorize middleware should protect route, but double-check
+  const review = await Review.findById(id)
+  if (!review) return res.status(404).json({ success: false, message: 'Review không tồn tại' })
+
+  review.reviewed = true
+  if (Array.isArray(review.reports) && review.reports.length) {
+    review.reports = review.reports.map(r => {
+      r.isHandled = true
+      return r
+    })
+  }
+  await review.save()
+  return res.status(200).json({ success: true, message: 'Đã đánh dấu là đã xử lý', data: review })
+})
