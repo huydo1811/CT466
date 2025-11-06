@@ -191,7 +191,7 @@ export const updateMovie = asyncHandler(async (req, res) => {
   const { id } = req.params
   const payload = { ...req.body }
 
-  // debug: in ra req.files và req.body khi dev
+  // debug logs (ok để dev)
   console.log('updateMovie req.body:', req.body)
   console.log('updateMovie req.files:', req.files)
 
@@ -203,12 +203,16 @@ export const updateMovie = asyncHandler(async (req, res) => {
     payload.totalEpisodes = Number(payload.totalEpisodes)
   }
 
-  // CHỈ cập nhật poster nếu có file upload (tên field = 'poster')
+  // map uploaded files -> payload
   if (req.files && req.files.poster && req.files.poster[0]) {
     payload.poster = buildFileUrl(req, req.files.poster[0].filename, 'movies')
   }
+  if (req.files && req.files.video && req.files.video[0]) {
+    payload.videoUrl = buildFileUrl(req, req.files.video[0].filename, 'movies')
+  }
 
-  const updated = await Movie.findByIdAndUpdate(id, payload, { new: true, runValidators: true })
+  // use service that sẽ xóa file cũ nếu file mới khác file cũ
+  const updated = await movieService.updateMovie(id, payload, req.user?.id)
   if (!updated) return res.status(404).json({ success: false, message: 'Movie not found' })
   res.json({ success: true, data: updated })
 });

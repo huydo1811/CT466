@@ -1,9 +1,12 @@
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount} from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import api from '@/services/api'
 
+const router = useRouter()
+const route = useRoute()
 
-
-// Player states
+// UI / player states
 const isPlaying = ref(false)
 const isMuted = ref(false)
 const isFullscreen = ref(false)
@@ -17,221 +20,314 @@ const videoContainer = ref(null)
 const videoPlayer = ref(null)
 const isLoading = ref(true)
 
-// Movie data (sẽ thay bằng API call sau)
+// movie + reviews
 const movie = ref({
-  id: 1,
-  title: "Spider-Man: No Way Home",
-  year: 2021,
-  poster: "https://image.tmdb.org/t/p/w500/1g0dhYtq4irTY1GPXvft6k4YLjm.jpg",
-  description: "Peter Parker's secret identity is revealed to the entire world. Desperate for help, Peter turns to Doctor Strange to make the world forget that he is Spider-Man. The spell goes horribly wrong and shatters the multiverse, bringing in monstrous villains that could destroy the world.",
-  duration: "148 phút",
-  videoSrc: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-  genres: ["Hành động", "Phiêu lưu", "Khoa học viễn tưởng"],
-  
-  // Episodes (nếu là phim bộ)
-  episodes: [],
-  
-  // Chất lượng video
-  qualities: ['1080p', '720p', '480p', '360p'],
-  
-  // Phim liên quan
-  related: [
-    { id: 202, title: "Spider-Man: Homecoming", poster: "https://image.tmdb.org/t/p/w500/c24sv2weTHPsmDa7jEMN0m2P3RT.jpg", year: 2017, duration: "133 phút" },
-    { id: 203, title: "Spider-Man: Far From Home", poster: "https://image.tmdb.org/t/p/w500/4q2NNj4S5dG2RLF9CpXsej7yXl.jpg", year: 2019, duration: "129 phút" },
-    { id: 204, title: "The Amazing Spider-Man", poster: "https://image.tmdb.org/t/p/w500/fSbqPbqXa7ePo8bcnZYN9AHv6zA.jpg", year: 2012, duration: "136 phút" },
-    { id: 205, title: "Spider-Man", poster: "https://image.tmdb.org/t/p/w500/gh4cZbhZxyTbgxQPxD0dOudNPTn.jpg", year: 2002, duration: "121 phút" },
-    { id: 201, title: "Doctor Strange in the Multiverse of Madness", poster: "https://image.tmdb.org/t/p/w500/9Gtg2DzBhmYamXBS1hKAhiwbBKS.jpg", year: 2022, duration: "126 phút" },
-  ]
+  id: null,
+  title: '',
+  poster: '',
+  description: '',
+  duration: '',
+  videoSrc: '',
+  videoUrl: '',
+  qualities: ['1080p','720p','480p','360p'],
+  genres: [],
+  cast: [],
+  reviews: [],
+  related: []
 })
 
-// Comments
-const comments = ref([
-  { id: 1, user: "MarvelFan", avatar: null, content: "Phim hay quá! Cảnh hành động đỉnh cao.", time: "2 giờ trước", likes: 24 },
-  { id: 2, user: "SpideyLover", avatar: null, content: "Tom Holland là Spider-Man hay nhất từ trước đến nay!", time: "5 giờ trước", likes: 15 },
-  { id: 3, user: "MovieCritic", avatar: null, content: "Cốt truyện rất thú vị, kết hợp nhiều vũ trụ Marvel khác nhau một cách mượt mà.", time: "1 ngày trước", likes: 42 },
-])
+const loading = ref(false)
 
-// Comment form
-const commentForm = ref({
-  content: ''
-})
+// auth / user
+const isAuthenticated = computed(() => !!(localStorage.getItem('token') || api.defaults.headers.common['Authorization']))
+const currentUser = ref(null)
+const currentUserId = ref(null)
 
-// Kiểm tra có phải là phim bộ không
-const isSeries = computed(() => movie.value.episodes && movie.value.episodes.length > 0)
-
-// Format time (mm:ss)
-function formatTime(seconds) {
-  if (isNaN(seconds) || seconds < 0) return '00:00'
-  
-  const mins = Math.floor(seconds / 60)
-  const secs = Math.floor(seconds % 60)
-  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+const fetchCurrentUser = async () => {
+  try {
+    if (!isAuthenticated.value) { currentUser.value = null; currentUserId.value = null; return }
+    const res = await api.get('/users/me')
+    const u = res?.data?.data || res?.data || null
+    currentUser.value = u
+    currentUserId.value = u?._id || u?.id || null
+  } catch (e) {
+    console.warn('fetchCurrentUser failed', e)
+    currentUser.value = null
+    currentUserId.value = null
+  }
 }
 
-// Computed time display
+// helpers
+const getMediaUrl = (u) => {
+  if (!u) return ''
+  if (/^data:|^https?:\/\//.test(u)) return u
+  return `${window.location.origin}${u}`
+}
+
+const extractYouTubeId = (s) => {
+  if (!s) return ''
+  if (/^[0-9A-Za-z_-]{11}$/.test(s)) return s
+  const m = String(s).match(/(?:v=|\/)([0-9A-Za-z_-]{11})/)
+  return m ? m[1] : ''
+}
+
+// normalize movie payload (map videoUrl, poster, cast, reviews)
+const normalizeMovie = (m) => {
+  if (!m) return {}
+  const trailerKey = extractYouTubeId(m.trailerKey || m.trailer || m.trailerUrl || m.trailer_link || '')
+  const poster = getMediaUrl(m.poster || m.posterUrl || m.thumbnail)
+  const backdrop = getMediaUrl(m.backdrop || m.backdropUrl)
+  const videoSrc = m.videoUrl || m.videoSrc || ''
+  const castRaw = Array.isArray(m.cast) ? m.cast : (Array.isArray(m.actors) ? m.actors : [])
+  const cast = castRaw.map(a => {
+    if (!a) return { id: null, name: '', character: '', image: '' }
+    if (typeof a === 'string' || typeof a === 'number') return { id: a, name: '', character: '', image: '' }
+    return {
+      id: a._id || a.id || null,
+      name: a.name || a.fullName || '',
+      character: a.character || a.role || '',
+      image: getMediaUrl(a.image || a.photo || a.avatar)
+    }
+  })
+  return {
+    ...m,
+    id: m._id || m.id || null,
+    poster,
+    backdrop,
+    trailerKey,
+    videoSrc,
+    videoUrl: videoSrc,
+    cast,
+    reviews: m.reviews || [],
+    genres: Array.isArray(m.genres) ? m.genres : []
+  }
+}
+
+// fetch reviews if backend didn't include reviews in movie object
+const fetchReviewsIfNeeded = async (movieId) => {
+  try {
+    if (!movieId) return
+    if (Array.isArray(movie.value.reviews) && movie.value.reviews.length) return
+    const res = await api.get(`/reviews/movie/${movieId}`, { params: { limit: 1000 } })
+    const list = res?.data?.data || res?.data || []
+    movie.value.reviews = list
+  } catch (e) {
+    console.warn('fetchReviewsIfNeeded failed', e)
+    movie.value.reviews = movie.value.reviews || []
+  }
+}
+
+// fetch movie by id (use same endpoint as MovieDetailView)
+const fetchMovie = async (id) => {
+  if (!id) return
+  loading.value = true
+  try {
+    const res = await api.get(`/movies/${id}`)
+    const data = res?.data?.data || res?.data || null
+    if (!data) { router.replace({ name: 'movies' }); return }
+    const normalized = normalizeMovie(data)
+    Object.assign(movie.value, normalized)
+    await fetchReviewsIfNeeded(movie.value.id || id)
+    // fetch related by genres
+    await fetchRelatedMovies(movie.value)
+  } catch (err) {
+    console.error('fetchMovie error', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// favorite + review actions
+const isFavorited = ref(false)
+const updateFavoriteStatus = async () => {
+  try {
+    if (!isAuthenticated.value) { isFavorited.value = false; return }
+    const res = await api.get('/users/me')
+    const favs = res?.data?.data?.favorites || res?.data?.data?.favoriteMovies || []
+    const mid = movie.value.id || route.params.id
+    isFavorited.value = favs.some(f => String(f._id || f.id || f) === String(mid))
+  } catch (e) {
+    console.warn('updateFavoriteStatus failed', e)
+  }
+}
+
+const toggleFavorite = async () => {
+  if (!isAuthenticated.value) { router.push({ name: 'login', query: { redirect: route.fullPath } }); return }
+  const mid = movie.value.id || route.params.id
+  try {
+    if (!isFavorited.value) {
+      await api.post(`/users/me/favorites/${mid}`)
+      isFavorited.value = true
+    } else {
+      await api.delete(`/users/me/favorites/${mid}`)
+      isFavorited.value = false
+    }
+    await fetchMovie(mid)
+  } catch (e) {
+    console.error('toggleFavorite failed', e)
+  }
+}
+
+// review form
+const userRating = ref(5)
+const userComment = ref('')
+const submittingReview = ref(false)
+
+const submitReview = async () => {
+  if (!isAuthenticated.value) { router.push({ name: 'login', query: { redirect: route.fullPath } }); return }
+  if (!movie.value.id && !route.params.id) return
+  submittingReview.value = true
+  try {
+    const movieId = movie.value.id || route.params.id
+    const body = { rating: Number(userRating.value), comment: userComment.value }
+    const res = await api.post(`/reviews/movie/${movieId}`, body)
+    if (res?.data?.data) {
+      movie.value.reviews.unshift(res.data.data)
+      userComment.value = ''
+      userRating.value = 5
+    } else {
+      await fetchReviewsIfNeeded(movieId)
+    }
+  } catch (err) {
+    console.error('submitReview error', err)
+    if (err?.response?.status === 401) router.push({ name: 'login', query: { redirect: route.fullPath } })
+  } finally {
+    submittingReview.value = false
+  }
+}
+
+// player controls (keep existing logic)
+function togglePlay() {
+  const video = videoPlayer.value
+  if (!video) return
+  if (video.paused) { video.play(); isPlaying.value = true }
+  else { video.pause(); isPlaying.value = false }
+}
+function toggleMute() { const video = videoPlayer.value; if (!video) return; video.muted = !video.muted; isMuted.value = video.muted }
+function toggleFullscreen() { if (!document.fullscreenElement) { videoContainer.value.requestFullscreen(); isFullscreen.value = true } else { document.exitFullscreen(); isFullscreen.value = false } }
+function handleVolumeChange(e) { const video = videoPlayer.value; if (!video) return; volume.value = e.target.value; video.volume = volume.value / 100; isMuted.value = video.volume === 0 }
+function seekVideo(e) { const video = videoPlayer.value; if (!video) return; const rect = e.target.getBoundingClientRect(); const pos = (e.clientX - rect.left) / rect.width; video.currentTime = pos * video.duration }
+function hideControls() { if (controlsTimeout.value) clearTimeout(controlsTimeout.value); controlsTimeout.value = setTimeout(() => { if (isPlaying.value) showControls.value = false }, 3000) }
+function showControlsOnMove() { showControls.value = true; hideControls() }
+function changeQuality(quality) { videoQuality.value = quality; const currentPlaybackPosition = videoPlayer.value?.currentTime || 0; isLoading.value = true; setTimeout(() => { videoPlayer.value.currentTime = currentPlaybackPosition; isLoading.value = false; togglePlay() }, 800) }
+
+function onLoadedMetadata() { duration.value = videoPlayer.value.duration; isLoading.value = false }
+function onTimeUpdate() { currentTime.value = videoPlayer.value.currentTime }
+function onVideoEnded() { isPlaying.value = false }
+
+// progress computed
+const progressPercentage = computed(() => {
+  if (!duration.value || duration.value === 0) return 0
+  return Math.min(100, Math.max(0, (currentTime.value / duration.value) * 100))
+})
+
+// helper: format seconds -> mm:ss / hh:mm:ss
+const formatTime = (s) => {
+  const sec = Number(s) || 0
+  const hrs = Math.floor(sec / 3600)
+  const mins = Math.floor((sec % 3600) / 60)
+  const secs = Math.floor(sec % 60)
+  if (hrs > 0) return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+}
+
 const timeDisplay = computed(() => {
   return `${formatTime(currentTime.value)} / ${formatTime(duration.value)}`
 })
 
-// Progress percentage
-const progressPercentage = computed(() => {
-  if (duration.value === 0) return 0
-  return (currentTime.value / duration.value) * 100
-})
+// pointer seek (drag) state
+let seeking = false
 
-// Player functions
-function togglePlay() {
-  const video = videoPlayer.value
-  if (!video) return
-  
-  if (video.paused) {
-    video.play()
-    isPlaying.value = true
-  } else {
-    video.pause()
-    isPlaying.value = false
+const startSeek = (ev) => {
+  seeking = true
+  // initial position update
+  onPointerMove(ev)
+  window.addEventListener('pointermove', onPointerMove)
+  window.addEventListener('pointerup', onPointerUp, { once: true })
+}
+
+const onPointerMove = (ev) => {
+  if (!seeking || !ev) return
+  // find progress bar element from event.currentTarget if available, fallback to querySelector
+  const bar = (ev.currentTarget && ev.currentTarget.closest) ? ev.currentTarget : document.querySelector('.movie-progress-bar') || ev.currentTarget
+  const rect = (bar && bar.getBoundingClientRect) ? bar.getBoundingClientRect() : { left: 0, width: window.innerWidth }
+  const clientX = ev.clientX || (ev.touches && ev.touches[0] && ev.touches[0].clientX) || 0
+  const pos = Math.min(Math.max(0, clientX - rect.left), rect.width)
+  const pct = rect.width > 0 ? (pos / rect.width) : 0
+  if (videoPlayer.value && typeof videoPlayer.value.duration === 'number' && !isNaN(videoPlayer.value.duration)) {
+    videoPlayer.value.currentTime = pct * videoPlayer.value.duration
+    // update reactive time immediately
+    currentTime.value = videoPlayer.value.currentTime
   }
 }
 
-function toggleMute() {
-  const video = videoPlayer.value
-  if (!video) return
-  
-  video.muted = !video.muted
-  isMuted.value = video.muted
+const onPointerUp = () => {
+  seeking = false
+  window.removeEventListener('pointermove', onPointerMove)
 }
 
-function toggleFullscreen() {
-  if (!document.fullscreenElement) {
-    videoContainer.value.requestFullscreen()
-    isFullscreen.value = true
-  } else {
-    document.exitFullscreen()
-    isFullscreen.value = false
-  }
-}
-
-function handleVolumeChange(e) {
-  const video = videoPlayer.value
-  if (!video) return
-  
-  volume.value = e.target.value
-  video.volume = volume.value / 100
-  if (video.volume === 0) {
-    isMuted.value = true
-  } else {
-    isMuted.value = false
-  }
-}
-
-function seekVideo(e) {
-  const video = videoPlayer.value
-  if (!video) return
-  
-  const rect = e.target.getBoundingClientRect()
-  const pos = (e.clientX - rect.left) / rect.width
-  video.currentTime = pos * video.duration
-}
-
-function hideControls() {
-  if (controlsTimeout.value) {
-    clearTimeout(controlsTimeout.value)
-  }
-  
-  controlsTimeout.value = setTimeout(() => {
-    if (isPlaying.value) {
-      showControls.value = false
+// related movies fetch
+const fetchRelatedMovies = async (movieObj) => {
+  try {
+    if (!movieObj) return
+    const genres = Array.isArray(movieObj.genres) ? movieObj.genres.filter(Boolean) : []
+    if (!genres.length) {
+      movie.value.related = []
+      return
     }
-  }, 3000)
-}
-
-function showControlsOnMove() {
-  showControls.value = true
-  hideControls()
-}
-
-function changeQuality(quality) {
-  // Trong thực tế, bạn sẽ thay đổi src của video dựa vào quality
-  videoQuality.value = quality
-  const currentPlaybackPosition = videoPlayer.value.currentTime
-  
-  // Giả lập thay đổi nguồn video
-  isLoading.value = true
-  setTimeout(() => {
-    // videoPlayer.value.src = `${movie.value.videoSrc.replace('.mp4', '')}_${quality}.mp4`
-    videoPlayer.value.currentTime = currentPlaybackPosition
-    isLoading.value = false
-    togglePlay()
-  }, 1000)
-}
-
-// Video event listeners
-function onLoadedMetadata() {
-  duration.value = videoPlayer.value.duration
-  isLoading.value = false
-}
-
-function onTimeUpdate() {
-  currentTime.value = videoPlayer.value.currentTime
-}
-
-function onVideoEnded() {
-  isPlaying.value = false
-}
-
-function submitComment() {
-  if (!commentForm.value.content.trim()) return
-  
-  // Normally you'd send this to an API
-  comments.value.unshift({
-    id: Date.now(),
-    user: "You",
-    avatar: null,
-    content: commentForm.value.content,
-    time: "Vừa xong",
-    likes: 0
-  })
-  
-  commentForm.value.content = ''
-}
-
-// Keypress handlers for player
-function handleKeyPress(e) {
-  if (e.key === ' ' || e.key === 'k' || e.key === 'K') {
-    togglePlay()
-    e.preventDefault()
-  } else if (e.key === 'm' || e.key === 'M') {
-    toggleMute()
-  } else if (e.key === 'f' || e.key === 'F') {
-    toggleFullscreen()
-  } else if (e.key === 'ArrowRight') {
-    videoPlayer.value.currentTime += 10
-  } else if (e.key === 'ArrowLeft') {
-    videoPlayer.value.currentTime -= 10
-  } else if (e.key === 'ArrowUp') {
-    volume.value = Math.min(100, volume.value + 5)
-    videoPlayer.value.volume = volume.value / 100
-  } else if (e.key === 'ArrowDown') {
-    volume.value = Math.max(0, volume.value - 5)
-    videoPlayer.value.volume = volume.value / 100
+    const params = { genres: genres.join(','), limit: 12 }
+    const res = await api.get('/movies', { params })
+    const items = res?.data?.data || res?.data || []
+    // normalize and exclude current movie
+    const related = (Array.isArray(items) ? items : (items.items || [])).filter(m => (m._id || m.id) !== (movieObj.id || movieObj._id)).slice(0, 12).map(m => ({
+      id: m._id || m.id,
+      title: m.title || m.name || '',
+      poster: (m.poster && (/^https?:\/\//.test(m.poster) ? m.poster : `${window.location.origin}${m.poster}`)) || (m.thumbnail ? `${window.location.origin}${m.thumbnail}` : ''),
+      year: m.year || m.releaseYear || '',
+      duration: m.duration || m.length || ''
+    }))
+    movie.value.related = related
+  } catch (e) {
+    console.warn('fetchRelatedMovies failed', e)
+    movie.value.related = movie.value.related || []
   }
 }
 
-// Lifecycle hooks
+// lifecycle
 onMounted(() => {
-  document.addEventListener('keydown', handleKeyPress)
-  
-  // Fake loading delay
-  setTimeout(() => {
-    isLoading.value = false
-  }, 1500)
+  document.addEventListener('keydown', (e) => {
+    if (e.key === ' ' || e.key === 'k' || e.key === 'K') { togglePlay(); e.preventDefault() }
+    if (e.key === 'm' || e.key === 'M') toggleMute()
+    if (e.key === 'f' || e.key === 'F') toggleFullscreen()
+    if (e.key === 'ArrowRight') videoPlayer.value.currentTime += 10
+    if (e.key === 'ArrowLeft') videoPlayer.value.currentTime -= 10
+  })
+
+  const id = route.params.id
+  if (id) {
+    // ensure favorite status is updated after movie/user loaded
+    void fetchMovie(id).then(() => updateFavoriteStatus())
+  }
+  void fetchCurrentUser().then(() => updateFavoriteStatus())
+  fetchReviewsIfNeeded(route.params.id)
 })
 
 onBeforeUnmount(() => {
-  document.removeEventListener('keydown', handleKeyPress)
-  if (controlsTimeout.value) {
-    clearTimeout(controlsTimeout.value)
+  document.removeEventListener('keydown', () => {})
+  if (controlsTimeout.value) clearTimeout(controlsTimeout.value)
+  // remove any pointer listeners left
+  window.removeEventListener('pointermove', onPointerMove)
+})
+
+watch(() => route.params.id, (newId) => { 
+  if (newId) {
+    void fetchMovie(newId).then(() => updateFavoriteStatus())
   }
+})
+watch(isAuthenticated, (v) => { 
+  if (v) {
+    fetchCurrentUser().then(() => updateFavoriteStatus())
+  } else { currentUser.value = null; currentUserId.value = null; isFavorited.value = false }
 })
 </script>
 
@@ -287,12 +383,27 @@ onBeforeUnmount(() => {
           :class="{'opacity-0': !showControls && isPlaying}"
         >
           <!-- Progress bar -->
-          <div 
-            class="h-1.5 bg-gray-600/50 rounded-full cursor-pointer mb-4"
-            @click="seekVideo"
-          >
-            <div class="h-full bg-primary-500 rounded-full relative" :style="`width: ${progressPercentage}%`">
-              <div class="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-primary-500 rounded-full"></div>
+          <div class="mb-2 relative">
+            <div class="text-xs text-gray-300 mb-2 text-right pr-1 select-none" v-if="showControls">
+              {{ timeDisplay }}
+            </div>
+            <div 
+              class="h-1.5 bg-gray-600/50 rounded-full cursor-pointer movie-progress-bar relative"
+              @click="seekVideo"
+              @pointerdown.prevent="startSeek"
+            >
+              <div class="h-full bg-primary-500 rounded-full relative" :style="`width: ${progressPercentage}%`">
+                <div class="absolute -right-1 top-1/2 -translate-y-1/2 w-3 h-3 bg-primary-500 rounded-full"></div>
+              </div>
+
+              <!-- floating time label over thumb -->
+              <div
+                v-if="showControls"
+                class="absolute -top-7 transform -translate-x-1/2 px-2 py-0.5 bg-black/80 text-xs text-white rounded"
+                :style="`left: ${Math.max(6, Math.min(94, progressPercentage))}%`"
+              >
+                {{ formatTime(currentTime) }} / {{ formatTime(duration) }}
+              </div>
             </div>
           </div>
           
@@ -383,7 +494,7 @@ onBeforeUnmount(() => {
             <h1 class="text-3xl font-bold text-white mb-1">{{ movie.title }}</h1>
             <div class="flex items-center flex-wrap gap-3">
               <span class="text-gray-400">{{ movie.year }}</span>
-              <span class="text-gray-400">{{ movie.duration }}</span>
+              <span class="text-gray-400">{{ movie.duration }} phút</span>
               <div class="flex flex-wrap gap-2">
                 <span 
                   v-for="genre in movie.genres" 
@@ -398,12 +509,12 @@ onBeforeUnmount(() => {
           
           <!-- Actions -->
           <div class="flex flex-wrap gap-2 sm:gap-3">
-            <button class="btn-outline px-3 py-1 sm:px-5 sm:py-2 flex items-center text-sm sm:text-base">
-              <svg class="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
-              </svg>
-              Yêu thích
-            </button>
+            <button @click="toggleFavorite" class="btn-outline px-3 py-1 sm:px-5 sm:py-2 flex items-center text-sm sm:text-base">
+               <svg class="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+               </svg>
+               Yêu thích
+             </button>
             <button class="btn-outline px-3 py-1 sm:px-5 sm:py-2 flex items-center text-sm sm:text-base">
               <svg class="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path>
@@ -442,57 +553,60 @@ onBeforeUnmount(() => {
       
       <!-- Comments section -->
       <div class="mb-8">
-        <h2 class="text-xl font-bold text-white mb-4">Bình luận ({{ comments.length }})</h2>
+        <h2 class="text-xl font-bold text-white mb-4">Bình luận ({{ movie.reviews.length }})</h2>
         
-        <!-- Comment form -->
-        <div class="bg-dark-800 border border-gray-700 rounded-xl p-4 mb-6">
-          <form @submit.prevent="submitComment">
+         <!-- Comment form -->
+         <div class="bg-dark-800 border border-gray-700 rounded-xl p-4 mb-6">
+          <form @submit.prevent="submitReview">
             <textarea 
-              v-model="commentForm.content"
+              v-model="userComment"
               rows="3"
               placeholder="Viết bình luận của bạn..."
-              class="w-full bg-dark-700 text-white border border-gray-700/60 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+              class="w-full bg-dark-700 text-black border border-gray-700/60 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
             ></textarea>
             <div class="flex justify-end mt-3">
               <button 
                 type="submit"
                 class="btn-primary px-5 py-2 flex items-center"
-                :disabled="!commentForm.content.trim()"
+                :disabled="!userComment.trim() || submittingReview"
               >
-                Gửi bình luận
+                {{ submittingReview ? 'Đang gửi...' : 'Gửi bình luận' }}
               </button>
             </div>
           </form>
         </div>
         
-        <!-- Comments list -->
-        <div class="space-y-4">
-          <div v-for="comment in comments" :key="comment.id" class="bg-dark-800 border border-gray-700 rounded-xl p-4">
+         <!-- Comments list -->
+         <div class="space-y-4">
+          <div v-for="comment in movie.reviews" :key="comment._id || comment.id" class="bg-dark-800 border border-gray-700 rounded-xl p-4">
             <div class="flex items-start">
               <div class="w-10 h-10 bg-primary-600/80 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0">
-                {{ comment.user.charAt(0).toUpperCase() }}
+                {{ String(comment.user?.fullName || comment.author || comment.user || 'U').charAt(0).toUpperCase() }}
               </div>
               <div class="ml-3 flex-1">
                 <div class="flex justify-between items-center mb-1">
                   <div>
-                    <h4 class="text-white font-medium">{{ comment.user }}</h4>
-                    <p class="text-gray-400 text-xs">{{ comment.time }}</p>
+                    <h4 class="text-white font-medium">
+                      {{ comment.user?.fullName || comment.author || comment.user || 'Người dùng' }}
+                      <span v-if="currentUserId && String(comment.user?._id || comment.user?.id) === String(currentUserId)" class="ml-2 text-xs text-primary-400">(bạn)</span>
+                    </h4>
+                    <p class="text-gray-400 text-xs">{{ new Date(comment.createdAt || comment.date || comment.time).toLocaleString() }}</p>
                   </div>
                 </div>
-                <p class="text-gray-300 mt-1">{{ comment.content }}</p>
+                <p class="text-gray-300 mt-1">{{ comment.comment || comment.content || '' }}</p>
                 <div class="mt-2 flex items-center text-gray-500 text-sm">
                   <button class="flex items-center hover:text-primary-400">
                     <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                       <path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z" />
                     </svg>
-                    <span>{{ comment.likes }}</span>
+                    <span>{{ comment.likes || 0 }}</span>
                   </button>
                   <button class="ml-4 hover:text-primary-400">Trả lời</button>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+         </div>
       </div>
       
       <!-- Related movies -->
