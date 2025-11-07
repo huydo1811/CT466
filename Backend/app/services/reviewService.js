@@ -2,6 +2,7 @@ import mongoose from 'mongoose'
 import Review from '../models/Review.js';
 import Movie from '../models/Movie.js';
 import User from '../models/User.js';
+import Episode from '../models/Episode.js' // add at top
 
 class ReviewService {
 
@@ -311,6 +312,73 @@ class ReviewService {
       };
     } catch (error) {
       throw new Error(`Lỗi khi lấy thống kê reviews: ${error.message}`);
+    }
+  }
+
+  // tạo / cập nhật review theo episode
+  async createOrUpdateEpisodeReview(userId, episodeId, reviewData) {
+    try {
+      const { rating, comment } = reviewData
+      const ep = await Episode.findById(episodeId)
+      if (!ep) throw new Error('Episode không tồn tại')
+
+      // mỗi user chỉ 1 review/episode
+      let review = await Review.findOne({ user: userId, episode: episodeId })
+      if (review) {
+        if (rating !== undefined && rating !== null) review.rating = rating
+        if (comment !== undefined && comment !== null) review.comment = comment || review.comment
+        await review.save()
+      } else {
+        const doc = {
+          user: userId,
+          episode: episodeId,
+          movie: ep.movie, // liên kết cả movie để dễ aggregate/hiển thị
+          comment
+        }
+        if (rating !== undefined && rating !== null) doc.rating = rating
+        review = await Review.create(doc)
+      }
+      // cập nhật rating cho movie nếu cần
+      if (ep.movie) await this.updateMovieRating(ep.movie)
+      return await Review.findById(review._id).populate('user', 'username fullName avatar').populate('movie', 'title poster').populate('episode', 'title episodeNumber season')
+    } catch (error) {
+      throw new Error(`Lỗi khi tạo review cho tập: ${error.message}`)
+    }
+  }
+
+  // Lấy reviews của một episode (public)
+  async getEpisodeReviews(episodeId, options = {}) {
+    try {
+      const {
+        page = 1,
+        limit = 10,
+        sortBy = 'createdAt',
+        sortOrder = -1,
+        rating
+      } = options
+      const skip = (page - 1) * limit
+      const eId = this._toObjectId(episodeId)
+      let query = { isPublished: true }
+      if (eId) query.episode = eId
+      else if (episodeId) query.episode = String(episodeId)
+      if (rating) query.rating = rating
+      const reviews = await Review.find(query)
+        .populate('user', 'username fullName avatar')
+        .sort({ [sortBy]: sortOrder })
+        .skip(skip)
+        .limit(parseInt(limit))
+      const total = await Review.countDocuments(query)
+      return {
+        reviews,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(total / limit),
+          totalItems: total,
+          itemsPerPage: parseInt(limit)
+        }
+      }
+    } catch (error) {
+      throw new Error(`Lỗi khi lấy reviews tập: ${error.message}`)
     }
   }
 }

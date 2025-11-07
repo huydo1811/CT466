@@ -23,6 +23,8 @@ import ContactView from '@/views/user/support/ContactView.vue'
 import FAQView from '@/views/user/support/FAQview.vue'
 import PolicyView from '@/views/user/support/PolicyView.vue'
 import TermsView from '@/views/user/support/TermsView.vue'
+import WatchSeriesView from '@/views/user/movies/WatchSeriesView.vue'
+import SeriesDetailView from '@/views/user/movies/SeriesDetailView.vue'
 
 // Admin pages
 import AdminDashboard from '@/views/admin/AdminDashboard.vue'
@@ -86,7 +88,9 @@ const routes = [
       { path: 'contact', name: 'contact', component: ContactView },
       { path: 'faq', name: 'faq', component: FAQView },
       { path: 'policy', name: 'policy', component: PolicyView },
-      { path: 'terms', name: 'terms', component: TermsView }
+      { path: 'terms', name: 'terms', component: TermsView },
+      { path: 'series/:id', name: 'series-detail', component: SeriesDetailView, props: true },
+      { path: 'series/:id/episode/:episodeId', name: 'watch-series', component: WatchSeriesView, props: true }
     ]
   },
 

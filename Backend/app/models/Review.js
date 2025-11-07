@@ -12,11 +12,17 @@ const reviewSchema = new mongoose.Schema({
     ref: 'Movie',
     required: [true, 'Movie là bắt buộc']
   },
+  // optional: liên kết tới episode nếu là review theo tập
+  episode: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Episode',
+    required: false
+  },
   
   // Rating & Review content
   rating: {
     type: Number,
-    required: [true, 'Điểm đánh giá là bắt buộc'],
+    required: false,
     min: [1, 'Điểm tối thiểu là 1 sao'],
     max: [5, 'Điểm tối đa là 5 sao']
   },
@@ -47,6 +53,8 @@ reviewSchema.index({ user: 1, movie: 1 }, { unique: true }); // 1 user chỉ rev
 reviewSchema.index({ movie: 1, createdAt: -1 }); // Lấy reviews theo movie
 reviewSchema.index({ user: 1, createdAt: -1 }); // Lấy reviews của user
 reviewSchema.index({ rating: -1 }); // Sort by rating
+// index episode for fast lookup by episode
+reviewSchema.index({ episode: 1, createdAt: -1 });
 
 // Virtual field - Review summary
 reviewSchema.virtual('ratingStars').get(function() {

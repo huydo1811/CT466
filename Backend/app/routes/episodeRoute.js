@@ -38,6 +38,8 @@ router.get('/movie/:movieId', getEpisodesByMovie);      // Lấy episodes của 
 router.get('/slug/:slug', getEpisodeBySlug);            // Lấy episode theo slug
 router.post('/:id/view', incrementEpisodeView);         // Tăng view count
 
+router.get('/:id', getEpisodeById);                     // Lấy episode theo ID
+
 // Protected routes - Admin only
 router.use(protect, authorize('admin'));
 
@@ -46,7 +48,6 @@ router.get('/admin', getAdminEpisodes); // admin list
 
 // accept thumbnail (image) and video file when creating/updating episode
 router.post('/', upload.fields([{ name: 'thumbnail', maxCount: 1 }, { name: 'video', maxCount: 1 }]), createEpisode);                        // Tạo episode mới
-router.get('/:id', getEpisodeById);                     // Lấy episode theo ID
 router.put('/:id', upload.fields([{ name: 'thumbnail', maxCount: 1 }, { name: 'video', maxCount: 1 }]), updateEpisode);                      // Cập nhật episode
 router.delete('/:id', deleteEpisode);                   // Xóa episode
 

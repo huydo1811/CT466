@@ -319,7 +319,7 @@ const pageArray = computed(() => {
   return result
 })
 
-const viewSeriesDetails = (id) => router.push({ name: 'movie-detail', params: { id } })
+const viewSeriesDetails = (id) => router.push({ name: 'series-detail', params: { id } })
 
 onMounted(async () => {
   // build years list

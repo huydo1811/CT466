@@ -1,4 +1,4 @@
-import reviewService from '../services/reviewService.js';
+import reviewService from '../services/reviewService.js'
 import mongoose from 'mongoose';
 import Review from '../models/Review.js'
 import { asyncHandler } from '../utils/asyncHandler.js'
@@ -39,6 +39,26 @@ export const createOrUpdateReview = asyncHandler(async (req, res) => {
   });
 });
 
+// Tạo/cập nhật review cho episode (Protected)
+export const createOrUpdateReviewForEpisode = asyncHandler(async (req, res) => {
+  const { episodeId } = req.params
+  const { rating, comment } = req.body
+  const userId = req.user._id
+
+  if (!isValidObjectId(episodeId)) {
+    return res.status(400).json({ success: false, message: 'ID episode không hợp lệ' })
+  }
+  // rating optional for episode comments
+  if (rating !== undefined && rating !== null) {
+    if (Number(rating) < 1 || Number(rating) > 5) {
+      return res.status(400).json({ success: false, message: 'Điểm đánh giá phải từ 1-5 sao' })
+    }
+  }
+
+  const review = await reviewService.createOrUpdateEpisodeReview(userId, episodeId, { rating, comment })
+  res.status(200).json({ success: true, message: 'Bình luận tập thành công', data: review })
+})
+
 // Lấy reviews của một phim (Public)
 export const getMovieReviews = asyncHandler(async (req, res) => {
   const { movieId } = req.params;
@@ -69,6 +89,27 @@ export const getMovieReviews = asyncHandler(async (req, res) => {
     pagination: result.pagination
   });
 });
+
+// Lấy reviews cho episode (Public)
+export const getEpisodeReviews = asyncHandler(async (req, res) => {
+  const { episodeId } = req.params
+  const { page, limit, sortBy, sortOrder, rating } = req.query
+
+  if (!isValidObjectId(episodeId)) {
+    return res.status(400).json({ success: false, message: 'ID episode không hợp lệ' })
+  }
+
+  const options = {
+    page: parseInt(page) || 1,
+    limit: parseInt(limit) || 10,
+    sortBy: sortBy || 'createdAt',
+    sortOrder: sortOrder === 'asc' ? 1 : -1,
+    rating: rating ? parseInt(rating) : undefined
+  }
+
+  const result = await reviewService.getEpisodeReviews(episodeId, options)
+  res.status(200).json({ success: true, message: 'Lấy reviews thành công', data: result.reviews, pagination: result.pagination })
+})
 
 // Lấy review của user cho phim (Protected)
 export const getUserReviewForMovie = asyncHandler(async (req, res) => {

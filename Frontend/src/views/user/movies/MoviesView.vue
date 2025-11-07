@@ -152,7 +152,7 @@
             <div class="flex items-center justify-between">
               <p class="text-gray-400 text-sm">{{ movie.year }}</p>
               <div class="text-xs text-gray-500">
-                {{ movie.categories?.[0]?.name || (movie.categories ? movie.categories[0] : '') }}
+                {{ movie.duration }} phút
               </div>
             </div>
           </div>
