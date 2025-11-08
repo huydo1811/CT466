@@ -6,6 +6,29 @@ import api from '@/services/api'
 const router = useRouter()
 const route = useRoute()
 
+// helper slugify (client-side fallback)
+function slugify(s = '') {
+  return String(s || '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+}
+
+// navigate to actor detail: accept actor object or id/slug string
+function viewActorDetails(actorOrId) {
+  if (!actorOrId) return
+  let idParam = ''
+  if (typeof actorOrId === 'string') {
+    idParam = actorOrId
+  } else {
+    idParam = actorOrId.slug || actorOrId.id || actorOrId._id || slugify(actorOrId.name || actorOrId.fullName || '')
+  }
+  router.push({ name: 'actor-detail', params: { id: idParam } })
+}
+
 // UI / trailer / tabs
 const showTrailer = ref(false)
 const trailerSrc = ref('')
@@ -403,7 +426,7 @@ watch(selectedSeason, (s) => {
                   <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
                   <span class="font-bold">{{ movie.rating }}</span>
                 </div>
-                <span class="text-gray-500">/5 ({{ Number(movie.voteCount || 0).toLocaleString() }} đánh giá)</span>
+                <span class="text-gray-500">/5 ({{movie.reviews.length}} đánh giá)</span>
               </div>
               <div class="flex items-center"><span>{{ formattedReleaseDate }}</span></div>
               <div class="flex items-center"><span>{{ movie.totalEpisodes }} tập</span></div>
@@ -506,7 +529,7 @@ watch(selectedSeason, (s) => {
         <div v-else-if="activeTab === 'cast'">
           <h2 class="text-2xl font-bold text-white mb-6">Diễn viên</h2>
           <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
-            <div v-for="actor in movie.cast" :key="actor.id" class="bg-dark-800 border border-gray-800 rounded-xl overflow-hidden group cursor-pointer">
+            <div v-for="actor in movie.cast" :key="actor.id" class="bg-dark-800 border border-gray-800 rounded-xl overflow-hidden group cursor-pointer" @click="viewActorDetails(actor)">
               <div class="aspect-[2/3] overflow-hidden bg-gray-700">
                 <img :src="actor.image || '/images/placeholder-actor.png'" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
               </div>

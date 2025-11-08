@@ -1,19 +1,8 @@
 <template>
   <div class="bg-dark-900 min-h-screen pb-12">
-    <!-- Hero section với ảnh và thông tin cơ bản -->
-    <div class="relative pt-20">
+    <div class="relative">
       <div class="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-dark-900/10 via-dark-900/80 to-dark-900"></div>
-      
-      <!-- Background image -->
-      <div class="w-full h-[40vh] md:h-[50vh] overflow-hidden">
-        <img 
-          :src="actor.backdrop || 'https://image.tmdb.org/t/p/original/kXfqcdQKsToO0OUXHcrrNCHDBzO.jpg'" 
-          class="w-full h-full object-cover opacity-40" 
-          alt="Background"
-        />
-      </div>
-      
-      <div class="container mx-auto px-4 relative -mt-32 md:-mt-40">
+      <div class="container mx-auto px-4 relative">
         <div class="flex flex-col md:flex-row items-start gap-8">
           <!-- Actor image -->
           <div class="w-48 md:w-72 h-auto aspect-[2/3] rounded-xl overflow-hidden border-4 border-dark-800 shadow-2xl flex-shrink-0">
@@ -79,7 +68,6 @@
               <tr class="border-b border-gray-700">
                 <th class="py-3 px-4 text-left text-gray-400 font-medium">Năm</th>
                 <th class="py-3 px-4 text-left text-gray-400 font-medium">Phim</th>
-                <th class="py-3 px-4 text-left text-gray-400 font-medium">Vai diễn</th>
                 <th class="py-3 px-4 text-left text-gray-400 font-medium hidden md:table-cell">Đánh giá</th>
               </tr>
             </thead>
@@ -102,7 +90,6 @@
                     </div>
                   </div>
                 </td>
-                <td class="py-3 px-4 text-gray-300">{{ movie.character }}</td>
                 <td class="py-3 px-4 hidden md:table-cell">
                   <div class="flex items-center">
                     <svg class="w-4 h-4 text-yellow-400 mr-1" fill="currentColor" viewBox="0 0 20 20">
@@ -124,107 +111,92 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import api from '@/services/api' // chỉnh đường dẫn nếu khác
 
 const route = useRoute()
-const actorId = route.params.id
+const routeParam = route.params.id
 
-// Actor data (mẫu) - thực tế sẽ lấy từ API
+const loading = ref(false)
+const error = ref(null)
+
+// giữ shape mặc định để template hiện an toàn trước khi data load
 const actor = ref({
-  id: 1,
-  name: 'Tom Holland',
-  profile: 'https://image.tmdb.org/t/p/w500/bBRlrpJm9XkNSg0YT5LCaxqoFMX.jpg',
-  backdrop: 'https://image.tmdb.org/t/p/original/kXfqcdQKsToO0OUXHcrrNCHDBzO.jpg',
-  birthdate: '01/06/1996',
-  age: 27,
-  birthplace: 'Kingston upon Thames, London, England',
-  nationality: 'Anh',
-  occupation: 'Diễn viên',
-  biography: 'Thomas "Tom" Stanley Holland là một diễn viên và vũ công người Anh. Anh được biết đến với vai Spider-Man trong Vũ trụ Điện ảnh Marvel, bắt đầu từ Captain America: Civil War (2016). Holland đã nhận được Giải BAFTA Rising Star năm 2017. Anh bắt đầu sự nghiệp diễn xuất từ vai chính trong vở nhạc kịch Billy Elliot tại Nhà hát Victoria Palace ở West End từ năm 2008 đến năm 2010. Ngoài các phim Marvel, Holland cũng tham gia các phim như The Impossible (2012), In the Heart of the Sea (2015), The Lost City of Z (2016), The Devil All the Time (2020), Cherry (2021), và Uncharted (2022).'
+  id: null,
+  name: '',
+  profile: '',
+  backdrop: '',
+  birthdate: '',
+  age: null,
+  birthplace: '',
+  nationality: '',
+  occupation: '',
+  biography: ''
 })
 
-// Filmography data
-const filmography = ref([
-  {
-    id: 101,
-    title: 'Spider-Man: No Way Home',
-    poster: 'https://image.tmdb.org/t/p/w500/1g0dhYtq4irTY1GPXvft6k4YLjm.jpg',
-    year: 2021,
-    genre: 'Hành động, Phiêu lưu',
-    character: 'Peter Parker / Spider-Man',
-    rating: 8.2
-  },
-  {
-    id: 102,
-    title: 'Cherry',
-    poster: 'https://image.tmdb.org/t/p/w500/pwDvkDyaHEU9V7cApQhbcSJMG1w.jpg',
-    year: 2021,
-    genre: 'Tội phạm, Tâm lý',
-    character: 'Cherry',
-    rating: 7.0
-  },
-  {
-    id: 103,
-    title: 'Spider-Man: Far From Home',
-    poster: 'https://image.tmdb.org/t/p/w500/4q2NNj4S5dG2RLF9CpXsej7yXl.jpg',
-    year: 2019,
-    genre: 'Hành động, Phiêu lưu',
-    character: 'Peter Parker / Spider-Man',
-    rating: 7.5
-  },
-  {
-    id: 104,
-    title: 'Avengers: Endgame',
-    poster: 'https://image.tmdb.org/t/p/w500/or06FN3Dka5tukK1e9sl16pB3iy.jpg',
-    year: 2019,
-    genre: 'Hành động, Phiêu lưu',
-    character: 'Peter Parker / Spider-Man',
-    rating: 8.4
-  },
-  {
-    id: 105,
-    title: 'Avengers: Infinity War',
-    poster: 'https://image.tmdb.org/t/p/w500/7WsyChQLEftFiDOVTGkv3hFpyyt.jpg',
-    year: 2018,
-    genre: 'Hành động, Phiêu lưu',
-    character: 'Peter Parker / Spider-Man',
-    rating: 8.3
-  },
-  {
-    id: 106,
-    title: 'Spider-Man: Homecoming',
-    poster: 'https://image.tmdb.org/t/p/w500/c24sv2weTHPsmDa7jEMN0m2P3RT.jpg',
-    year: 2017,
-    genre: 'Hành động, Phiêu lưu',
-    character: 'Peter Parker / Spider-Man',
-    rating: 7.4
-  },
-  {
-    id: 107,
-    title: 'Captain America: Civil War',
-    poster: 'https://image.tmdb.org/t/p/w500/rAGiXaUfPzY7CDEyNKUofk3Kw2e.jpg',
-    year: 2016,
-    genre: 'Hành động, Phiêu lưu',
-    character: 'Peter Parker / Spider-Man',
-    rating: 7.8
-  },
-  {
-    id: 108,
-    title: 'The Impossible',
-    poster: 'https://image.tmdb.org/t/p/w500/jooNRqCzwvlYYgGPMRZOchu0lfc.jpg',
-    year: 2012,
-    genre: 'Chính kịch, Thảm họa',
-    character: 'Lucas Bennett',
-    rating: 7.3
-  }
-])
+const filmography = ref([])
 
+const fetchActor = async () => {
+   loading.value = true
+   error.value = null
+   try {
+     // fetch actor by id (route passes id or slug; controller should handle id)
+     const res = await api.get(`/actors/${routeParam}`)
+     // controller trả về { success, data } hoặc directly data
+     const data = res?.data?.data ?? res?.data ?? null
+     if (data) {
+       // map fields defensively
+       actor.value = {
+         id: data._id || data.id || '',
+         name: data.name || data.fullName || '',
+         profile: data.photoUrl || data.profile || data.avatar || '',
+         backdrop: data.backdrop || '',
+         birthdate: data.birthDate || data.birthdate || '',
+         age: data.age ?? null,
+         birthplace: data.birthplace || data.placeOfBirth || '',
+         nationality: data.nationality || '',
+         occupation: data.occupation || data.job || '',
+         biography: data.bio || data.biography || ''
+       }
+     } else {
+       error.value = 'Không tìm thấy diễn viên'
+     }
+   } catch (e) {
+     console.error('fetchActor error', e)
+     error.value = 'Lỗi khi tải thông tin diễn viên'
+   } finally {
+     loading.value = false
+   }
+ }
 
-onMounted(() => {
-  // Trong thực tế, bạn sẽ gọi API để lấy thông tin diễn viên theo ID
-  console.log('Fetching actor info for ID:', actorId)
+const fetchFilmography = async () => {
+  try {
+    // only fetch movies where this actor appears (use real id from actor.value)
+    if (!actor.value.id) { filmography.value = []; return }
+    const res = await api.get('/movies', { params: { actor: actor.value.id, limit: 100 } })
+     // Movie list có thể nằm trong res.data.movies hoặc res.data.data.movies
+     const movies = res?.data?.movies ?? res?.data?.data?.movies ?? res?.data?.data ?? res?.data ?? []
+     // normalize to array of objects with id,title,poster,year,character,rating
+     filmography.value = Array.isArray(movies) ? movies.map(m => ({
+       id: m._id || m.id,
+       title: m.title || m.name || '',
+       poster: m.poster || m.image || '',
+       year: m.year || (m.releaseDate ? new Date(m.releaseDate).getFullYear() : ''),
+       genre: (m.categories && m.categories[0]?.name) || (m.genre || ''),
+       character: (m.role || m.character) || '',
+       rating: (m.rating?.average ?? m.rating) || ''
+     })) : []
+   } catch (e) {
+     console.warn('fetchFilmography failed', e)
+     filmography.value = []
+   }
+ }
+
+onMounted(async () => {
+  // ensure actor loaded first to get real id, then fetch filmography by id
+  await fetchActor()
+  await fetchFilmography()
 })
 </script>
-
 <style scoped>
 /* Nếu cần thêm styles riêng */
 </style>

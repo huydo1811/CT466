@@ -161,9 +161,25 @@ const deleteActor = async (id) => {
   return true
 }
 
+export async function getActorById(id) {
+  const actor = await Actor.findById(id).lean()
+  if (!actor) throw new Error('Actor not found')
+  return actor
+}
+
+export async function getActorBySlug(slug) {
+  if (!slug) throw new Error('Missing slug')
+  const actor = await Actor.findOne({ slug }).lean()
+  if (!actor) throw new Error('Actor not found')
+  return actor
+}
+
+// optional default export object (keep existing API)
 export default {
+  getActorById,
   getAllActors,
   createActor,
   updateActor,
-  deleteActor
+  deleteActor,
+  getActorBySlug
 }

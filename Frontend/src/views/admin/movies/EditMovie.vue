@@ -10,6 +10,7 @@ const id = route.params.id
 // form model (same fields as AddMovie)
 const movieForm = reactive({
   title: '',
+  slug: '',                     // <-- added slug
   description: '',
   categories: [], // ids
   country: '',
@@ -93,6 +94,7 @@ onMounted(async () => {
     const data = res?.data?.data || res?.data || {}
     // normalize fields
     movieForm.title = data.title || ''
+    movieForm.slug = data.slug || ''    // <-- populate slug
     movieForm.description = data.description || ''
     movieForm.categories = (data.categories || []).map(c => c._id || c.id || c)
     movieForm.country = (data.country && (data.country._id || data.country.id)) || data.country || ''
@@ -171,6 +173,7 @@ const handleSubmit = async () => {
 
     const fd = new FormData()
     fd.append('title', movieForm.title)
+    if (movieForm.slug) fd.append('slug', movieForm.slug)
     fd.append('description', movieForm.description)
     fd.append('director', movieForm.director)
     fd.append('duration', movieForm.duration)
@@ -225,6 +228,11 @@ const handleCancel = () => {
             <div>
               <label class="block text-sm font-medium text-slate-300 mb-2">Tên phim</label>
               <input v-model="movieForm.title" type="text" required class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-300 mb-2">Slug (tùy chọn)</label>
+              <input v-model="movieForm.slug" type="text" placeholder="ví dụ: mua-do" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white" />
+              <p class="text-xs text-slate-400 mt-1">Nếu để trống, backend sẽ tự sinh từ tiêu đề.</p>
             </div>
 
             <div>

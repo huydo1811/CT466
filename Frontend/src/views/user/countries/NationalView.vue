@@ -158,7 +158,7 @@
               :alt="movie.title" 
               @error="e => e.target.src = '/images/fallback-poster.jpg'"
               class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-              @click="viewMovieDetails(movie._id || movie.id)" 
+              @click="viewMovieDetails(movie)" 
             />
             <div class="absolute top-2 right-2 bg-black/70 backdrop-blur-sm px-2 py-1 rounded-lg">
               <span class="text-yellow-400 text-xs font-semibold">{{ movie.ratingDisplay }}</span>
@@ -166,7 +166,7 @@
             <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-end">
               <div class="p-4 w-full">
                 <button 
-                  @click="viewMovieDetails(movie._id || movie.id)" 
+                  @click="viewMovieDetails(movie)" 
                   class="w-full py-2 bg-primary-600 hover:bg-primary-700 rounded-lg text-white text-sm transition"
                 >
                   Xem chi tiết
@@ -175,7 +175,7 @@
             </div>
           </div>
           <div class="mt-2">
-            <h3 class="text-white font-medium truncate cursor-pointer hover:text-primary-500" @click="viewMovieDetails(movie._id || movie.id)">{{ movie.title }}</h3>
+            <h3 class="text-white font-medium truncate cursor-pointer hover:text-primary-500" @click="viewMovieDetails(movie)">{{ movie.title }}</h3>
             <div class="flex items-center justify-between">
               <p class="text-gray-400 text-sm">{{ movie.year }}</p>
               <div class="text-xs text-gray-500">
@@ -386,7 +386,19 @@ const pageArray = computed(() => {
   return result
 })
 
-const viewMovieDetails = (id) => router.push({ name: 'movie-detail', params: { id } })
+const viewMovieDetails = (itemOrId) => {
+  if (!itemOrId) return
+  let id = itemOrId
+  let type = null
+  if (typeof itemOrId === 'object' && itemOrId !== null) {
+    id = itemOrId._id || itemOrId.id
+    type = itemOrId.type || itemOrId.contentType || (itemOrId.totalEpisodes ? 'series' : 'movie')
+  }
+  if (!id) { console.error('Missing id for viewMovieDetails', itemOrId); return }
+  const t = String(type || '').toLowerCase()
+  const routeName = (t === 'series' || t === 'tv') ? 'series-detail' : 'movie-detail'
+  router.push({ name: routeName, params: { id } })
+}
 
 // watch slug change
 watch(() => countrySlug.value, async (s) => {

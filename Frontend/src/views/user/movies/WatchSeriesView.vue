@@ -142,12 +142,6 @@ const submitEpisodeReview = async () => {
 }
 
 // playback controls
-const togglePlay = () => {
-  const v = videoPlayer.value
-  if (!v) return
-  if (v.paused) { v.play(); isPlaying.value = true }
-  else { v.pause(); isPlaying.value = false }
-}
 const toggleMute = () => { const v = videoPlayer.value; if (!v) return; v.muted = !v.muted; isMuted.value = v.muted }
 const toggleFullscreen = () => { if (!document.fullscreenElement) { videoContainer.value.requestFullscreen(); isFullscreen.value = true } else { document.exitFullscreen(); isFullscreen.value = false } }
 
@@ -160,7 +154,14 @@ const handleVolumeChange = (e) => {
 }
 
 const onLoadedMetadata = () => { duration.value = videoPlayer.value.duration; isLoading.value = false }
-const onTimeUpdate = () => { currentTime.value = videoPlayer.value.currentTime }
+const onTimeUpdate = (e) => {
+  const v = e?.target ?? (videoPlayer.value ?? null)
+  if (!v) return
+  const ct = (typeof v.currentTime === 'number' && isFinite(v.currentTime)) ? v.currentTime : 0
+  currentTime.value = ct
+  // keep duration in sync (safe guard)
+  duration.value = (typeof v.duration === 'number' && isFinite(v.duration)) ? v.duration : duration.value
+}
 const onVideoEnded = () => { isPlaying.value = false }
 
 // seek logic (pointer)
@@ -217,17 +218,21 @@ function hideControls() {
 }
 function showControlsOnMove() { showControls.value = true; hideControls() }
 
-// episode actions: favorite for episode (frontend attempts same endpoint as movies)
 const isFavorited = ref(false)
 const updateEpisodeFavorite = async () => {
   try {
-    if (!episode.value) { isFavorited.value = false; return }
+    if (!isAuthenticated.value || !episode.value) {
+      isFavorited.value = false
+      return
+    }
     const res = await api.get('/users/me')
     const favs = res?.data?.data?.favorites || res?.data?.data?.favoriteMovies || []
     const eid = episode.value._id || episode.value.id
     isFavorited.value = favs.some(f => String(f._id || f.id || f) === String(eid))
-  } catch (e) { isFavorited.value = false
-    console.error('updateEpisodeFavorite error', e)
+  } catch (e) {
+    isFavorited.value = false
+    // ignore auth errors (401) silently, log others
+    if (e?.response?.status !== 401) console.error('updateEpisodeFavorite error', e)
   }
 }
 
@@ -238,23 +243,52 @@ const playEpisode = (ep) => {
   router.push({ name: 'watch-series', params: { seriesId: ep.movie || series.value?.id, episodeId: id }})
 }
 
-// watch handlers
+// watch handlers — require user to press Play (no autoplay)
+const needsUserGesture = ref(true)
+
 watch(episode, async (ep) => {
   await nextTick()
   const v = videoPlayer.value
-  if (!v) return
-  v.pause()
-  v.src = videoSrc.value || ''
-  try { v.load() } catch (e) {
-    console.error('video load error', e)
+  isLoading.value = true
+  if (!v) { isLoading.value = false; return }
+  // reset player for new episode
+  try { v.pause() } catch {
+    console.warn('video pause error on episode change')
   }
-  try { await v.play(); isPlaying.value = true } catch (e) { 
-    isPlaying.value = false 
-    console.error('video play error', e)}
+  v.src = videoSrc.value || ''
+  try { v.load() } catch (e) { console.error('video load error', e) }
+
+  // do NOT autoplay — require explicit user gesture
+  isPlaying.value = false
+  needsUserGesture.value = true
+  isLoading.value = false
+
   // update favorite/reviews state
   updateEpisodeFavorite()
   await fetchReviewsForEpisode(ep?._id || ep?.id)
 })
+
+// toggle play (async, handle play() rejection)
+const togglePlay = async () => {
+  const v = videoPlayer.value
+  if (!v) return
+  try {
+    if (v.paused) {
+      // try to play; browser may reject if no gesture
+      await v.play()
+      isPlaying.value = !v.paused
+      needsUserGesture.value = v.paused // if still paused, still need gesture
+    } else {
+      v.pause()
+      isPlaying.value = false
+    }
+  } catch (err) {
+    // autoplay prevented or other play error — require gesture
+    console.warn('Play prevented or error:', err)
+    isPlaying.value = false
+    needsUserGesture.value = true
+  }
+}
 
 // route params
 onMounted(() => {
@@ -288,6 +322,13 @@ watch(() => route.params.episodeId, (v) => { if (v) fetchEpisode(v) })
           @timeupdate="onTimeUpdate"
           @ended="onVideoEnded"
         ></video>
+
+        <!-- central Play button (require user gesture to start) -->
+        <div v-if="!isLoading && needsUserGesture" class="absolute inset-0 flex items-center justify-center">
+          <button @click="togglePlay" class="w-20 h-20 bg-black/60 rounded-full flex items-center justify-center text-white hover:bg-black/70 transition">
+            <svg class="w-10 h-10 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+          </button>
+        </div>
 
         <div v-if="isLoading" class="absolute inset-0 flex items-center justify-center bg-black/70">
           <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>

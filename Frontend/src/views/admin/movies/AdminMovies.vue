@@ -223,6 +223,7 @@ const formatNumber = (num) => num?.toLocaleString('vi-VN') || '0'
           <thead class="bg-slate-700/50">
             <tr>
               <th class="px-6 py-4 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">Tên phim</th>
+              <th class="px-6 py-4 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">Slug</th>
               <th class="px-6 py-4 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">Thể loại</th>
               <th class="px-6 py-4 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">Quốc gia</th>
               <th class="px-6 py-4 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">Lượt xem</th>
@@ -231,10 +232,11 @@ const formatNumber = (num) => num?.toLocaleString('vi-VN') || '0'
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-700/50">
-            <tr v-for="movie in movies" :key="movie.id" class="hover:bg-slate-700/30 transition-colors">              
+            <tr v-for="movie in movies" :key="movie.id" class="hover:bg-slate-700/30 transition-colors">
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-lg font-semibold text-white">{{ movie.title }}</div>
-             </td>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap text-slate-300 text-sm">{{ movie.slug || '-' }}</td>
               <td class="px-6 py-4 whitespace-nowrap text-base text-slate-300">{{ movie.category }}</td>
               <td class="px-6 py-4 whitespace-nowrap text-base text-slate-300">{{ movie.country }}</td>
               <td class="px-6 py-4 whitespace-nowrap text-base text-slate-300">{{ formatNumber(movie.views) }}</td>

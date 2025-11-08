@@ -137,11 +137,12 @@ movieSchema.virtual('durationFormatted').get(function() {
 });
 
 movieSchema.pre('save', function(next) {
-  if (this.isModified('title')) {
-    this.slug = this.title
-      .toLowerCase()
-      .replace(/[^a-z0-9 -]/g, '')
-      .replace(/\s+/g, '-');
+  // respect admin-provided slug; otherwise generate from title
+  const normalize = (s='') => String(s).normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g,'')
+  if (this.slug && typeof this.slug === 'string') {
+    this.slug = normalize(this.slug)
+  } else if ((!this.slug || this.slug === '') && this.title) {
+    this.slug = normalize(this.title)
   }
   
   if (this.isModified('releaseDate')) {

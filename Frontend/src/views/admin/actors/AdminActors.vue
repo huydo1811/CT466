@@ -106,6 +106,10 @@
               <input v-model="form.name" class="w-full mt-1 px-3 py-2 rounded bg-slate-800 border border-slate-700 text-slate-200" />
             </div>
             <div>
+              <label class="text-sm text-slate-300">Slug</label>
+              <input v-model="form.slug" placeholder="ví dụ: phuong-anh-dao" class="w-full mt-1 px-3 py-2 rounded bg-slate-800 border border-slate-700 text-slate-200" />
+            </div>
+            <div>
               <label class="text-sm text-slate-300">Quốc tịch</label>
               <input v-model="form.nationality" placeholder="Quốc tịch" class="w-full mt-1 px-3 py-2 rounded bg-slate-800 border border-slate-700 text-slate-200" />
             </div>
@@ -169,7 +173,15 @@ const pagination = ref({ page: 1, totalPages: 1, totalItems: 0, limit: perPage.v
 const showModal = ref(false)
 const editing = ref(false)
 const form = ref({
-  id: null, name: '', bio: '', birthDate: '', photoUrl: '', photoFile: null, nationality: '', isActive: true
+  id: null,
+  name: '',
+  slug: '',         
+  bio: '',
+  birthDate: '',
+  photoUrl: '',
+  photoFile: null,
+  nationality: '',
+  isActive: true
 })
 
 let _searchTimeout = null
@@ -234,6 +246,7 @@ const save = async () => {
       if (form.value.photoFile) {
         const fd = new FormData()
         fd.append('name', form.value.name)
+        fd.append('slug', form.value.slug || '')
         fd.append('bio', form.value.bio)
         fd.append('birthDate', form.value.birthDate)
         fd.append('nationality', form.value.nationality)
@@ -241,13 +254,14 @@ const save = async () => {
         fd.append('photo', form.value.photoFile)
         await api.put(`/actors/${form.value.id}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
       } else {
-        await api.put(`/actors/${form.value.id}`, { name: form.value.name, bio: form.value.bio, birthDate: form.value.birthDate, photoUrl: form.value.photoUrl, nationality: form.value.nationality, isActive: form.value.isActive })
+        await api.put(`/actors/${form.value.id}`, { name: form.value.name, slug: form.value.slug, bio: form.value.bio, birthDate: form.value.birthDate, photoUrl: form.value.photoUrl, nationality: form.value.nationality, isActive: form.value.isActive })
       }
     } else {
       // create
       if (form.value.photoFile) {
         const fd = new FormData()
         fd.append('name', form.value.name)
+        fd.append('slug', form.value.slug || '')
         fd.append('bio', form.value.bio)
         fd.append('birthDate', form.value.birthDate)
         fd.append('nationality', form.value.nationality)
@@ -255,7 +269,7 @@ const save = async () => {
         fd.append('photo', form.value.photoFile)
         await api.post('/actors', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
       } else {
-        await api.post('/actors', { name: form.value.name, bio: form.value.bio, birthDate: form.value.birthDate, photoUrl: form.value.photoUrl, nationality: form.value.nationality, isActive: form.value.isActive })
+        await api.post('/actors', { name: form.value.name, slug: form.value.slug, bio: form.value.bio, birthDate: form.value.birthDate, photoUrl: form.value.photoUrl, nationality: form.value.nationality, isActive: form.value.isActive })
       }
     }
     closeModal()
@@ -269,14 +283,14 @@ const save = async () => {
 const openEdit = (a) => {
   editing.value = true
   // ensure we set id property used by save()
-  form.value = { id: a.id || a._id, name: a.name || '', bio: a.bio || '', birthDate: a.birthDate || '', photoUrl: a.photoUrl || '', photoFile: null, nationality: a.nationality || '', isActive: !!a.isActive }
+  form.value = { id: a.id || a._id, name: a.name || '', slug: a.slug || '', bio: a.bio || '', birthDate: a.birthDate || '', photoUrl: a.photoUrl || '', photoFile: null, nationality: a.nationality || '', isActive: !!a.isActive }
   showModal.value = true
 }
 const closeModal = () => { showModal.value = false }
 
 const openAdd = () => {
   editing.value = false
-  form.value = { id: null, name: '', bio: '', birthDate: '', photoUrl: '', photoFile: null, nationality: '', isActive: true }
+  form.value = { id: null, name: '', slug: '', bio: '', birthDate: '', photoUrl: '', photoFile: null, nationality: '', isActive: true }
   showModal.value = true
 }
 

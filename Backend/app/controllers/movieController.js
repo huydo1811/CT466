@@ -20,6 +20,7 @@ export const getAllMovies = asyncHandler(async (req, res) => {
     page: parseInt(req.query.page) || 1,
     limit: parseInt(req.query.limit) || 20,
     search: req.query.search,
+    actor: req.query.actor,
     category: req.query.category,
     country: req.query.country,
     year: req.query.year ? parseInt(req.query.year) : undefined,

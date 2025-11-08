@@ -50,12 +50,14 @@ export const getAllActors = asyncHandler(async (req, res) => {
 // Lấy diễn viên theo ID
 export const getActorById = asyncHandler(async (req, res) => {
   const actor = await actorService.getActorById(req.params.id);
+  res.status(200).json({ success: true, message: 'Lấy thông tin diễn viên thành công', data: actor });
+});
 
-  res.status(200).json({
-    success: true,
-    message: 'Lấy thông tin diễn viên thành công',
-    data: actor
-  });
+// Lấy diễn viên theo slug (Public)
+export const getActorBySlug = asyncHandler(async (req, res) => {
+  const { slug } = req.params
+  const actor = await actorService.getActorBySlug(slug)
+  res.status(200).json({ success: true, message: 'Lấy diễn viên thành công', data: actor })
 });
 
 // Tạo diễn viên mới

@@ -10,7 +10,8 @@ import {
   deleteActor,
   permanentDeleteActor,
   searchActors,
-  getActorsByNationality
+  getActorsByNationality,
+  getActorBySlug
 } from '../controllers/actorController.js';
 
 const router = express.Router();
@@ -34,14 +35,17 @@ router.get('/search', searchActors);
 // Route theo quốc tịch
 router.get('/nationality/:nationality', getActorsByNationality);
 
+// <-- ADD: slug route BEFORE '/:id' to avoid param conflicts
+router.get('/slug/:slug', getActorBySlug);
+
 // CRUD routes
 router.route('/')
   .get(getAllActors)
-  .post(upload.single('photo'), createActor); // <-- accept multipart/form-data 'photo'
+  .post(upload.single('photo'), createActor); 
 
 router.route('/:id')
   .get(getActorById)
-  .put(upload.single('photo'), updateActor) // <-- accept photo on update
+  .put(upload.single('photo'), updateActor)
   .delete(deleteActor);
 
 // Route xóa vĩnh viễn

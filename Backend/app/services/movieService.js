@@ -31,6 +31,7 @@ class MovieService {
         limit = 20,
         search,
         category,
+        actor,
         country,
         year,
         type,
@@ -80,6 +81,21 @@ class MovieService {
           else query.categories = { $in: [] } // ensure no results if nothing matched
         }
       }
+
+      // actor: accept single id or comma-separated ids (only valid ObjectId values)
+      if (actor) {
+        const actors = Array.isArray(actor) ? actor : String(actor).split(',').map(s => s.trim()).filter(Boolean)
+        const validIds = actors
+          .filter(a => mongoose.Types.ObjectId.isValid(String(a)))
+          .map(a => new mongoose.Types.ObjectId(String(a)))
+        if (validIds.length) {
+          query.actors = { $in: validIds }
+        } else {
+          // no valid ids -> return empty set
+          query.actors = { $in: [] }
+        }
+      }
+
       if (country) query.country = country;
       if (year) query.year = year;
       if (type) query.type = type;
@@ -87,7 +103,7 @@ class MovieService {
       const movies = await Movie.find(query)
         .populate('categories', 'name slug')
         .populate('country', 'name code')
-        .populate('actors', 'name avatar')
+        .populate('actors', 'name avatar slug')
         .populate('createdBy', 'username fullName')
         .sort({ [sortBy]: sortOrder })
         .skip(skip)

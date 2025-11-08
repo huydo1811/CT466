@@ -8,6 +8,7 @@ const router = useRouter()
 // form model
 const movieForm = reactive({
   title: '',
+  slug: '',                     
   description: '',
   categories: [],
   country: '',
@@ -166,6 +167,7 @@ const handleSubmit = async () => {
     movieForm.categories.forEach(id => fd.append('categories[]', id))
     movieForm.actors.forEach(id => fd.append('actors[]', id))
 
+    if (movieForm.slug) fd.append('slug', movieForm.slug)
     if (movieForm.posterFile) fd.append('poster', movieForm.posterFile)
     if (movieForm.videoFile) fd.append('video', movieForm.videoFile)
 
@@ -208,6 +210,11 @@ const handleCancel = () => {
             <div>
               <label class="block text-sm font-medium text-slate-300 mb-2">Tên phim</label>
               <input v-model="movieForm.title" type="text" required class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-300 mb-2">Slug (tùy chọn)</label>
+              <input v-model="movieForm.slug" type="text" placeholder="ví dụ: mua-do" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white" />
+              <p class="text-xs text-slate-400 mt-1">Để trống để tự sinh từ tiêu đề.</p>
             </div>
 
             <div>
