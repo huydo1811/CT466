@@ -304,13 +304,11 @@ function viewMovieDetails(itemOrId) {
     id = itemOrId._id || itemOrId.id
     type = itemOrId.type || itemOrId.contentType || (itemOrId.totalEpisodes ? 'series' : 'movie')
   }
-  if (!id) {
-    console.error('Missing id for viewMovieDetails', itemOrId)
-    return
-  }
+  if (!id) { console.error('Missing id for viewMovieDetails', itemOrId); return }
   const t = String(type || '').toLowerCase()
   const routeName = (t === 'series' || t === 'tv') ? 'series-detail' : 'movie-detail'
-  router.push({ name: routeName, params: { id } })
+  const slug = (typeof itemOrId === 'object') ? (itemOrId.slug || id) : id
+  router.push({ name: routeName, params: { slug } })
 }
 
 // Khi component được tạo / slug thay đổi

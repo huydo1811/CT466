@@ -25,7 +25,7 @@ import PolicyView from '@/views/user/support/PolicyView.vue'
 import TermsView from '@/views/user/support/TermsView.vue'
 import WatchSeriesView from '@/views/user/movies/WatchSeriesView.vue'
 import SeriesDetailView from '@/views/user/movies/SeriesDetailView.vue'
-
+import SearchView from '@/views/user/search/SearchView.vue'
 // Admin pages
 import AdminDashboard from '@/views/admin/AdminDashboard.vue'
 //Movie
@@ -89,7 +89,8 @@ const routes = [
       { path: 'policy', name: 'policy', component: PolicyView },
       { path: 'terms', name: 'terms', component: TermsView },
       { path: 'series/:slug', name: 'series-detail', component: SeriesDetailView, props: true },
-      { path: 'series/:slug/episode/:episodeId', name: 'watch-series', component: WatchSeriesView, props: true }
+      { path: 'series/:slug/episode/:episodeId', name: 'watch-series', component: WatchSeriesView, props: true },
+      { path: 'search', name: 'search', component: SearchView }
     ]
   },
 

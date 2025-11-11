@@ -380,13 +380,16 @@ const pageArray = computed(() => {
   const result = []
   const total = totalPages.value || 1
   for (let i = 1; i <= total; i++) {
-    if (i === 1 || i === total || (i >= currentPage.value - 1 && i <= currentPage.value + 1)) result.push(i)
-    else if (i === currentPage.value - 2 || i === currentPage.value + 2) result.push('...')
+    if (i === 1 || i === total || (i >= currentPage.value - 1 && i <= currentPage.value + 1)) {
+      result.push(i)
+    } else if (i === currentPage.value - 2 || i === currentPage.value + 2) {
+      result.push('...')
+    }
   }
   return result
 })
 
-const viewMovieDetails = (itemOrId) => {
+function viewMovieDetails(itemOrId) {
   if (!itemOrId) return
   let id = itemOrId
   let type = null
@@ -397,7 +400,8 @@ const viewMovieDetails = (itemOrId) => {
   if (!id) { console.error('Missing id for viewMovieDetails', itemOrId); return }
   const t = String(type || '').toLowerCase()
   const routeName = (t === 'series' || t === 'tv') ? 'series-detail' : 'movie-detail'
-  router.push({ name: routeName, params: { id } })
+  const slug = (typeof itemOrId === 'object') ? (itemOrId.slug || id) : id
+  router.push({ name: routeName, params: { slug } })
 }
 
 // watch slug change

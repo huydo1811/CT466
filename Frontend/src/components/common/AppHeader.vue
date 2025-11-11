@@ -4,13 +4,49 @@
 import { RouterLink } from 'vue-router'
 import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/services/api'
  
+let searchTimer = null
+const fetchSuggestions = async (q) => {
+  if (!q || q.trim().length < 2) {
+    searchResults.value = []
+    showResults.value = false
+    return
+  }
+  try {
+    const res = await api.get('/movies', { params: { search: q.trim(), limit: 6 } })
+    const data = res?.data?.data || res?.data || res?.data?.movies || []
+    searchResults.value = (Array.isArray(data) ? data : (data.movies || [])).map(m => ({
+      id: m._id || m.id,
+      slug: m.slug || m._id || m.id,
+      title: m.title || m.name,
+      poster: m.poster || m.image || '',
+      genre: (m.categories && m.categories[0]?.name) || (m.genre || ''),
+      year: m.year || (m.releaseDate ? new Date(m.releaseDate).getFullYear() : ''),
+      type: (m.type && String(m.type).toLowerCase()) || (m.isSeries ? 'series' : (m.totalEpisodes ? 'series' : 'movie'))
+    }))
+    // always show dropdown after searching (even if no results) so we can display "no results"
+    showResults.value = true
+  } catch (e) {
+    console.warn('search suggestions failed', e)
+    searchResults.value = []
+    showResults.value = true // show dropdown to indicate "no results" after error
+  }
+}
+ 
+// called by template to build route
+const movieLink = (r) => {
+  if (!r) return { name: 'movie-detail', params: { slug: '' } }
+  const slug = r.slug || r.id
+  const type = (r.type && String(r.type).toLowerCase()) || (r.isSeries ? 'series' : '')
+  const routeName = (type === 'series') ? 'series-detail' : 'movie-detail'
+  return { name: routeName, params: { slug } }
+}
 
  const isMobileView = ref(false)
  const mobileOpen = ref(false)
- const searchActive = ref(false)
  const searchQuery = ref('')
  const searchResults = ref([])
  const showResults = ref(false)
@@ -23,33 +59,25 @@ import api from '@/services/api'
  const searchRefMobile = ref(null)
 
  // Fake search results
- watch(searchQuery, (query) => {
-   if (query.length < 2) {
+ watch(searchQuery, (q) => {
+   clearTimeout(searchTimer)
+   if (!q || q.trim().length < 2) {
      showResults.value = false
+     searchResults.value = []
      return
    }
-   
-   // Demo search results
-   searchResults.value = [
-     { id: 1, title: 'Spider-Man: No Way Home', poster: 'https://image.tmdb.org/t/p/w92/1g0dhYtq4irTY1GPXvft6k4YLjm.jpg', year: 2021 },
-     { id: 2, title: 'Spider-Man: Homecoming', poster: 'https://image.tmdb.org/t/p/w92/c24sv2weTHPsmDa7jEMN0m2P3RT.jpg', year: 2017 },
-     { id: 3, title: 'The Amazing Spider-Man', poster: 'https://image.tmdb.org/t/p/w92/fSbqPbqXa7ePo8bcnZYN9AHv6zA.jpg', year: 2012 }
-   ].filter(movie => movie.title.toLowerCase().includes(query.toLowerCase()))
-   
-   showResults.value = true
+   // debounce
+   searchTimer = setTimeout(() => fetchSuggestions(q), 250)
  })
 
- // Handle form submission
+ // Handle form submission: navigate to Search page with query param
  function handleSearch(e) {
-   e.preventDefault()
-   if (searchQuery.value.trim()) {
-     // Navigate to search page (implement actual search later)
-     console.log(`Searching for: ${searchQuery.value}`)
-     // router.push({ name: 'search', query: { q: searchQuery.value } })
-     searchActive.value = false
-     searchQuery.value = ''
-     showResults.value = false
-   }
+   if (e && e.preventDefault) e.preventDefault()
+   const q = (searchQuery.value || '').trim()
+   if (!q) return
+   showResults.value = false
+   // keep searchQuery so header still shows terms; go to search page
+   router.push({ name: 'search', query: { q } })
  }
 
  // Close search results when clicking outside
@@ -129,15 +157,11 @@ import api from '@/services/api'
      countries.value = Array.isArray(data) ? data : []
    } catch (e) {
      console.warn('fetch countries failed', e)
-     // fallback
-     countries.value = [
-       { _id: 'vn', name: 'Việt Nam', slug: 'vn', flag: 'https://flagcdn.com/w80/vn.png' },
-       { _id: 'us', name: 'Mỹ', slug: 'us', flag: 'https://flagcdn.com/w80/us.png' }
-     ]
    }
  }
  
  const router = useRouter()
+ const route = useRoute()
  const auth = useAuthStore()
  const showProfileMenu = ref(false)
 
@@ -160,6 +184,22 @@ import api from '@/services/api'
    const name = auth.user?.fullName || auth.user?.name || auth.user?.username || ''
    return name ? name.trim().charAt(0).toUpperCase() : 'C'
  })
+
+ // helpers to detect active nav
+ const isActivePath = (base) => {
+   try { return route.path.startsWith(base) } catch { return false }
+ }
+ const moviesActive = computed(() => isActivePath('/movies'))
+ const seriesActive = computed(() => isActivePath('/series'))
+ const actorsActive = computed(() => isActivePath('/actors'))
+
+ // add helper to close suggestions when clicking an item
+ const onSuggestionClick = (r) => {
+  console.log('clicked suggestion', r)
+  showResults.value = false
+  // optionally keep or update searchQuery:
+  // searchQuery.value = r.title || searchQuery.value
+ }
 </script>
  
 <template>
@@ -196,11 +236,11 @@ import api from '@/services/api'
             <span>Trang chủ</span><div class="nav-underline"></div>
           </RouterLink>
 
-          <RouterLink to="/movies" active-class="nav-link-active" class="nav-link">
+          <RouterLink to="/movies" class="nav-link" :class="{ 'nav-link-active': moviesActive }">
             <span>Phim điện ảnh</span><div class="nav-underline"></div>
           </RouterLink>
 
-          <RouterLink to="/series" active-class="nav-link-active" class="nav-link">
+          <RouterLink to="/series" class="nav-link" :class="{ 'nav-link-active': seriesActive }">
             <span>Phim bộ</span><div class="nav-underline"></div>
           </RouterLink>
 
@@ -256,7 +296,7 @@ import api from '@/services/api'
              </div>
            </div>
 
-          <RouterLink to="/actors" active-class="nav-link-active" class="nav-link">
+          <RouterLink to="/actors" class="nav-link" :class="{ 'nav-link-active': actorsActive }">
             <span>Diễn viên</span><div class="nav-underline"></div>
           </RouterLink>
         </div>
@@ -269,6 +309,7 @@ import api from '@/services/api'
             <div class="flex items-center">
               <input
                 v-model="searchQuery"
+                @keydown.enter="handleSearch"
                 class="w-full bg-gray-800/70 text-white rounded-l-xl px-4 py-2 pl-9 outline-none focus:ring-1 focus:ring-primary-500 h-10"
                 placeholder="Tìm kiếm..."
               />
@@ -287,27 +328,34 @@ import api from '@/services/api'
             
             <!-- Search Results Dropdown -->
             <div 
-              v-if="showResults && searchResults.length > 0" 
+              v-if="showResults" 
               class="absolute right-0 w-80 top-full mt-2 bg-dark-800/95 backdrop-blur-md border border-gray-700 rounded-xl shadow-xl z-50 max-h-96 overflow-y-auto"
             >
               <div class="p-3 border-b border-gray-700 text-sm text-gray-400">
                 Kết quả tìm kiếm
               </div>
               <ul>
+                <li v-if="searchResults.length === 0" class="p-4 text-center text-gray-400">
+                  Không tìm thấy kết quả cho "<span class="text-white">{{ searchQuery }}</span>"
+                </li>
                 <li v-for="result in searchResults" :key="result.id" class="border-b border-gray-700/50 last:border-0">
-                  <a href="#" class="flex items-center p-3 hover:bg-gray-700/30 transition">
+                  <RouterLink 
+                    :to="movieLink(result)" 
+                    class="flex items-center p-3 hover:bg-gray-700/30 transition"
+                    @click="onSuggestionClick(result)"
+                  >
                     <img :src="result.poster" :alt="result.title" class="w-10 h-15 object-cover rounded" />
                     <div class="ml-3">
-                      <div class="text-white font-medium">{{ result.title }}</div>
-                      <div class="text-xs text-gray-400">{{ result.year }}</div>
+                      <div class="text-white font-medium truncate max-w-[12rem]">{{ result.title }}</div>
+                      <div class="text-xs text-gray-400">{{ result.genre }} · {{ result.year }}</div>
                     </div>
-                  </a>
+                  </RouterLink>
                 </li>
               </ul>
               <div class="p-3 text-center border-t border-gray-700">
-                <a href="#" class="text-sm text-primary-400 hover:text-primary-300">
+                <RouterLink :to="{ name: 'search', query: { q: searchQuery } }" class="text-sm text-primary-400 hover:text-primary-300">
                   Xem tất cả kết quả
-                </a>
+                </RouterLink>
               </div>
             </div>
           </div>
@@ -344,6 +392,7 @@ import api from '@/services/api'
           <div class="flex items-center">
             <input
               v-model="searchQuery"
+              @keydown.enter="handleSearch"
               class="w-full bg-gray-800/70 text-white rounded-l-xl px-4 py-2 pl-9 outline-none focus:ring-1 focus:ring-primary-500 h-10"
               placeholder="Tìm kiếm..."
             />
