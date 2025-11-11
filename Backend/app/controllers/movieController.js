@@ -135,6 +135,10 @@ export const createMovie = asyncHandler(async (req, res) => {
   if (req.files?.poster?.[0]) {
     data.poster = buildFileUrl(req, req.files.poster[0].filename, 'movies')
   }
+  // map backdrop file
+  if (req.files?.backdrop?.[0]) {
+    data.backdrop = buildFileUrl(req, req.files.backdrop[0].filename, 'movies')
+  }
 
   // If user requested splitting seasons into separate entries
   const createSeparate = (String(data.createSeparateSeasons || '') === 'true')
@@ -207,6 +211,9 @@ export const updateMovie = asyncHandler(async (req, res) => {
   // map uploaded files -> payload
   if (req.files && req.files.poster && req.files.poster[0]) {
     payload.poster = buildFileUrl(req, req.files.poster[0].filename, 'movies')
+  }
+  if (req.files && req.files.backdrop && req.files.backdrop[0]) {
+    payload.backdrop = buildFileUrl(req, req.files.backdrop[0].filename, 'movies')
   }
   if (req.files && req.files.video && req.files.video[0]) {
     payload.videoUrl = buildFileUrl(req, req.files.video[0].filename, 'movies')

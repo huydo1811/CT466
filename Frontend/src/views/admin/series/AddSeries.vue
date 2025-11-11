@@ -8,21 +8,22 @@ const router = useRouter()
 // form model for series (basic info only)
 const seriesForm = reactive({
   title: '',
+  slug: '', 
   description: '',
-  categories: [],
-  country: '',
-  actors: [],
   director: '',
+  country: '',
+  categories: [],
+  actors: [],
   posterFile: null,
   posterUrl: '',
+  backdropFile: null,
+  backdropUrl: '',
   trailer: '',
-  totalEpisodes: 0,
-  releaseDate: '',
-  seasons: 1,
-  createSeparateSeasons: false, // <-- new
-  isPublished: true,
+  isPublished: false,
   isFeatured: false,
-  isHot: false
+  isHot: false,
+  totalEpisodes: 0,
+  seasons: 1
 })
 
 // option lists loaded from backend
@@ -51,6 +52,8 @@ const selectedActors = ref([])
 
 // poster preview + revoke
 const posterPreview = ref(null)
+// backdrop preview + revoke
+const backdropPreview = ref(null)
 const _revokePoster = () => {
   if (posterPreview.value) {
     try { URL.revokeObjectURL(posterPreview.value) } catch {
@@ -59,7 +62,15 @@ const _revokePoster = () => {
     posterPreview.value = null
   }
 }
-onBeforeUnmount(_revokePoster)
+const _revokeBackdrop = () => {
+  if (backdropPreview.value) {
+    try { URL.revokeObjectURL(backdropPreview.value) } catch { 
+      // ignore
+    }
+    backdropPreview.value = null
+  }
+}
+onBeforeUnmount(() => { _revokePoster(); _revokeBackdrop() })
 
 onMounted(async () => {
   try {
@@ -89,6 +100,17 @@ const onPosterChange = (e) => {
     try { posterPreview.value = URL.createObjectURL(f) } catch { posterPreview.value = null }
   } else {
     seriesForm.posterFile = null
+  }
+}
+
+const onBackdropChange = (e) => {
+  const f = e.target.files?.[0] || null
+  _revokeBackdrop()
+  seriesForm.backdropFile = f
+  if (f) {
+    try { backdropPreview.value = URL.createObjectURL(f) } catch { backdropPreview.value = null }
+  } else {
+    seriesForm.backdropFile = null
   }
 }
 
@@ -123,10 +145,10 @@ const handleSubmit = async () => {
 
     const fd = new FormData()
     fd.append('title', seriesForm.title)
+    if (seriesForm.slug) fd.append('slug', seriesForm.slug)
     fd.append('description', seriesForm.description)
     fd.append('director', seriesForm.director || '')
     fd.append('trailer', seriesForm.trailer || '')
-    fd.append('releaseDate', seriesForm.releaseDate || '') // <-- send releaseDate if set
     fd.append('country', seriesForm.country || '')
     fd.append('type', 'series')
     fd.append('totalEpisodes', String(seriesForm.totalEpisodes || 0))
@@ -139,12 +161,13 @@ const handleSubmit = async () => {
     seriesForm.actors.forEach(id => fd.append('actors[]', id))
 
     if (seriesForm.posterFile) fd.append('poster', seriesForm.posterFile)
-    fd.append('createSeparateSeasons', seriesForm.createSeparateSeasons ? 'true' : 'false')
+    if (seriesForm.backdropFile) fd.append('backdrop', seriesForm.backdropFile)
 
     // send to /movies as before
     await api.post('/movies', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
 
     _revokePoster()
+    _revokeBackdrop()
     alert('Tạo series thành công')
     router.push('/admin/series')
   } catch (err) {
@@ -155,6 +178,7 @@ const handleSubmit = async () => {
 
 const handleCancel = () => {
   _revokePoster()
+  _revokeBackdrop()
   router.go(-1)
 }
 </script>
@@ -177,6 +201,12 @@ const handleCancel = () => {
           <div>
             <label class="block text-sm font-medium text-slate-300 mb-2">Tên Series</label>
             <input v-model="seriesForm.title" type="text" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white" />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-2">Slug (tùy chọn)</label>
+            <input v-model="seriesForm.slug" placeholder="ví dụ: mua-do" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white" />
+            <p class="text-xs text-slate-400 mt-1">Để trống để backend tự sinh từ tiêu đề.</p>
           </div>
 
           <div>
@@ -268,6 +298,17 @@ const handleCancel = () => {
             </div>
             <div v-else-if="seriesForm.posterUrl" class="mt-3">
               <img :src="seriesForm.posterUrl" class="w-full h-48 object-cover rounded" />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-2">Backdrop (banner)</label>
+            <input type="file" accept="image/*" @change="onBackdropChange" class="w-full text-sm text-white" />
+            <div v-if="backdropPreview" class="mt-3">
+              <img :src="backdropPreview" class="w-full h-28 object-cover rounded" />
+            </div>
+            <div v-else-if="seriesForm.backdropUrl" class="mt-3">
+              <img :src="seriesForm.backdropUrl" class="w-full h-28 object-cover rounded" />
             </div>
           </div>
 

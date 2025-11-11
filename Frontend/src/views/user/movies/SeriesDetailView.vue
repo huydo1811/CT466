@@ -17,16 +17,14 @@ function slugify(s = '') {
     .replace(/(^-|-$)/g, '')
 }
 
-// navigate to actor detail: accept actor object or id/slug string
 function viewActorDetails(actorOrId) {
   if (!actorOrId) return
-  let idParam = ''
-  if (typeof actorOrId === 'string') {
-    idParam = actorOrId
-  } else {
-    idParam = actorOrId.slug || actorOrId.id || actorOrId._id || slugify(actorOrId.name || actorOrId.fullName || '')
-  }
-  router.push({ name: 'actor-detail', params: { id: idParam } })
+  let slug = ''
+  if (typeof actorOrId === 'string') slug = actorOrId
+  else if (actorOrId?.slug) slug = actorOrId.slug
+  else slug = actorOrId?._id || actorOrId?.id || slugify(actorOrId?.name || actorOrId?.fullName || '')
+  if (!slug) return
+  router.push({ name: 'actor-detail', params: { slug } })
 }
 
 // UI / trailer / tabs
@@ -134,13 +132,14 @@ const normalizeMovie = (m) => {
 
   const rawCast = Array.isArray(m.actors) ? m.actors : (Array.isArray(m.cast) ? m.cast : [])
   const cast = rawCast.map(a => {
-    if (!a) return { id: null, name: '', character: '', image: '' }
-    if (typeof a === 'string' || typeof a === 'number') return { id: a, name: '', character: '', image: '' }
+    if (!a) return { id: null, name: '', character: '', image: '', slug: null }
+    if (typeof a === 'string' || typeof a === 'number') return { id: a, name: '', character: '', image: '', slug: null }
     const id = a._id || a.id || a.actorId || null
     const name = a.name || a.fullName || a.title || ''
     const character = a.character || a.role || a.as || ''
     const image = getMediaUrl(a.image || a.photoUrl || a.avatar || a.photo || '')
-    return { id, name, character, image }
+    const slug = a.slug || null
+    return { id, name, character, image, slug }
   })
 
   const similar = Array.isArray(m.similar) ? m.similar.map(s => ({
@@ -170,7 +169,8 @@ const normalizeMovie = (m) => {
 
 const fetchCastDetails = async (castArr) => {
   try {
-    const ids = (castArr || []).filter(c => c && (c.id || c._id) && !c.name).map(c => c.id || c._id)
+    // lấy các actor có id nhưng thiếu ảnh hoặc slug hoặc tên -> cần fetch thêm
+    const ids = (castArr || []).filter(c => c && (c.id || c._id) && (!c.image || c.image === '' || !c.slug || !c.name)).map(c => c.id || c._id)
     if (!ids.length) return
     const reqs = ids.map(id => api.get(`/actors/${id}`).then(r => r?.data?.data || r?.data).catch(() => null))
     const results = await Promise.all(reqs)
@@ -180,15 +180,17 @@ const fetchCastDetails = async (castArr) => {
       if (found) {
         return {
           id: found._id || found.id,
-          name: found.name || found.fullName || '',
+          name: found.name || found.fullName || c.name || '',
           character: c.character || '',
-          image: getMediaUrl(found.photoUrl || found.photo || found.avatar || found.image || '')
+          image: getMediaUrl(found.photoUrl || found.photo || found.avatar || found.image || ''),
+          slug: found.slug || c.slug || null
         }
       }
-      return c
+      // normalize existing image url if present
+      return { ...c, image: getMediaUrl(c.image) }
     })
   } catch (e) {
-    console.error(e)
+    console.warn('fetchCastDetails failed', e)
   }
 }
 
@@ -265,19 +267,20 @@ const fetchEpisodes = async (movieId, season = 1) => {
 }
 
 const openEpisode = (ep) => {
-  router.push({ name: 'watch-series', params: { seriesId: movie.value.id, episodeId: ep._id || ep.id }})
+  const seriesSlug = movie.value.slug || route.params.slug || movie.value.id || movie.value._id
+  if (!seriesSlug) return
+  router.push({ name: 'watch-series', params: { slug: seriesSlug, episodeId: ep._id || ep.id }})
 }
 
-const fetchMovie = async (id) => {
-  if (!id) return
+const fetchMovie = async (slug) => {
+  if (!slug) return
   loading.value = true
   try {
-    const res = await api.get(`/movies/${id}`)
+    const res = await api.get(`/movies/slug/${encodeURIComponent(slug)}`)
     const data = res?.data?.data || res?.data || null
     if (!data) { router.replace({ name: 'movies' }); return }
     const normalized = normalizeMovie(data)
     Object.assign(movie.value, normalized)
-    // ensure any preloaded reviews do not include episode-level reviews
     if (Array.isArray(movie.value.reviews) && movie.value.reviews.length) {
       movie.value.reviews = movie.value.reviews.filter(r => !r?.episode && !r?.episodeId && !r?.episode_id)
     }
@@ -286,12 +289,11 @@ const fetchMovie = async (id) => {
     if ((!movie.value.similar || movie.value.similar.length === 0) && movie.value.categoriesRaw && movie.value.categoriesRaw.length) {
       fetchSimilarByCategories(movie.value.categoriesRaw)
     }
-    await fetchReviewsIfNeeded(movie.value.id || id)
-    // build seasons from movie.seasons / totalSeasons
+    await fetchReviewsIfNeeded(movie.value.id || movie.value._id)
     const sCount = movie.value.seasons || movie.value.totalSeasons || 1
     seasons.value = Array.from({ length: sCount }, (_, i) => i + 1)
     selectedSeason.value = 1
-    await fetchEpisodes(movie.value.id || id, selectedSeason.value)
+    await fetchEpisodes(movie.value.id || movie.value._id, selectedSeason.value)
     await fetchCurrentUser()
     await updateFavoriteStatus()
   } catch (err) {
@@ -316,10 +318,11 @@ const watchSeries = async () => {
     const list = res?.data?.data || res?.data || []
     const first = Array.isArray(list) ? list[0] : null
     if (first && (first._id || first.id)) {
-      router.push({ name: 'watch-series', params: { seriesId: mid, episodeId: first._id || first.id }})
+      const seriesSlug = movie.value.slug || route.params.slug || mid
+      router.push({ name: 'watch-series', params: { slug: seriesSlug, episodeId: first._id || first.id }})
     } else {
-      // fallback: open series detail watch-movie route (if no episodes)
-      router.push({ name: 'watch-movie', params: { id: mid }})
+      const seriesSlug = movie.value.slug || route.params.slug || mid
+      router.push({ name: 'watch-movie', params: { slug: seriesSlug }})
     }
   } catch (e) {
     console.error('watchSeries error', e)
@@ -383,11 +386,14 @@ const formattedReleaseDate = computed(() => {
 })
 
 onMounted(() => {
-  const id = route.params.id
-  if (id) fetchMovie(id)
+  const s = route.params.slug
+  if (s) fetchMovie(s)
 })
 
-// when season changes fetch episodes
+watch(() => route.params.slug, (newSlug) => {
+  if (newSlug) fetchMovie(newSlug)
+})
+
 watch(selectedSeason, (s) => {
   if (movie.value.id) fetchEpisodes(movie.value.id, s)
 })
@@ -396,7 +402,7 @@ watch(selectedSeason, (s) => {
 <template>
   <!-- same layout as MovieDetailView + Episodes tab -->
   <div class="bg-dark-900 min-h-screen pb-20">
-    <div class="relative h-[60vh] overflow-hidden">
+    <div class="relative h-[75vh] overflow-hidden">
       <div class="absolute inset-0">
         <img :src="movie.backdrop" class="w-full h-full object-cover object-center" />
         <div class="absolute inset-0 bg-gradient-to-r from-dark-900 via-dark-900/80 to-transparent"></div>

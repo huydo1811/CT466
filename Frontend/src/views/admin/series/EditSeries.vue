@@ -44,6 +44,7 @@ const removeActor = (aid) => {
 const form = reactive({
   _id: '',
   title: '',
+  slug: '',          
   description: '',
   director: '',
   country: '',
@@ -51,6 +52,8 @@ const form = reactive({
   actors: [],
   posterFile: null,
   posterUrl: '',
+  backdropFile: null,
+  backdropUrl: '',
   trailer: '',
   isPublished: false,
   isFeatured: false,
@@ -78,8 +81,12 @@ const epDraft = reactive({
   videoFile: null,
   isPublished: true
 })
+
+// previews
 const thumbPreview = ref(null)
 const videoPreview = ref(null)
+const backdropPreview = ref(null)
+
 const _revoke = () => {
   if (thumbPreview.value) { try { URL.revokeObjectURL(thumbPreview.value) } catch{
     console.error('Failed to revoke thumbnail URL')
@@ -87,6 +94,9 @@ const _revoke = () => {
   if (videoPreview.value) { try { URL.revokeObjectURL(videoPreview.value) } catch{
     console.error('Failed to revoke video URL')
   }; videoPreview.value = null }
+  if (backdropPreview.value) { try { URL.revokeObjectURL(backdropPreview.value) } catch { 
+    console.error('Failed to revoke backdrop URL')
+  } ; backdropPreview.value = null }
 }
 onBeforeUnmount(_revoke)
 
@@ -115,12 +125,14 @@ const loadMovie = async () => {
     if (!m) throw new Error('Không tìm thấy series')
     form._id = m._id || m.id
     form.title = m.title || ''
+    form.slug = m.slug || ''    // <-- populate slug
     form.description = m.description || ''
     form.director = m.director || ''
     form.country = m.country ? (m.country._id || m.country._id || m.country) : (m.country || '')
     form.categories = Array.isArray(m.categories) ? m.categories.map(c => c._id || c.id || c) : (m.categories || [])
     form.actors = Array.isArray(m.actors) ? m.actors.map(a => a._id || a.id || a) : (m.actors || [])
     form.posterUrl = m.poster || ''
+    form.backdropUrl = m.backdrop || ''
     form.trailer = m.trailer || ''
     form.isPublished = !!m.isPublished
     form.isFeatured = !!m.isFeatured
@@ -165,6 +177,16 @@ const onPosterChange = (e) => {
   if (f) {
     try { form.posterUrl = URL.createObjectURL(f) } catch {
       console.error('Failed to create poster URL')
+    }
+  }
+}
+
+const onBackdropChange = (e) => {
+  const f = e.target.files?.[0] || null
+  form.backdropFile = f
+  if (f) {
+    try { backdropPreview.value = URL.createObjectURL(f); form.backdropUrl = backdropPreview.value } catch {
+      backdropPreview.value = null
     }
   }
 }
@@ -232,6 +254,7 @@ const saveSeries = async () => {
   try {
     const fd = new FormData()
     fd.append('title', form.title)
+    if (form.slug) fd.append('slug', form.slug)
     fd.append('description', form.description)
     fd.append('director', form.director || '')
     fd.append('trailer', form.trailer || '')
@@ -245,6 +268,7 @@ const saveSeries = async () => {
     form.categories.forEach(id => fd.append('categories[]', id))
     form.actors.forEach(id => fd.append('actors[]', id))
     if (form.posterFile) fd.append('poster', form.posterFile)
+    if (form.backdropFile) fd.append('backdrop', form.backdropFile)
 
     // axios will set Content-Type with boundary automatically
     await api.put(`/movies/${id}`, fd)
@@ -334,6 +358,11 @@ const cancel = () => router.back()
             <label class="block text-sm text-slate-300 mb-1">Tên Series</label>
             <input v-model="form.title" type="text" class="w-full bg-slate-700 px-3 py-2 rounded text-white" />
           </div>
+          <div>
+            <label class="block text-sm text-slate-300 mb-1">Slug (tùy chọn)</label>
+            <input v-model="form.slug" type="text" placeholder="ví dụ: mua-do" class="w-full bg-slate-800 px-3 py-2 rounded text-white" />
+            <p class="text-xs text-slate-400 mt-1">Để trống để backend tự sinh từ tiêu đề.</p>
+          </div>
 
           <div>
             <label class="block text-sm text-slate-300 mb-1">Mô tả</label>
@@ -397,6 +426,17 @@ const cancel = () => router.back()
             <input type="file" accept="image/*" @change="onPosterChange" class="w-full text-sm text-white" />
             <div v-if="form.posterUrl" class="mt-3">
               <img :src="getMediaUrl(form.posterUrl)" class="w-full h-48 object-cover rounded" />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm text-slate-300 mb-1">Backdrop (banner)</label>
+            <input type="file" accept="image/*" @change="onBackdropChange" class="w-full text-sm text-white" />
+            <div v-if="backdropPreview" class="mt-3">
+              <img :src="backdropPreview" class="w-full h-28 object-cover rounded" />
+            </div>
+            <div v-else-if="form.backdropUrl" class="mt-3">
+              <img :src="getMediaUrl(form.backdropUrl)" class="w-full h-28 object-cover rounded" />
             </div>
           </div>
 

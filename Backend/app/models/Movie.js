@@ -22,6 +22,9 @@ const movieSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Poster phim là bắt buộc']
   },
+  backdrop: {
+    type: String
+  },
   trailer: {
     type: String // Link YouTube trailer
   },

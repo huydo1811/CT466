@@ -44,6 +44,7 @@ const selectedCategories = ref([])
 // previews (object URLs)
 const posterPreview = ref(null)
 const videoPreview = ref(null)
+const backdropPreview = ref(null)
 
 const normalizeList = (arr = []) => (arr || []).map(it => ({ ...it, id: it._id || it.id }))
 
@@ -71,7 +72,7 @@ const _revokeVideo = () => {
     videoPreview.value = null
   }
 }
-onBeforeUnmount(() => { _revokePoster(); _revokeVideo() })
+onBeforeUnmount(() => { _revokePoster(); _revokeVideo(); if (backdropPreview.value) { URL.revokeObjectURL(backdropPreview.value); backdropPreview.value = null } })
 
 // load lists and movie data
 onMounted(async () => {
@@ -105,6 +106,7 @@ onMounted(async () => {
     movieForm.year = data.year || ''
     movieForm.type = data.type || 'movie'
     movieForm.posterUrl = data.poster || data.posterUrl || ''
+    movieForm.backdropUrl = data.backdrop || ''
     movieForm.trailer = data.trailer || ''
     movieForm.videoUrl = data.videoUrl || data.video || ''
     movieForm.isPublished = !!data.isPublished
@@ -135,6 +137,15 @@ const onVideoChange = (e) => {
   movieForm.videoFile = f
   if (f) {
     try { videoPreview.value = URL.createObjectURL(f); movieForm.videoUrl = videoPreview.value } catch { videoPreview.value = null }
+  }
+}
+
+const onBackdropChange = (e) => {
+  const f = e.target.files?.[0] || null
+  if (backdropPreview.value) { URL.revokeObjectURL(backdropPreview.value); backdropPreview.value = null }
+  movieForm.backdropFile = f
+  if (f) {
+    try { backdropPreview.value = URL.createObjectURL(f); movieForm.backdropUrl = backdropPreview.value } catch { backdropPreview.value = null }
   }
 }
 
@@ -190,6 +201,7 @@ const handleSubmit = async () => {
     movieForm.actors.forEach(id => fd.append('actors[]', id))
 
     if (movieForm.posterFile) fd.append('poster', movieForm.posterFile)
+    if (movieForm.backdropFile) fd.append('backdrop', movieForm.backdropFile)
     if (movieForm.videoFile) fd.append('video', movieForm.videoFile)
 
     await api.put(`/movies/${id}`, fd)
@@ -333,6 +345,17 @@ const handleCancel = () => {
               </div>
               <div v-else-if="movieForm.posterUrl" class="mt-3">
                 <img :src="movieForm.posterUrl" class="w-full h-48 object-cover rounded" />
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-slate-300 mb-2">Backdrop (ảnh banner)</label>
+              <input type="file" accept="image/*" @change="onBackdropChange" class="w-full text-sm text-white" />
+              <div v-if="backdropPreview" class="mt-3">
+                <img :src="backdropPreview" class="w-full h-28 object-cover rounded" />
+              </div>
+              <div v-else-if="movieForm.backdropUrl" class="mt-3">
+                <img :src="movieForm.backdropUrl" class="w-full h-28 object-cover rounded" />
               </div>
             </div>
 

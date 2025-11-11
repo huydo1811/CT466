@@ -133,16 +133,16 @@ const normalizeMovie = (m) => {
   const rawCast = Array.isArray(m.actors) ? m.actors : (Array.isArray(m.cast) ? m.cast : [])
   const cast = rawCast.map(a => {
     if (!a) return { id: null, name: '', character: '', image: '' }
-    if (typeof a === 'string' || typeof a === 'number') return { id: a, name: '', character: '', image: '' }
+    if (typeof a === 'string' || typeof a === 'number') return { id: a, name: '', character: '', image: '', slug: null }
     // actor object
     const id = a._id || a.id || a.actorId || null
     const name = a.name || a.fullName || a.title || ''
     const character = a.character || a.role || a.as || ''
     const image = getMediaUrl(a.image || a.photoUrl || a.avatar || a.photo || a.photoUrl)
-    return { id, name, character, image }
+    const slug = a.slug || null
+    return { id, name, character, image, slug }
   })
 
-  // similar: normalize poster url & small fields
   const similar = Array.isArray(m.similar) ? m.similar.map(s => ({
     id: s._id || s.id,
     title: s.title || s.name,
@@ -171,7 +171,10 @@ const normalizeMovie = (m) => {
 // cập nhật fetchCastDetails/fetchCountriesIfNeeded để kiểm tra trường id/_id
 const fetchCastDetails = async (castArr) => {
   try {
-    const ids = castArr.filter(c => c && (c.id || c._id) && !c.name).map(c => c.id || c._id)
+    // lấy các actor có id nhưng thiếu ảnh hoặc slug hoặc tên -> cần fetch thêm
+    const ids = castArr
+      .filter(c => c && (c.id || c._id) && (!c.image || c.image === '' || !c.slug || !c.name))
+      .map(c => c.id || c._id)
     if (!ids.length) return
     const reqs = ids.map(id => api.get(`/actors/${id}`).then(r => r?.data?.data || r?.data).catch(() => null))
     const results = await Promise.all(reqs)
@@ -181,12 +184,14 @@ const fetchCastDetails = async (castArr) => {
       if (found) {
         return {
           id: found._id || found.id,
-          name: found.name || found.fullName || '',
+          name: found.name || found.fullName || c.name || '',
           character: c.character || '',
-          image: getMediaUrl(found.photoUrl || found.photo || found.avatar || found.image || '')
+          image: getMediaUrl(found.photoUrl || found.photo || found.avatar || found.image || ''),
+          slug: found.slug || c.slug || null
         }
       }
-      return c
+      // normalize existing image url if present
+      return { ...c, image: getMediaUrl(c.image) }
     })
   } catch (e) {
     console.warn('fetchCastDetails failed', e)
@@ -233,11 +238,12 @@ const fetchReviewsIfNeeded = async (movieId) => {
   }
 }
 
-const fetchMovie = async (id) => {
-  if (!id) return
+// slug-only fetch
+const fetchMovie = async (slug) => {
+  if (!slug) return
   loading.value = true
   try {
-    const res = await api.get(`/movies/${id}`)
+    const res = await api.get(`/movies/slug/${encodeURIComponent(slug)}`)
     const data = res?.data?.data || res?.data || null
     if (!data) {
       router.replace({ name: 'movies' })
@@ -254,7 +260,7 @@ const fetchMovie = async (id) => {
       fetchSimilarByCategories(movie.value.categoriesRaw)
     }
     // ensure reviews visible: load separately if backend didn't include
-    await fetchReviewsIfNeeded(movie.value.id || id)
+    await fetchReviewsIfNeeded(movie.value.id || movie.value._id)
     await updateFavoriteStatus()
   } catch (err) {
     console.error('fetchMovie error', err)
@@ -308,13 +314,66 @@ const closeTrailer = () => {
 }
 
 const watchMovie = () => {
-  const id = movie.value.id || route.params.id
-  if (id) router.push({ name: 'watch-movie', params: { id } })
+  const slug = movie.value.slug || route.params.slug || movie.value.id || movie.value._id
+  if (slug) router.push({ name: 'watch-movie', params: { slug } })
 }
 
-const viewActorDetails = (actorId) => {
-  if (!actorId) return
-  router.push({ name: 'actor-detail', params: { id: actorId } })
+function slugify(s = '') {
+  return String(s || '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+}
+
+const viewActorDetails = async (actorOrId) => {
+  if (!actorOrId) return
+
+  // helper to navigate to actor-detail using a slug (or fallback id)
+  const navigate = (slugOrId) => {
+    if (!slugOrId) return
+    router.push({ name: 'actor-detail', params: { slug: slugOrId } })
+  }
+
+  // if passed a string -> likely an id, try fetch actor to get slug
+  if (typeof actorOrId === 'string') {
+    const id = actorOrId
+    try {
+      const res = await api.get(`/actors/${id}`)
+      const a = res?.data?.data || res?.data || null
+      navigate(a?.slug || a?._id || id)
+    } catch (err) {
+      // fallback to id when fetch fails
+      console.warn('viewActorDetails fetch failed', err)
+      navigate(id)
+    }
+    return
+  }
+
+  // passed an object
+  if (actorOrId?.slug) {
+    navigate(actorOrId.slug)
+    return
+  }
+
+  const id = actorOrId?._id || actorOrId?.id
+  if (id) {
+    try {
+      const res = await api.get(`/actors/${id}`)
+      const a = res?.data?.data || res?.data || null
+      navigate(a?.slug || a?._id || id)
+    } catch (err) {
+      console.warn('viewActorDetails fetch failed', err)
+      navigate(id)
+    }
+    return
+  }
+
+  // last resort: build slug from name
+  const built = slugify(actorOrId?.name || actorOrId?.fullName || '')
+  if (built) navigate(built)
 }
 
 // reviews
@@ -389,13 +448,13 @@ const formattedReleaseDate = computed(() => {
 })
 
 onMounted(() => {
-  const id = route.params.id
-  if (id) fetchMovie(id)
+  const s = route.params.slug
+  if (s) fetchMovie(s)
   fetchCurrentUser()
 })
 
-watch(() => route.params.id, (newId) => {
-  if (newId) fetchMovie(newId)
+watch(() => route.params.slug, (newSlug) => {
+  if (newSlug) fetchMovie(newSlug)
 })
 
 // re-fetch current user when auth changes
@@ -454,15 +513,14 @@ const submitReport = async () => {
 }
 </script>
 
-<!-- Template changes: replace trailer/button/cast/similar/reviews parts -->
 <template>
   <div class="bg-dark-900 min-h-screen pb-20">
     <!-- Hero Section with Backdrop -->
     <div class="relative h-[75vh] overflow-hidden">
       <!-- Backdrop Image -->
-      <div class="absolute inset-0">
+      <div class="absolute inset-0" v-if="movie && (movie.backdrop || movie.poster)">
         <img 
-          :src="movie.backdrop" 
+          :src="movie.backdrop || movie.poster" 
           :alt="movie.title"
           class="w-full h-full object-cover object-center"
         />
@@ -646,8 +704,7 @@ const submitReport = async () => {
         <div v-else-if="activeTab === 'cast'">
           <h2 class="text-2xl font-bold text-white mb-6">Diễn viên</h2>
           <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
-            <div v-for="actor in movie.cast" :key="actor.id" class="bg-dark-800 border border-gray-800 rounded-xl overflow-hidden group cursor-pointer" @click="viewActorDetails(actor.id)">
-              <div class="aspect-[2/3] overflow-hidden bg-gray-700">
+            <div v-for="actor in movie.cast" :key="actor.id || actor._id" class="bg-dark-800 border border-gray-800 rounded-xl overflow-hidden group cursor-pointer" @click="viewActorDetails(actor)">              <div class="aspect-[2/3] overflow-hidden bg-gray-700">
                 <img :src="actor.image || '/images/placeholder-actor.png'" :alt="actor.name" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
               </div>
               <div class="p-4">
@@ -743,7 +800,7 @@ const submitReport = async () => {
           <h2 class="text-2xl font-bold text-white mb-6">Phim tương tự</h2>
           <div v-if="loadingSimilar" class="text-gray-400 py-8">Đang tải...</div>
           <div v-else class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
-            <div v-for="s in movie.similar" :key="s.id" class="movie-card group cursor-pointer" @click="$router.push({ name: 'movie-detail', params: { id: s.id } })">
+            <div v-for="s in movie.similar" :key="s.id" class="movie-card group cursor-pointer" @click="$router.push({ name: 'movie-detail', params: { slug: s.slug || s.id } })">
               <div class="relative overflow-hidden rounded-xl aspect-[2/3] bg-gray-800">
                 <img :src="s.poster" :alt="s.title" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                 <div class="absolute top-2 right-2 bg-black/70 backdrop-blur-sm px-2 py-1 rounded-lg">

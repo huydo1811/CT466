@@ -210,6 +210,10 @@ class MovieService {
       if (movieData.poster && existing.poster && movieData.poster !== existing.poster) {
         _deleteLocalFile(existing.poster)
       }
+      // if backdrop replaced, remove old backdrop file
+      if (movieData.backdrop && existing.backdrop && movieData.backdrop !== existing.backdrop) {
+        _deleteLocalFile(existing.backdrop)
+      }
       // if video replaced, remove old video file
       if (movieData.videoUrl && existing.videoUrl && movieData.videoUrl !== existing.videoUrl) {
         _deleteLocalFile(existing.videoUrl)
@@ -242,6 +246,7 @@ class MovieService {
 
       // delete poster & video files if they are stored locally
       if (movie.poster) _deleteLocalFile(movie.poster)
+      if (movie.backdrop) _deleteLocalFile(movie.backdrop)
       if (movie.videoUrl) _deleteLocalFile(movie.videoUrl)
 
       return movie;

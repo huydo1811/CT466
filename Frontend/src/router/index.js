@@ -13,7 +13,7 @@ import CategoriesView from '@/views/user/categories/CategoriesView.vue'
 import CategoriesDetailView from '@/views/user/categories/CategoryDetailView.vue'
 import NationalView from '@/views/user/countries/NationalView.vue'
 import ActorsView from '@/views/user/actors/ActorsView.vue'
-import ActorsDetailView from '@/views/user/actors/ActorDetailView.vue'
+import ActorDetailView from '@/views/user/actors/ActorDetailView.vue'
 import LoginView from '@/views/user/LoginView.vue'
 import RegisterView from '@/views/user/RegisterView.vue'
 import MovieDetailView from '@/views/user/movies/MovieDetailView.vue'
@@ -79,18 +79,17 @@ const routes = [
       { path: 'category/:slug', name: 'category-detail', component: CategoriesDetailView, props: true },
       { path: 'national/:slug', name: 'country', component: NationalView, props: true },
       { path: 'actors', name: 'actors', component: ActorsView },
-      { path: 'actors/:id', name: 'actor-detail', component: ActorsDetailView, props: true },
-      { path: 'login', name: 'login', component: LoginView },
+      { path: 'actors/:slug?', name: 'actor-detail', component: ActorDetailView, props: true },      { path: 'login', name: 'login', component: LoginView },
       { path: 'register', name: 'register', component: RegisterView },
-      { path: 'movies/:id', name: 'movie-detail', component: MovieDetailView, props: true },
-      { path: 'watch/:id', name: 'watch-movie', component: WatchMovieView, props: true },
+      { path: 'movies/:slug?', name: 'movie-detail', component: MovieDetailView, props: true },
+      { path: 'watch/:slug?', name: 'watch-movie', component: WatchMovieView, props: true },
       { path: 'profile', name: 'profile', component: ProfileView },
       { path: 'contact', name: 'contact', component: ContactView },
       { path: 'faq', name: 'faq', component: FAQView },
       { path: 'policy', name: 'policy', component: PolicyView },
       { path: 'terms', name: 'terms', component: TermsView },
-      { path: 'series/:id', name: 'series-detail', component: SeriesDetailView, props: true },
-      { path: 'series/:id/episode/:episodeId', name: 'watch-series', component: WatchSeriesView, props: true }
+      { path: 'series/:slug', name: 'series-detail', component: SeriesDetailView, props: true },
+      { path: 'series/:slug/episode/:episodeId', name: 'watch-series', component: WatchSeriesView, props: true }
     ]
   },
 
@@ -148,6 +147,11 @@ const router = createRouter({
 
 router.beforeEach(async (to, from, next) => {
   const auth = useAuthStore()
+  const needsMovieSlug = (to.name === 'movie-detail' || to.name === 'watch-movie')
+  if (needsMovieSlug && (!to.params || !to.params.slug)) {
+    return next({ name: 'movies' }) 
+  }
+  next()
 
   if (to.meta?.public) return next()
 

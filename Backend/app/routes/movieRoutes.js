@@ -56,9 +56,9 @@ router.get('/', getAllMovies);
 router.use(protect, authorize('admin'));
 
 // accept poster (image) and video (mp4) via multipart/form-data
-router.post('/', upload.fields([{ name: 'poster', maxCount: 1 }, { name: 'video', maxCount: 1 }]), createMovie);
+router.post('/', upload.fields([{ name: 'poster', maxCount: 1 }, { name: 'backdrop', maxCount: 1 }, { name: 'video', maxCount: 1 }]), createMovie);
 router.get('/admin/stats', getMovieStats);
-router.put('/:id', upload.fields([{ name: 'poster', maxCount: 1 }, { name: 'video', maxCount: 1 }]), updateMovie);
+router.put('/:id', upload.fields([{ name: 'poster', maxCount: 1 }, { name: 'backdrop', maxCount: 1 }, { name: 'video', maxCount: 1 }]), updateMovie);
 router.delete('/:id', deleteMovie);
 router.patch('/:id/toggle', togglePublishStatus);
 

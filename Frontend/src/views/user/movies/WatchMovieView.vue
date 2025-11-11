@@ -117,17 +117,22 @@ const fetchReviewsIfNeeded = async (movieId) => {
   }
 }
 
-// fetch movie by id (use same endpoint as MovieDetailView)
-const fetchMovie = async (id) => {
-  if (!id) return
+const relatedList = computed(() => {
+  const arr = Array.isArray(movie.value.related) ? movie.value.related : []
+  return arr.filter(rel => rel && (rel.slug || rel.id || rel._id)).slice(0, 12)
+})
+
+// slug-only fetch wrapper
+const fetchMovieBySlug = async (slug) => {
+  if (!slug) return
   loading.value = true
   try {
-    const res = await api.get(`/movies/${id}`)
+    const res = await api.get(`/movies/slug/${encodeURIComponent(slug)}`)
     const data = res?.data?.data || res?.data || null
     if (!data) { router.replace({ name: 'movies' }); return }
     const normalized = normalizeMovie(data)
     Object.assign(movie.value, normalized)
-    await fetchReviewsIfNeeded(movie.value.id || id)
+    await fetchReviewsIfNeeded(movie.value.id || '')
     // fetch related by genres
     await fetchRelatedMovies(movie.value)
   } catch (err) {
@@ -144,8 +149,8 @@ const updateFavoriteStatus = async () => {
     if (!isAuthenticated.value) { isFavorited.value = false; return }
     const res = await api.get('/users/me')
     const favs = res?.data?.data?.favorites || res?.data?.data?.favoriteMovies || []
-    const mid = movie.value.id || route.params.id
-    isFavorited.value = favs.some(f => String(f._id || f.id || f) === String(mid))
+    const mid = movie.value.id // require real ObjectId populated by fetchMovieBySlug
+    isFavorited.value = mid ? favs.some(f => String(f._id || f.id || f) === String(mid)) : false
   } catch (e) {
     console.warn('updateFavoriteStatus failed', e)
   }
@@ -153,7 +158,8 @@ const updateFavoriteStatus = async () => {
 
 const toggleFavorite = async () => {
   if (!isAuthenticated.value) { router.push({ name: 'login', query: { redirect: route.fullPath } }); return }
-  const mid = movie.value.id || route.params.id
+  const mid = movie.value.id
+  if (!mid) return
   try {
     if (!isFavorited.value) {
       await api.post(`/users/me/favorites/${mid}`)
@@ -162,7 +168,8 @@ const toggleFavorite = async () => {
       await api.delete(`/users/me/favorites/${mid}`)
       isFavorited.value = false
     }
-    await fetchMovie(mid)
+    // refresh current movie by slug to keep UI consistent
+    await fetchMovieBySlug(movie.value.slug || route.params.slug)
   } catch (e) {
     console.error('toggleFavorite failed', e)
   }
@@ -175,10 +182,10 @@ const submittingReview = ref(false)
 
 const submitReview = async () => {
   if (!isAuthenticated.value) { router.push({ name: 'login', query: { redirect: route.fullPath } }); return }
-  if (!movie.value.id && !route.params.id) return
+  if (!movie.value.id) return
   submittingReview.value = true
   try {
-    const movieId = movie.value.id || route.params.id
+    const movieId = movie.value.id
     const body = { rating: Number(userRating.value), comment: userComment.value }
     const res = await api.post(`/reviews/movie/${movieId}`, body)
     if (res?.data?.data) {
@@ -294,22 +301,21 @@ const fetchRelatedMovies = async (movieObj) => {
 }
 
 // lifecycle
-onMounted(() => {
-  document.addEventListener('keydown', (e) => {
-    if (e.key === ' ' || e.key === 'k' || e.key === 'K') { togglePlay(); e.preventDefault() }
-    if (e.key === 'm' || e.key === 'M') toggleMute()
-    if (e.key === 'f' || e.key === 'F') toggleFullscreen()
-    if (e.key === 'ArrowRight') videoPlayer.value.currentTime += 10
-    if (e.key === 'ArrowLeft') videoPlayer.value.currentTime -= 10
-  })
-
-  const id = route.params.id
-  if (id) {
-    // ensure favorite status is updated after movie/user loaded
-    void fetchMovie(id).then(() => updateFavoriteStatus())
+onMounted(async () => {
+  const slug = route.params.slug
+  // load movie first (by slug) so we have real movie.id, then fetch reviews/favorites
+  if (slug) {
+    await fetchMovieBySlug(slug)
+    await updateFavoriteStatus()
+    // now that movie.value.id is set, fetch reviews by real id
+    if (movie.value?.id || movie.value?._id) {
+      await fetchReviewsIfNeeded(movie.value.id || movie.value._id)
+    }
+  } else {
+    // still ensure user loaded for favorite UI
+    await fetchCurrentUser()
+    await updateFavoriteStatus()
   }
-  void fetchCurrentUser().then(() => updateFavoriteStatus())
-  fetchReviewsIfNeeded(route.params.id)
 })
 
 onBeforeUnmount(() => {
@@ -319,9 +325,9 @@ onBeforeUnmount(() => {
   window.removeEventListener('pointermove', onPointerMove)
 })
 
-watch(() => route.params.id, (newId) => { 
-  if (newId) {
-    void fetchMovie(newId).then(() => updateFavoriteStatus())
+watch(() => route.params.slug, (newSlug) => { 
+  if (newSlug) {
+    void fetchMovieBySlug(newSlug).then(() => updateFavoriteStatus())
   }
 })
 watch(isAuthenticated, (v) => { 
@@ -516,14 +522,16 @@ watch(isAuthenticated, (v) => {
               {{ isFavorited ? 'Đã yêu thích' : 'Yêu thích' }}
             </button>
             <RouterLink 
-              :to="{ name: 'movie-detail', params: { id: movie.id } }" 
+              v-if="movie && (movie.slug || movie.id)"
+              :to="{ name: 'movie-detail', params: { slug: movie.slug || movie.id } }" 
               class="btn-outline px-3 py-1 sm:px-5 sm:py-2 flex items-center text-sm sm:text-base"
             >
               <svg class="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m-1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
               </svg>
               Thông tin phim
             </RouterLink>
+            <span v-else class="btn-outline px-3 py-1 sm:px-5 sm:py-2 text-sm sm:text-base text-gray-400">Thông tin phim</span>
           </div>
         </div>
         
@@ -608,21 +616,21 @@ watch(isAuthenticated, (v) => {
         <h2 class="text-xl font-bold text-white mb-4">Phim tương tự</h2>
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
           <RouterLink 
-            v-for="movie in movie.related" 
-            :key="movie.id"
-            :to="{ name: 'movie-detail', params: { id: movie.id } }"
+            v-for="rel in relatedList" 
+            :key="rel.id || rel._id || rel.slug"
+            :to="{ name: 'movie-detail', params: { slug: rel.slug || rel._id || rel.id } }"
             class="movie-card group"
           >
-            <div class="relative overflow-hidden rounded-xl aspect-[2/3] bg-gray-800">
-              <img :src="movie.poster" :alt="movie.title" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
-              <div class="absolute top-2 right-2 bg-black/70 backdrop-blur-sm px-2 py-1 rounded-lg text-xs text-white">
-                {{ movie.duration }}
-              </div>
-            </div>
-            <div class="mt-2">
-              <h3 class="text-white font-medium truncate">{{ movie.title }}</h3>
-              <p class="text-gray-400 text-sm">{{ movie.year }}</p>
-            </div>
+             <div class="relative overflow-hidden rounded-xl aspect-[2/3] bg-gray-800">
+               <img :src="rel.poster || rel.thumbnail || rel.image" :alt="rel.title || rel.name" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+               <div class="absolute top-2 right-2 bg-black/70 backdrop-blur-sm px-2 py-1 rounded-lg text-xs text-white">
+                 {{ rel.duration || rel.length }}
+               </div>
+             </div>
+             <div class="mt-2">
+               <h3 class="text-white font-medium truncate">{{ rel.title || rel.name }}</h3>
+               <p class="text-gray-400 text-sm">{{ rel.year }}</p>
+             </div>
           </RouterLink>
         </div>
       </div>

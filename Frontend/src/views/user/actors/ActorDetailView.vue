@@ -22,9 +22,8 @@
                 <svg class="w-5 h-5 mr-2 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
                 </svg>
-                <span>{{ actor.birthdate }} ({{ actor.age }} tuổi)</span>
-              </div>
-              
+                <span>{{ formatDate(actor.birthdate) }}</span>
+              </div> 
               <div class="flex items-center">
                 <svg class="w-5 h-5 mr-2 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
@@ -81,11 +80,13 @@
                     </div>
                     <div>
                       <RouterLink 
-                        :to="{ name: 'movie-detail', params: { id: movie.id } }"
+                        v-if="movie && (movie.slug || movie._id || movie.id)"
+                        :to="getMediaRoute(movie)"
                         class="text-white hover:text-primary-500 font-medium"
                       >
                         {{ movie.title }}
                       </RouterLink>
+                      <span v-else class="text-white/60">{{ movie.title }}</span>
                       <div class="text-xs text-gray-400">{{ movie.genre }}</div>
                     </div>
                   </div>
@@ -109,17 +110,19 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
-import api from '@/services/api' // chỉnh đường dẫn nếu khác
+import { ref, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+
+import api from '@/services/api'
 
 const route = useRoute()
-const routeParam = route.params.id
+const router = useRouter()
+const actorSlug = ref(route.params.slug || '')
 
 const loading = ref(false)
 const error = ref(null)
 
-// giữ shape mặc định để template hiện an toàn trước khi data load
+
 const actor = ref({
   id: null,
   name: '',
@@ -133,20 +136,32 @@ const actor = ref({
   biography: ''
 })
 
-const filmography = ref([])
+const formatDate = (value) => {
+  if (!value) return ''
+  const d = new Date(value)
+  if (isNaN(d)) return String(value)
+  return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
 
-const fetchActor = async () => {
+const filmography = ref([])
+const getMediaRoute = (m) => {
+  // m may contain type/ kind to decide series vs movie
+  const slug = m?.slug || m?._id || m?.id
+  const isSeries = (m?.type && String(m.type).toLowerCase() === 'series') || m?.isSeries
+  if (isSeries) return { name: 'series-detail', params: { slug } }
+  return { name: 'movie-detail', params: { slug } }
+}
+
+const fetchActor = async (slug) => {
    loading.value = true
    error.value = null
    try {
-     // fetch actor by id (route passes id or slug; controller should handle id)
-     const res = await api.get(`/actors/${routeParam}`)
-     // controller trả về { success, data } hoặc directly data
-     const data = res?.data?.data ?? res?.data ?? null
+    const res = await api.get(`/actors/slug/${encodeURIComponent(slug)}`)
+    const data = res?.data?.data ?? res?.data ?? null
      if (data) {
-       // map fields defensively
        actor.value = {
          id: data._id || data.id || '',
+         slug: data.slug || slug,
          name: data.name || data.fullName || '',
          profile: data.photoUrl || data.profile || data.avatar || '',
          backdrop: data.backdrop || '',
@@ -173,17 +188,17 @@ const fetchFilmography = async () => {
     // only fetch movies where this actor appears (use real id from actor.value)
     if (!actor.value.id) { filmography.value = []; return }
     const res = await api.get('/movies', { params: { actor: actor.value.id, limit: 100 } })
-     // Movie list có thể nằm trong res.data.movies hoặc res.data.data.movies
      const movies = res?.data?.movies ?? res?.data?.data?.movies ?? res?.data?.data ?? res?.data ?? []
-     // normalize to array of objects with id,title,poster,year,character,rating
      filmography.value = Array.isArray(movies) ? movies.map(m => ({
        id: m._id || m.id,
+       slug: m.slug || m._id || m.id, // ensure slug field if backend provides it
        title: m.title || m.name || '',
        poster: m.poster || m.image || '',
        year: m.year || (m.releaseDate ? new Date(m.releaseDate).getFullYear() : ''),
        genre: (m.categories && m.categories[0]?.name) || (m.genre || ''),
        character: (m.role || m.character) || '',
-       rating: (m.rating?.average ?? m.rating) || ''
+       rating: (m.rating?.average ?? m.rating) || '',
+       type: m.type || (m.isSeries ? 'series' : 'movie') // help decide route
      })) : []
    } catch (e) {
      console.warn('fetchFilmography failed', e)
@@ -192,10 +207,25 @@ const fetchFilmography = async () => {
  }
 
 onMounted(async () => {
-  // ensure actor loaded first to get real id, then fetch filmography by id
-  await fetchActor()
+  const s = actorSlug.value || route.params.slug
+  if (!s) {
+    router.replace({ name: 'actors' })
+    return
+  }
+  await fetchActor(s)
   await fetchFilmography()
 })
+ 
+watch(() => route.params.slug, async (v) => {
+   actorSlug.value = v || ''
+   if (actorSlug.value) {
+     await fetchActor(actorSlug.value)
+     await fetchFilmography()
+   } else {
+     actor.value = {}
+     filmography.value = []
+   }
+ })
 </script>
 <style scoped>
 /* Nếu cần thêm styles riêng */

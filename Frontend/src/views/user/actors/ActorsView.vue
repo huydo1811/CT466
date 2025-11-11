@@ -152,7 +152,7 @@
           v-for="actor in actors" 
           :key="actor.id" 
           class="group cursor-pointer"
-          @click="viewActorDetails(actor.id)"
+          @click="viewActorDetails(actor)"
         >
           <div class="relative overflow-hidden rounded-xl aspect-[3/4] bg-dark-800">
             <img 
@@ -431,8 +431,23 @@ function applySorting() {
   fetchActors()
 }
 
-function viewActorDetails(actorId) {
-  router.push({ name: 'actor-detail', params: { id: actorId } })
+function slugify(s = '') {
+  return String(s || '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+}
+
+function viewActorDetails(actorOrId) {
+  if (!actorOrId) return
+  const slug = (typeof actorOrId === 'string')
+    ? actorOrId
+    : (actorOrId.slug || actorOrId._id || actorOrId.id || slugify(actorOrId.name || ''))
+  if (!slug) return
+  router.push({ name: 'actor-detail', params: { slug } })
 }
 
 onMounted(async () => {

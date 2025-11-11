@@ -101,6 +101,7 @@ const getMediaUrl = (u) => {
           <span v-if="series && series.year" class="text-slate-400 text-lg">({{ series.year }})</span>
         </h1>
         <div class="text-slate-400 mt-2">{{ series && series.categories ? (series.categories.map(c => c.name || c).join(', ')) : '' }}</div>
+        <div v-if="series && series.slug" class="text-sm text-slate-400 mt-1">Slug: <span class="text-slate-200">{{ series.slug }}</span></div>
       </div>
 
       <div class="mt-3 sm:mt-0 flex flex-wrap items-center gap-2">

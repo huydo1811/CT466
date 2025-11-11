@@ -38,6 +38,7 @@ const categorySearch = ref('')
 // previews (use object URLs and revoke old ones)
 const posterPreview = ref(null)
 const videoPreview = ref(null)
+const backdropPreview = ref(null)
 
 const normalizeList = (arr = []) => (arr || []).map(it => ({ ...it, id: it._id || it.id }))
 
@@ -91,6 +92,7 @@ const _revokeVideo = () => {
 onBeforeUnmount(() => {
   _revokePoster()
   _revokeVideo()
+  if (backdropPreview.value) { URL.revokeObjectURL(backdropPreview.value); backdropPreview.value = null }
 })
 
 const onPosterChange = (e) => {
@@ -114,6 +116,18 @@ const onVideoChange = (e) => {
     try { videoPreview.value = URL.createObjectURL(f) } catch (err) { 
       console.error('create video preview failed', err)
       videoPreview.value = null }
+  }
+}
+
+const onBackdropChange = (e) => {
+  const f = e.target.files?.[0] || null
+  // revoke previous
+  if (backdropPreview.value) { URL.revokeObjectURL(backdropPreview.value); backdropPreview.value = null }
+  movieForm.backdropFile = f
+  if (f) {
+    try { backdropPreview.value = URL.createObjectURL(f) } catch (err) {
+      console.error('create backdrop preview failed', err)
+      backdropPreview.value = null }
   }
 }
 
@@ -169,6 +183,7 @@ const handleSubmit = async () => {
 
     if (movieForm.slug) fd.append('slug', movieForm.slug)
     if (movieForm.posterFile) fd.append('poster', movieForm.posterFile)
+    if (movieForm.backdropFile) fd.append('backdrop', movieForm.backdropFile)
     if (movieForm.videoFile) fd.append('video', movieForm.videoFile)
 
     await api.post('/movies', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
@@ -316,6 +331,13 @@ const handleCancel = () => {
               <div v-else-if="movieForm.posterFile" class="mt-3">
                 <!-- fallback if preview not set -->
                 <img :src="URL.createObjectURL(movieForm.posterFile)" class="w-full h-48 object-cover rounded" />
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-300 mb-2">Backdrop (banner)</label>
+              <input type="file" accept="image/*" @change="onBackdropChange" class="w-full text-sm text-white" />
+              <div v-if="backdropPreview" class="mt-3">
+                <img :src="backdropPreview" class="w-full h-28 object-cover rounded" />
               </div>
             </div>
 

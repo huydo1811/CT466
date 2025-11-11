@@ -386,7 +386,7 @@ watch(() => route.params.episodeId, (v) => { if (v) fetchEpisode(v) })
         </h1>
         <div class="flex-shrink-0">
           <RouterLink
-            :to="{ name: 'series-detail', params: { id: series?._id || series?.id || episode?.movie } }"
+            :to="{ name: 'series-detail', params: { slug: series?.slug || series?._id || series?.id || episode?.movie } }"
             class="btn-outline px-3 py-1 sm:px-5 sm:py-2 flex items-center text-sm sm:text-base"
           >
             <svg class="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
