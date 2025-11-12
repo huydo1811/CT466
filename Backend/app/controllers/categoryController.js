@@ -3,17 +3,17 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 
 // Lấy tất cả thể loại
 export const getAllCategories = asyncHandler(async (req, res) => {
-  const { page, limit, search } = req.query;
-  
+  const { limit, page, search, sortBy, withCount } = req.query;
   const result = await categoryService.getAllCategories({
-    page,
     limit,
-    search
+    page,
+    search,
+    sortBy,
+    withCount: withCount === 'true'
   });
-
+  
   res.status(200).json({
     success: true,
-    message: 'Lấy danh sách thể loại thành công',
     data: result.categories,
     pagination: result.pagination
   });

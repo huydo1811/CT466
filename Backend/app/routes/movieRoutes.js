@@ -7,9 +7,13 @@ import {
   updateMovie,
   deleteMovie,
   togglePublishStatus,
+  toggleHeroStatus,
   getFeaturedMovies,
   getLatestMovies,
   getHotMovies,
+  getHeroMovie,
+  getRankingMovies,
+  getPublicStats,
   incrementView,
   searchMovies,
   getMovieStats,
@@ -46,6 +50,9 @@ router.get('/search', searchMovies);
 router.get('/featured', getFeaturedMovies);
 router.get('/latest', getLatestMovies);
 router.get('/hot', getHotMovies);
+router.get('/hero', getHeroMovie);
+router.get('/ranking', getRankingMovies);
+router.get('/stats', getPublicStats);
 router.get('/category/:categoryId', getMoviesByCategory);
 router.get('/slug/:slug', getMovieBySlug);
 router.post('/:id/view', incrementView);
@@ -61,5 +68,6 @@ router.get('/admin/stats', getMovieStats);
 router.put('/:id', upload.fields([{ name: 'poster', maxCount: 1 }, { name: 'backdrop', maxCount: 1 }, { name: 'video', maxCount: 1 }]), updateMovie);
 router.delete('/:id', deleteMovie);
 router.patch('/:id/toggle', togglePublishStatus);
+router.patch('/:id/toggle-hero', toggleHeroStatus); 
 
 export default router;

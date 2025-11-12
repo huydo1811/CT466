@@ -23,7 +23,8 @@ const movieForm = reactive({
   videoFile: null,
   isPublished: true,
   isFeatured: false,
-  isHot: false
+  isHot: false,
+  isHero: false 
 })
 
 // option lists (load from API)
@@ -177,6 +178,7 @@ const handleSubmit = async () => {
     fd.append('isPublished', movieForm.isPublished ? 'true' : 'false')
     fd.append('isFeatured', movieForm.isFeatured ? 'true' : 'false')
     fd.append('isHot', movieForm.isHot ? 'true' : 'false')
+    fd.append('isHero', movieForm.isHero ? 'true' : 'false')
 
     movieForm.categories.forEach(id => fd.append('categories[]', id))
     movieForm.actors.forEach(id => fd.append('actors[]', id))
@@ -316,6 +318,10 @@ const handleCancel = () => {
               <label class="inline-flex items-center">
                 <input type="checkbox" v-model="movieForm.isHot" class="mr-2" />
                 <span class="text-slate-300">Hot</span>
+              </label>
+              <label class="inline-flex items-center"> 
+                <input type="checkbox" v-model="movieForm.isHero" class="mr-2" />
+                <span class="text-slate-300">Hero (Banner đầu trang)</span>
               </label>
             </div>
           </div>

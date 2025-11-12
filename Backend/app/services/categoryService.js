@@ -1,36 +1,48 @@
 import Category from '../models/Category.js';
+import Movie from '../models/Movie.js';
 
 class CategoryService {
-  // Lấy tất cả thể loại
   async getAllCategories(options = {}) {
-    try {
-      const { page = 1, limit = 20, search = '' } = options;
-      
-      const query = search 
-        ? { name: { $regex: search, $options: 'i' } }
-        : {};
-
-      const skip = (page - 1) * limit;
-      
-      const categories = await Category.find(query)
-        .sort({ name: 1 })
-        .skip(skip)
-        .limit(Number(limit));
-
-      const total = await Category.countDocuments(query);
-
-      return {
-        categories,
-        pagination: {
-          currentPage: Number(page),
-          totalPages: Math.ceil(total / limit),
-          totalItems: total,
-          itemsPerPage: Number(limit)
-        }
-      };
-    } catch (error) {
-      throw new Error(`Lỗi khi lấy danh sách thể loại: ${error.message}`);
+    const { limit = 50, page = 1, search = '', sortBy = 'name', withCount = false } = options;
+    
+    const query = {};
+    if (search) {
+      query.name = { $regex: search, $options: 'i' };
     }
+    
+    const skip = (page - 1) * limit;
+    const categories = await Category.find(query)
+      .sort({ [sortBy]: 1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+    
+    const total = await Category.countDocuments(query);
+    
+    let enriched = categories;
+    if (withCount) {
+      const countsAgg = await Movie.aggregate([
+        { $match: { isPublished: true } },
+        { $unwind: '$categories' },
+        { $group: { _id: '$categories', count: { $sum: 1 } } }
+      ]);
+      const countMap = new Map(countsAgg.map(c => [String(c._id), c.count]));
+      enriched = categories.map(cat => ({
+        ...cat.toObject(),
+        movieCount: countMap.get(String(cat._id)) || 0
+      }));
+      
+      // Sort theo movieCount nếu có withCount
+      enriched.sort((a, b) => b.movieCount - a.movieCount);
+    }
+    
+    return {
+      categories: enriched,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(total / limit),
+        totalItems: total
+      }
+    };
   }
 
   // Lấy thể loại theo ID

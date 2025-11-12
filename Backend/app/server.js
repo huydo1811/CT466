@@ -17,6 +17,7 @@ import seriesRoutes from './routes/seriesRoutes.js'
 import episodeRoutes from './routes/episodeRoute.js';
 import reviewRoutes from './routes/reviewRoutes.js';
 import settingRoutes from './routes/settingRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
 
 // Kết nối database
 connectDB();
@@ -49,6 +50,7 @@ app.use('/api/episodes', episodeRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/series', seriesRoutes);
 app.use('/api/settings', settingRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Route mặc định
 app.get('/', (req, res) => {

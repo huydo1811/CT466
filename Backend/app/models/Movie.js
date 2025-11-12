@@ -113,6 +113,11 @@ const movieSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+
+  isHero: { 
+    type: Boolean, 
+    default: false 
+  },
   
   viewCount: {
     type: Number,

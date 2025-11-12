@@ -1,6 +1,8 @@
 import movieService from '../services/movieService.js';
 import mongoose from 'mongoose';
 import Movie from '../models/Movie.js'
+import Episode from '../models/Episode.js' // <-- đã có rồi, kiểm tra lại
+import User from '../models/User.js'       // <-- đã có rồi
 import asyncHandler from '../middleware/asyncHandler.js'
 import reviewService from '../services/reviewService.js'
 
@@ -268,6 +270,44 @@ export const togglePublishStatus = asyncHandler(async (req, res) => {
   });
 });
 
+// Toggle hero status (Admin)
+export const toggleHeroStatus = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  
+  if (!isValidObjectId(id)) {
+    return res.status(400).json({
+      success: false,
+      message: 'ID phim không hợp lệ'
+    });
+  }
+  
+  const movie = await Movie.findById(id);
+  if (!movie) {
+    return res.status(404).json({
+      success: false,
+      message: 'Không tìm thấy phim'
+    });
+  }
+
+  // nếu đang bật isHero cho phim này -> bỏ isHero của tất cả phim khác (chỉ 1 hero duy nhất)
+  if (!movie.isHero) {
+    await Movie.updateMany({ _id: { $ne: id } }, { $set: { isHero: false } });
+  }
+
+  movie.isHero = !movie.isHero;
+  await movie.save();
+  
+  res.status(200).json({
+    success: true,
+    message: `Phim ${movie.isHero ? 'đã được đánh dấu là Hero' : 'đã bỏ đánh dấu Hero'}`,
+    data: {
+      _id: movie._id,
+      title: movie.title,
+      isHero: movie.isHero
+    }
+  });
+});
+
 // Lấy phim nổi bật (Public)
 export const getFeaturedMovies = asyncHandler(async (req, res) => {
   const limit = parseInt(req.query.limit) || 10;
@@ -282,31 +322,35 @@ export const getFeaturedMovies = asyncHandler(async (req, res) => {
   });
 });
 
-// Lấy phim mới nhất (Public)
 export const getLatestMovies = asyncHandler(async (req, res) => {
-  const limit = parseInt(req.query.limit) || 20;
-  
-  const movies = await movieService.getLatestMovies(limit);
+  const limit = parseInt(req.query.limit) || 10;
+  const type = req.query.type || null; // <-- thêm
+  const movies = await movieService.getLatestMovies(limit, type);
   
   res.status(200).json({
     success: true,
-    message: 'Lấy phim mới nhất thành công',
-    data: movies,
-    count: movies.length
+    data: movies
   });
 });
 
-// Lấy phim hot (Public)
 export const getHotMovies = asyncHandler(async (req, res) => {
-  const limit = parseInt(req.query.limit) || 20;
-  
-  const movies = await movieService.getHotMovies(limit);
+  const limit = parseInt(req.query.limit) || 10;
+  const type = req.query.type || null; // <-- thêm
+  const movies = await movieService.getHotMovies(limit, type);
   
   res.status(200).json({
     success: true,
-    message: 'Lấy phim hot thành công',
-    data: movies,
-    count: movies.length
+    data: movies
+  });
+});
+
+export const getRankingMovies = asyncHandler(async (req, res) => {
+  const { period = 'week', limit = 5, type = null } = req.query; // <-- thêm type
+  const movies = await movieService.getRankingMovies(period, parseInt(limit), type);
+  
+  res.status(200).json({
+    success: true,
+    data: movies
   });
 });
 
@@ -405,5 +449,43 @@ export const getMovieStats = asyncHandler(async (req, res) => {
     success: true,
     message: 'Lấy thống kê phim thành công',
     data: stats
+  });
+});
+
+export const getHeroMovie = asyncHandler(async (req, res) => {
+  const movie = await movieService.getHeroMovie();
+  res.status(200).json({
+    success: true,
+    data: movie
+  });
+});
+
+
+
+export const getPublicStats = asyncHandler(async (req, res) => {
+  const [totalMovies, totalSeries, movieViewsAgg, episodeViewsAgg, totalUsers] = await Promise.all([
+    Movie.countDocuments({ type: 'movie', isPublished: true }),
+    Movie.countDocuments({ type: 'series', isPublished: true }),
+    Movie.aggregate([
+      { $match: { type: 'movie', isPublished: true } },
+      { $group: { _id: null, total: { $sum: { $ifNull: ['$viewCount', 0] } } } }
+    ]),
+    Movie.aggregate([
+      { $match: { type: 'series', isPublished: true } },
+      { $group: { _id: null, total: { $sum: { $ifNull: ['$viewCount', 0] } } } }
+    ]),
+    User.countDocuments({})
+  ]);
+  
+  const totalViews = (movieViewsAgg[0]?.total || 0) + (episodeViewsAgg[0]?.total || 0);
+  
+  res.status(200).json({
+    success: true,
+    data: {
+      totalMovies,
+      totalSeries,
+      totalViews,
+      totalUsers
+    }
   });
 });

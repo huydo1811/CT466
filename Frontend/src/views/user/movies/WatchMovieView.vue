@@ -203,12 +203,34 @@ const submitReview = async () => {
   }
 }
 
-// player controls (keep existing logic)
+async function incrementMovieViewOnce(movieId, ttlMinutes = 60) {
+  if (!movieId) return
+  try {
+    const key = `viewed_movie_${movieId}`
+    const last = Number(localStorage.getItem(key) || 0)
+    const now = Date.now()
+    if (last && (now - last) < (ttlMinutes * 60 * 1000)) return
+    await api.post(`/movies/${movieId}/view`)
+    localStorage.setItem(key, String(now))
+  } catch (e) {
+    console.warn('incrementMovieView failed', e)
+  }
+}
+
+/* thay thế togglePlay để gọi increment khi bắt đầu play */
 function togglePlay() {
   const video = videoPlayer.value
   if (!video) return
-  if (video.paused) { video.play(); isPlaying.value = true }
-  else { video.pause(); isPlaying.value = false }
+  if (video.paused) {
+    video.play()
+    isPlaying.value = true
+    // gọi increment 1 lần khi bắt đầu phát — ưu tiên movie.value.id (ObjectId)
+    const mid = movie.value.id || movie.value._id || movie.value.slug
+    if (mid) incrementMovieViewOnce(mid, 60)
+  } else {
+    video.pause()
+    isPlaying.value = false
+  }
 }
 function toggleMute() { const video = videoPlayer.value; if (!video) return; video.muted = !video.muted; isMuted.value = video.muted }
 function toggleFullscreen() { if (!document.fullscreenElement) { videoContainer.value.requestFullscreen(); isFullscreen.value = true } else { document.exitFullscreen(); isFullscreen.value = false } }

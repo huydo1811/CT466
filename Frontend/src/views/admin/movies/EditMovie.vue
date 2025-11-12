@@ -10,7 +10,7 @@ const id = route.params.id
 // form model (same fields as AddMovie)
 const movieForm = reactive({
   title: '',
-  slug: '',                     // <-- added slug
+  slug: '',                    
   description: '',
   categories: [], // ids
   country: '',
@@ -27,7 +27,8 @@ const movieForm = reactive({
   videoUrl: '', // existing url or preview
   isPublished: true,
   isFeatured: false,
-  isHot: false
+  isHot: false,
+  isHero: false,
 })
 
 // option lists
@@ -112,6 +113,7 @@ onMounted(async () => {
     movieForm.isPublished = !!data.isPublished
     movieForm.isFeatured = !!data.isFeatured
     movieForm.isHot = !!data.isHot
+    movieForm.isHero = !!data.isHero; 
 
     // populate selected objects for chips
     selectedActors.value = actors.value.filter(a => movieForm.actors.includes(a.id))
@@ -196,7 +198,7 @@ const handleSubmit = async () => {
     fd.append('isPublished', movieForm.isPublished ? 'true' : 'false')
     fd.append('isFeatured', movieForm.isFeatured ? 'true' : 'false')
     fd.append('isHot', movieForm.isHot ? 'true' : 'false')
-
+    fd.append('isHero', movieForm.isHero ? 'true' : 'false'); 
     movieForm.categories.forEach(id => fd.append('categories[]', id))
     movieForm.actors.forEach(id => fd.append('actors[]', id))
 
@@ -331,6 +333,10 @@ const handleCancel = () => {
               <label class="inline-flex items-center">
                 <input type="checkbox" v-model="movieForm.isHot" class="mr-2" />
                 <span class="text-slate-300">Hot</span>
+              </label>
+              <label class="inline-flex items-center"> 
+                <input type="checkbox" v-model="movieForm.isHero" class="mr-2" />
+                <span class="text-slate-300">Hero (Banner đầu trang)</span>
               </label>
             </div>
           </div>

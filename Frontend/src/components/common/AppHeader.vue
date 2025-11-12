@@ -237,7 +237,7 @@ const movieLink = (r) => {
           </RouterLink>
 
           <RouterLink to="/movies" class="nav-link" :class="{ 'nav-link-active': moviesActive }">
-            <span>Phim điện ảnh</span><div class="nav-underline"></div>
+            <span>Phim lẻ</span><div class="nav-underline"></div>
           </RouterLink>
 
           <RouterLink to="/series" class="nav-link" :class="{ 'nav-link-active': seriesActive }">

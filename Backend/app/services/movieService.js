@@ -292,54 +292,62 @@ class MovieService {
   }
   
   // Lấy phim mới nhất
-  async getLatestMovies(limit = 20) {
-    try {
-      const movies = await Movie.find({ isPublished: true })
+  async getLatestMovies(limit, type = null) {
+    const query = { isPublished: true };
+    if (type) query.type = type; // <-- thêm filter type
+    
+    return await Movie.find(query)
+      .populate('categories', 'name slug')
+      .populate('country', 'name')
+      .populate('actors', 'name slug photoUrl')
+      .sort('-createdAt')
+      .limit(limit);
+  }
+  
+  // Lấy phim hot (trending - xem nhiều trong 7 ngày gần đây)
+  async getHotMovies(limit, type = null) {
+    const query = { isPublished: true };
+    if (type) query.type = type;
+    
+    // Không filter createdAt, chỉ sort theo viewCount
+    return await Movie.find(query)
+      .populate('categories', 'name slug')
+      .populate('country', 'name')
+      .sort('-viewCount -createdAt') // ưu tiên viewCount, rồi mới createdAt
+      .limit(limit);
+  }
+  
+  // Lấy phim BXH tuần/tháng
+  async getRankingMovies(period = 'week', limit = 5, type = null) {
+    const query = { isPublished: true };
+    if (type) query.type = type;
+    
+    // Không filter createdAt, chỉ sort theo viewCount
+    return await Movie.find(query)
+      .populate('categories', 'name slug')
+      .populate('country', 'name')
+      .sort('-viewCount')
+      .limit(limit);
+  }
+  
+  // Lấy phim Hero
+  async getHeroMovie() {
+    let movie = await Movie.findOne({ isHero: true, isPublished: true })
+      .populate('categories', 'name slug')
+      .populate('country', 'name')
+      .populate('actors', 'name slug photoUrl');
+    
+    if (!movie) {
+      movie = await Movie.findOne({ isFeatured: true, isPublished: true })
+        .sort('-createdAt')
         .populate('categories', 'name slug')
-        .populate('country', 'name code')
-        .sort({ createdAt: -1 })
-        .limit(parseInt(limit));
-      
-      return movies;
-    } catch (error) {
-      throw new Error(`Lỗi khi lấy phim mới nhất: ${error.message}`);
+        .populate('country', 'name')
+        .populate('actors', 'name slug photoUrl');
     }
+    
+    return movie;
   }
-  
-  // Lấy phim hot (nhiều view + rating cao)
-  async getHotMovies(limit = 20) {
-    try {
-      const movies = await Movie.find({ 
-        isPublished: true,
-        isHot: true
-      })
-        .populate('categories', 'name slug')
-        .populate('country', 'name code')
-        .sort({ viewCount: -1, 'rating.average': -1 })
-        .limit(parseInt(limit));
-      
-      return movies;
-    } catch (error) {
-      throw new Error(`Lỗi khi lấy phim hot: ${error.message}`);
-    }
-  }
-  
-  // Tăng view count
-  async incrementView(id) {
-    try {
-      const movie = await Movie.findById(id);
-      
-      if (!movie || !movie.isPublished) {
-        throw new Error('Phim không tồn tại hoặc chưa được xuất bản');
-      }
-      
-      await movie.incrementView();
-      return movie;
-    } catch (error) {
-      throw new Error(`Lỗi khi tăng view count: ${error.message}`);
-    }
-  }
-  
+
   // Thống kê phim (admin)
   async getMovieStats() {
     try {
@@ -404,5 +412,5 @@ class MovieService {
     }
   }
 }
- 
+
 export default new MovieService();

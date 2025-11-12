@@ -50,11 +50,33 @@ const fetchSeries = async () => {
         id,
         category: categoryStr,
         country: countryStr,
+        // default to movie.viewCount, will override for series by summing episodes
         views: m.viewCount ?? m.views ?? 0,
         status: m.isPublished ? 'Hoạt động' : 'Ẩn',
         createdAt: m.createdAt
       }
     })
+
+    // For each series, fetch its episodes and sum viewCount
+    try {
+      const seriesIds = movies.value.map(m => m.id).filter(Boolean)
+      if (seriesIds.length) {
+        const reqs = seriesIds.map(id =>
+          api.get(`/episodes/movie/${id}`)
+            .then(r => (r?.data?.data) || (r?.data) || [])
+            .catch(() => [])
+        )
+        const results = await Promise.all(reqs)
+        results.forEach((episodes, idx) => {
+          const id = seriesIds[idx]
+          const sum = Array.isArray(episodes) ? episodes.reduce((s, e) => s + (Number(e.viewCount ?? e.views ?? 0)), 0) : 0
+          const mv = movies.value.find(x => String(x.id) === String(id))
+          if (mv) mv.views = sum
+        })
+      }
+    } catch (e) {
+      console.warn('Failed to aggregate episode views for series', e)
+    }
 
     const p = body.pagination || {}
     pagination.value = {

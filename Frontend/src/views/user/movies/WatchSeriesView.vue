@@ -236,11 +236,29 @@ const updateEpisodeFavorite = async () => {
   }
 }
 
-// play episode (navigate)
+async function incrementEpisodeViewOnce(episodeId, ttlMinutes = 60) {
+  if (!episodeId) return
+  try {
+    const key = `viewed_episode_${episodeId}`
+    const last = Number(localStorage.getItem(key) || 0)
+    const now = Date.now()
+    if (last && (now - last) < (ttlMinutes * 60 * 1000)) return
+    await api.post(`/episodes/${episodeId}/view`)
+    localStorage.setItem(key, String(now))
+  } catch (e) {
+    console.warn('incrementEpisodeView failed', e)
+  }
+}
+
+
+
+/* khi user nhấn chọn tập (navigate), có thể gọi increment lạc quan */
 const playEpisode = (ep) => {
   const id = ep._id || ep.id
   if (!id) return
   router.push({ name: 'watch-series', params: { seriesId: ep.movie || series.value?.id, episodeId: id }})
+  // optimistic increment (sẽ được kiểm tra TTL)
+  incrementEpisodeViewOnce(id, 60)
 }
 
 // watch handlers — require user to press Play (no autoplay)
@@ -268,27 +286,33 @@ watch(episode, async (ep) => {
   await fetchReviewsForEpisode(ep?._id || ep?.id)
 })
 
-// toggle play (async, handle play() rejection)
+
 const togglePlay = async () => {
   const v = videoPlayer.value
   if (!v) return
   try {
     if (v.paused) {
-      // try to play; browser may reject if no gesture
       await v.play()
       isPlaying.value = !v.paused
-      needsUserGesture.value = v.paused // if still paused, still need gesture
+      needsUserGesture.value = v.paused 
+      const eid = episode.value?._id || episode.value?.id
+      if (eid) {
+        try { await incrementEpisodeViewOnce(eid,30) } catch (e) { 
+          /* ignore */ 
+          console.warn('incrementEpisodeViewOnce error', e)
+        }
+      }
     } else {
       v.pause()
       isPlaying.value = false
     }
   } catch (err) {
-    // autoplay prevented or other play error — require gesture
     console.warn('Play prevented or error:', err)
     isPlaying.value = false
     needsUserGesture.value = true
   }
 }
+
 
 // route params
 onMounted(() => {
