@@ -411,6 +411,24 @@ class MovieService {
       throw new Error(`Lỗi khi lấy thống kê phim: ${error.message}`);
     }
   }
+
+  async incrementView(movieId) {
+    try {
+      const movie = await Movie.findByIdAndUpdate(
+        movieId,
+        { $inc: { viewCount: 1 } }, // tăng viewCount thêm 1
+        { new: true, runValidators: false }
+      ).select('viewCount');
+      
+      if (!movie) {
+        throw new Error('Movie không tồn tại');
+      }
+      
+      return movie;
+    } catch (error) {
+      throw new Error(`Lỗi khi tăng view count: ${error.message}`);
+    }
+  }
 }
 
 export default new MovieService();

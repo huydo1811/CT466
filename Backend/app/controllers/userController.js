@@ -179,29 +179,6 @@ export const updateMe = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: updated })
 })
 
-export const getMyHistory = asyncHandler(async (req, res) => {
-  const uid = req.user && (req.user._id || req.user.id)
-  if (!uid) return res.status(401).json({ success: false, message: 'Unauthorized' })
-  const data = await userService.getUserHistory(uid)
-  res.json({ success: true, data })
-})
-
-export const deleteHistoryItem = asyncHandler(async (req, res) => {
-  const uid = req.user && (req.user._id || req.user.id)
-  const { hid } = req.params
-  if (!uid) return res.status(401).json({ success: false, message: 'Unauthorized' })
-  if (!hid) return res.status(400).json({ success: false, message: 'Missing history id' })
-  await userService.removeHistoryItem(uid, hid)
-  res.json({ success: true })
-})
-
-export const clearMyHistory = asyncHandler(async (req, res) => {
-  const uid = req.user && (req.user._id || req.user.id)
-  if (!uid) return res.status(401).json({ success: false, message: 'Unauthorized' })
-  await userService.clearHistory(uid)
-  res.json({ success: true })
-})
-
 // Lấy danh sách favorite của user hiện tại
 export async function getMyFavorites(req, res) {
   try {
@@ -247,3 +224,54 @@ export async function removeFavorite(req, res) {
     return res.status(500).json({ success: false, message: err.message || 'Server error' })
   }
 }
+
+// Get watch history
+export const getMyHistory = asyncHandler(async (req, res) => {
+  const uid = req.user && (req.user._id || req.user.id);
+  if (!uid) return res.status(401).json({ success: false, message: 'Unauthorized' });
+  
+  const history = await userService.getHistory(uid);
+  res.json({ success: true, data: history });
+});
+
+// Add to history
+export const addToHistory = asyncHandler(async (req, res) => {
+  const uid = req.user && (req.user._id || req.user.id);
+  const { movieId, progress } = req.body;
+  
+  if (!uid) return res.status(401).json({ success: false, message: 'Unauthorized' });
+  if (!movieId) return res.status(400).json({ success: false, message: 'movieId required' });
+  
+  await userService.addToHistory(uid, movieId, progress || 0);
+  res.json({ success: true, message: 'Đã lưu lịch sử xem' });
+});
+
+// Remove history item
+export const deleteHistoryItem = asyncHandler(async (req, res) => {
+  const uid = req.user && (req.user._id || req.user.id);
+  const { hid } = req.params;
+  
+  if (!uid) return res.status(401).json({ success: false, message: 'Unauthorized' });
+  if (!hid) return res.status(400).json({ success: false, message: 'Missing history id' });
+  
+  await userService.removeFromHistory(uid, hid);
+  res.json({ success: true, message: 'Đã xóa lịch sử' });
+});
+
+// Clear all history
+export const clearMyHistory = asyncHandler(async (req, res) => {
+  const uid = req.user && (req.user._id || req.user.id);
+  if (!uid) return res.status(401).json({ success: false, message: 'Unauthorized' });
+  
+  await userService.clearHistory(uid);
+  res.json({ success: true, message: 'Đã xóa toàn bộ lịch sử' });
+});
+
+// Get user's reviews
+export const getMyReviews = asyncHandler(async (req, res) => {
+  const uid = req.user && (req.user._id || req.user.id);
+  if (!uid) return res.status(401).json({ success: false, message: 'Unauthorized' });
+  
+  const reviews = await userService.getUserReviews(uid);
+  res.json({ success: true, data: reviews });
+});

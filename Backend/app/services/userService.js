@@ -377,10 +377,142 @@ class UserService {
 
   async getFavorites(userId) {
     try {
-      const user = await User.findById(userId).populate('favorites', 'title poster slug year').lean()
-      return (user && user.favorites) ? user.favorites : []
+      const user = await User.findById(userId)
+        .populate({
+          path: 'favorites',
+          select: 'title poster slug year type rating' // <-- THÊM 'type' và 'rating'
+        })
+        .lean();
+      
+      if (!user) {
+        throw new Error('User không tồn tại');
+      }
+      
+      return (user.favorites || []).map(m => ({
+        _id: m._id,
+        title: m.title,
+        poster: m.poster,
+        slug: m.slug,
+        year: m.year,
+        type: m.type, // <-- ĐẢM BẢO có type
+        rating: m.rating?.average || 0
+      }));
     } catch (error) {
       throw new Error(`Lỗi khi lấy favorites: ${error.message}`)
+    }
+  }
+
+  // Add to watch history
+  async addToHistory(userId, movieId, progress = 0) {
+    try {
+      const user = await User.findById(userId);
+      if (!user) throw new Error('User không tồn tại');
+      
+      const movie = await Movie.findById(movieId);
+      if (!movie) throw new Error('Movie không tồn tại');
+      
+      user.history = user.history.filter(h => String(h.movie) !== String(movieId));
+      
+      user.history.unshift({
+        movie: movieId,
+        progress: progress,
+        watchedAt: new Date()
+      });
+      
+      if (user.history.length > 50) {
+        user.history = user.history.slice(0, 50);
+      }
+      
+      await user.save();
+      return user;
+    } catch (error) {
+      throw new Error(`Lỗi khi thêm lịch sử: ${error.message}`);
+    }
+  }
+
+  async getHistory(userId) {
+    try {
+      const user = await User.findById(userId)
+        .populate({
+          path: 'history.movie',
+          select: 'title slug poster year duration type rating',
+          match: { isPublished: true }
+        })
+        .lean();
+      
+      if (!user) throw new Error('User không tồn tại');
+      
+      return (user.history || [])
+        .filter(h => h.movie)
+        .map(h => ({
+          _id: h._id,
+          id: h.movie._id,
+          title: h.movie.title,
+          slug: h.movie.slug,
+          poster: h.movie.poster,
+          year: h.movie.year,
+          duration: h.movie.duration ? `${h.movie.duration} phút` : '',
+          type: h.movie.type,
+          rating: h.movie.rating?.average || 0,
+          progress: h.progress || 0,
+          watchedAt: h.watchedAt
+        }));
+    } catch (error) {
+      throw new Error(`Lỗi khi lấy lịch sử: ${error.message}`);
+    }
+  }
+
+  async removeFromHistory(userId, historyId) {
+    try {
+      const user = await User.findById(userId);
+      if (!user) throw new Error('User không tồn tại');
+      
+      user.history = user.history.filter(h => String(h._id) !== String(historyId));
+      await user.save();
+    } catch (error) {
+      throw new Error(`Lỗi khi xóa lịch sử: ${error.message}`);
+    }
+  }
+
+  async clearHistory(userId) {
+    try {
+      const user = await User.findById(userId);
+      if (!user) throw new Error('User không tồn tại');
+      
+      user.history = [];
+      await user.save();
+    } catch (error) {
+      throw new Error(`Lỗi khi xóa lịch sử: ${error.message}`);
+    }
+  }
+
+  async getUserReviews(userId) {
+    try {
+      const Review = mongoose.model('Review');
+      const reviews = await Review.find({ user: userId })
+        .populate({
+          path: 'movie',
+          select: 'title slug poster year type' 
+        })
+        .sort('-createdAt')
+        .lean();
+
+      return reviews
+        .filter(r => r.movie)
+        .map(r => ({
+          _id: r._id,
+          movieId: r.movie._id,
+          movieTitle: r.movie.title,
+          movieSlug: r.movie.slug,
+          moviePoster: r.movie.poster,
+          movieYear: r.movie.year,
+          movieType: r.movie.type, 
+          rating: r.rating,
+          comment: r.comment,
+          createdAt: r.createdAt
+        }));
+    } catch (error) {
+      throw new Error(`Lỗi khi lấy reviews: ${error.message}`);
     }
   }
 }

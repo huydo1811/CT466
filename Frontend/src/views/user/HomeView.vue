@@ -2,11 +2,12 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import api from '@/services/api'
+import { useAuthStore } from '@/stores/auth'
 
 const heroMovie = ref(null)
-const latestMovies = ref([])      // type=movie
-const latestSeries = ref([])      // type=series (thêm mới)
-const trendingMovies = ref([])    // type=movie
+const latestMovies = ref([])      
+const latestSeries = ref([])      
+const trendingMovies = ref([])   
 const weekTop = ref([])
 const monthTop = ref([])
 const popularCategories = ref([])
@@ -242,7 +243,59 @@ function animateStat(key, to) {
   }, duration / Math.ceil(to / step))
 }
 
-// ========== Lifecycle ==========
+const authStore = useAuthStore()
+const isLoggedIn = computed(() => authStore.isAuthenticated)
+
+// Thêm state cho favorites
+const userFavorites = ref([]) // Array of movie IDs
+
+// ...existing helpers & fetch functions...
+
+// THÊM: Fetch user favorites
+const fetchUserFavorites = async () => {
+  if (!isLoggedIn.value) return
+  try {
+    const res = await api.get('/users/me/favorites')
+    userFavorites.value = (res?.data?.data || []).map(m => String(m._id || m.id))
+  } catch (e) {
+    console.warn('fetchUserFavorites failed', e)
+  }
+}
+
+
+const isFavorite = (movie) => {
+  const mid = String(movie.id || movie._id)
+  return userFavorites.value.includes(mid)
+}
+
+const toggleFavorite = async (movie, event) => {
+  if (event) event.stopPropagation() 
+  
+  if (!isLoggedIn.value) {
+    alert('Vui lòng đăng nhập để sử dụng tính năng này')
+    return
+  }
+  
+  try {
+    const movieId = String(movie.id || movie._id)
+    const currentlyFav = isFavorite(movie)
+    
+    if (currentlyFav) {
+      // Remove from favorites
+      await api.delete(`/users/me/favorites/${movieId}`)
+      userFavorites.value = userFavorites.value.filter(id => id !== movieId)
+    } else {
+      // Add to favorites
+      await api.post(`/users/me/favorites/${movieId}`)
+      userFavorites.value.push(movieId)
+    }
+  } catch (e) {
+    console.error('toggleFavorite failed', e)
+    alert(e?.response?.data?.message || 'Có lỗi xảy ra')
+  }
+}
+
+
 onMounted(async () => {
   await Promise.all([
     fetchHero(),
@@ -253,7 +306,8 @@ onMounted(async () => {
     fetchPopularCategories(),
     fetchPopularActors(),
     fetchEditorCollections(),
-    fetchStats()
+    fetchStats(),
+    fetchUserFavorites()
   ])
 })
 
@@ -281,7 +335,7 @@ watch(() => selectedCategory.value, (slug) => {
         <div class="max-w-3xl">
           <div class="inline-flex items-center space-x-3 mb-6">
             <span class="px-3 py-1 bg-primary-500 text-white text-sm font-semibold rounded-full animate-pulse">
-              HERO
+              PHIM NỔI BẬT
             </span>
             <div class="flex items-center space-x-2 text-gray-300">
               <span class="flex items-center space-x-1">
@@ -336,11 +390,22 @@ watch(() => selectedCategory.value, (slug) => {
               Thông tin thêm
             </RouterLink>
             
-            <button class="btn-outline text-lg px-8 py-4">
-              <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button 
+              @click="toggleFavorite(heroMovie)" 
+              :class="[
+                'btn-outline text-lg px-8 py-4 transition-colors',
+                isFavorite(heroMovie) ? 'bg-red-600 border-red-600 text-white hover:bg-red-700' : ''
+              ]"
+            >
+              <svg 
+                class="w-6 h-6 mr-2" 
+                :fill="isFavorite(heroMovie) ? 'currentColor' : 'none'" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
               </svg>
-              Yêu thích
+              {{ isFavorite(heroMovie) ? 'Đã thích' : 'Yêu thích' }}
             </button>
           </div>
         </div>

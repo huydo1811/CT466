@@ -19,7 +19,9 @@ import {
   clearMyHistory,
   getMyFavorites,
   addFavorite,
-  removeFavorite
+  removeFavorite,
+  addToHistory,
+  getMyReviews
 } from '../controllers/userController.js';
 
 import { protect, authorize } from '../middleware/auth.js';
@@ -53,8 +55,11 @@ router.delete('/me/favorites/:mid', removeFavorite)
 
 // history endpoints
 router.get('/me/history', getMyHistory)
-router.delete('/me/history', clearMyHistory)
+router.post('/me/history', addToHistory)
 router.delete('/me/history/:hid', deleteHistoryItem)
+router.delete('/me/history', clearMyHistory)
+
+router.get('/me/reviews', getMyReviews)
 
 // admin-only routes — use authorize middleware already imported
 router.use(authorize('admin'))

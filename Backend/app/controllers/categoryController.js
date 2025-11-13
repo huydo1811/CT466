@@ -1,5 +1,29 @@
 import categoryService from '../services/categoryService.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import fs from 'fs';
+import path from 'path';
+
+// Helper: build full URL
+const buildFileUrl = (req, filename, folder = 'categories') => {
+  if (!filename) return ''
+  const rel = `/uploads/${folder}/${filename}`
+  return `${req.protocol}://${req.get('host')}${rel}`
+}
+
+// Helper: delete file từ URL đầy đủ hoặc relative path
+const deleteUploadedFile = (fileUrl, folder = 'categories') => {
+  try {
+    if (!fileUrl || typeof fileUrl !== 'string') return
+    const segment = `/uploads/${folder}/`
+    const idx = fileUrl.indexOf(segment)
+    if (idx === -1) return
+    const filename = fileUrl.slice(idx + segment.length)
+    const fp = path.join(process.cwd(), 'uploads', folder, filename)
+    if (fs.existsSync(fp)) fs.unlinkSync(fp)
+  } catch (e) {
+    console.warn('deleteUploadedFile fail', e)
+  }
+}
 
 // Lấy tất cả thể loại
 export const getAllCategories = asyncHandler(async (req, res) => {
@@ -43,7 +67,14 @@ export const getCategoryBySlug = asyncHandler(async (req, res) => {
 
 // Tạo thể loại mới
 export const createCategory = asyncHandler(async (req, res) => {
-  const category = await categoryService.createCategory(req.body);
+  const categoryData = { ...req.body };
+  
+  // Xử lý file upload
+  if (req.file) {
+    categoryData.image = buildFileUrl(req, req.file.filename, 'categories');
+  }
+  
+  const category = await categoryService.createCategory(categoryData);
 
   res.status(201).json({
     success: true,
@@ -54,7 +85,25 @@ export const createCategory = asyncHandler(async (req, res) => {
 
 // Cập nhật thể loại
 export const updateCategory = asyncHandler(async (req, res) => {
-  const category = await categoryService.updateCategory(req.params.id, req.body);
+  const { id } = req.params;
+  const updateData = { ...req.body };
+  
+  // Lấy category cũ để xóa file ảnh cũ nếu có ảnh mới
+  let existing = null;
+  try { 
+    existing = await categoryService.getCategoryById(id);
+  } catch {}
+  
+  // Xử lý file upload mới
+  if (req.file) {
+    // Xóa ảnh cũ
+    if (existing && existing.image) {
+      deleteUploadedFile(existing.image, 'categories');
+    }
+    updateData.image = buildFileUrl(req, req.file.filename, 'categories');
+  }
+  
+  const category = await categoryService.updateCategory(id, updateData);
 
   res.status(200).json({
     success: true,
@@ -65,7 +114,19 @@ export const updateCategory = asyncHandler(async (req, res) => {
 
 // Xóa thể loại
 export const deleteCategory = asyncHandler(async (req, res) => {
-  await categoryService.deleteCategory(req.params.id);
+  const { id } = req.params;
+  
+  // Lấy category để xóa file ảnh
+  let existing = null;
+  try {
+    existing = await categoryService.getCategoryById(id);
+  } catch {}
+  
+  if (existing && existing.image) {
+    deleteUploadedFile(existing.image, 'categories');
+  }
+  
+  await categoryService.deleteCategory(id);
 
   res.status(200).json({
     success: true,

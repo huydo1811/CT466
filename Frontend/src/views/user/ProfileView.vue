@@ -246,24 +246,33 @@
   <div v-if="activeTab === 'history'" class="animate-fadeIn">
     <div class="flex items-center justify-between mb-4 sm:mb-6">
       <h2 class="text-lg sm:text-xl font-semibold text-white">Lịch sử xem phim</h2>
-      <button class="text-gray-400 hover:text-white text-xs sm:text-sm flex items-center" @click="clearHistory">
-        <svg class="w-3 h-3 sm:w-4 sm:h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-        </svg>
-        Xóa lịch sử
+      <button 
+        v-if="watchHistory.length > 0" 
+        @click="clearHistory" 
+        class="text-sm text-red-400 hover:text-red-300"
+      >
+        Xóa tất cả
       </button>
     </div>
     
-    <div v-if="watchHistory.length > 0">
-      <div v-for="item in watchHistory" :key="item.id" class="flex items-center py-3 sm:py-4 border-b border-gray-700">
+    <div v-if="watchHistory.length > 0" class="space-y-3 sm:space-y-4">
+      <div v-for="item in watchHistory" :key="item._id" class="flex items-center py-3 sm:py-4 border-b border-gray-700">
         <div class="w-12 h-18 sm:w-16 sm:h-24 rounded overflow-hidden flex-shrink-0">
-          <img :src="item.poster" :alt="item.title" class="w-full h-full object-cover" />
+          <img :src="getMediaUrl(item.poster)" :alt="item.title" class="w-full h-full object-cover" />
         </div>
         
         <div class="ml-3 sm:ml-4 flex-1">
-          <RouterLink :to="{ name: 'movie-detail', params: { id: item.id } }" class="text-white hover:text-primary-500 font-medium text-sm sm:text-base">
+          <!-- SỬA: Router link đúng theo type -->
+          <RouterLink 
+            :to="{ 
+              name: item.type === 'series' ? 'series-detail' : 'movie-detail', 
+              params: { slug: item.slug } 
+            }" 
+            class="text-white hover:text-primary-500 font-medium text-sm sm:text-base"
+          >
             {{ item.title }}
           </RouterLink>
+          
           <div class="text-xs sm:text-sm text-gray-500 mb-1 sm:mb-2">
             <span>{{ item.year }}</span>
             <span class="mx-1">•</span>
@@ -277,7 +286,14 @@
             </div>
             
             <div class="flex items-center">
-              <RouterLink :to="{ name: 'watch-movie', params: { id: item.id } }" class="text-xs sm:text-sm text-primary-500 hover:text-primary-400 mr-2 sm:mr-4">
+              <!-- SỬA: Xem lại - CHỈ link đến detail page thay vì watch -->
+              <RouterLink 
+                :to="{ 
+                  name: item.type === 'series' ? 'series-detail' : 'movie-detail', 
+                  params: { slug: item.slug } 
+                }" 
+                class="text-xs sm:text-sm text-primary-500 hover:text-primary-400 mr-2 sm:mr-4"
+              >
                 <span class="flex items-center">
                   <svg class="w-3 h-3 sm:w-4 sm:h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
@@ -286,7 +302,7 @@
                 </span>
               </RouterLink>
               
-              <button @click="removeFromHistory(item.id)" class="text-gray-500 hover:text-gray-300">
+              <button @click="removeFromHistory(item._id)" class="text-gray-500 hover:text-gray-300">
                 <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
@@ -298,7 +314,7 @@
           <div class="mt-1 sm:mt-2 bg-dark-900 h-1 rounded-full overflow-hidden">
             <div 
               class="bg-primary-500 h-full" 
-              :style="{ width: `${item.progress}%` }"
+              :style="{ width: `${item.progress || 0}%` }"
             ></div>
           </div>
         </div>
@@ -307,10 +323,10 @@
     
     <div v-else class="text-center py-8 sm:py-12 bg-dark-900/50 rounded-xl border border-gray-800">
       <svg class="w-12 h-12 sm:w-16 sm:h-16 text-gray-700 mx-auto mb-3 sm:mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
       <h3 class="text-gray-400 text-base sm:text-lg font-medium mb-2">Chưa có lịch sử xem</h3>
-      <p class="text-gray-600 max-w-md mx-auto mb-4 sm:mb-6 text-sm sm:text-base">Bạn chưa xem phim nào. Hãy khám phá bộ sưu tập phim của chúng tôi.</p>
+      <p class="text-gray-600 max-w-md mx-auto mb-4 sm:mb-6 text-sm sm:text-base">Bạn chưa xem phim nào.</p>
       <RouterLink to="/" class="btn-primary px-4 py-2 sm:px-6 sm:py-2">
         Khám phá phim
       </RouterLink>
@@ -325,13 +341,24 @@
     
     <div v-if="favorites.length > 0" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-5">
       <div v-for="item in favorites" :key="item._id || item.id" class="group bg-dark-800 rounded-lg overflow-hidden border border-gray-700">
-        <RouterLink :to="{ name: 'movie-detail', params: { id: (item._id || item.id) } }" class="block">
+        <!-- SỬA: Dùng slug + dynamic name theo type -->
+        <RouterLink 
+          :to="{ 
+            name: item.type === 'series' ? 'series-detail' : 'movie-detail', 
+            params: { slug: item.slug } 
+          }" 
+          class="block"
+        >
           <div class="w-full h-40 sm:h-44 md:h-48 overflow-hidden">
-            <img :src="getMediaUrl(item.poster || item.moviePoster || item.posterUrl)" :alt="item.title || item.name" class="w-full h-full object-cover transition-transform group-hover:scale-105" />
+            <img 
+              :src="getMediaUrl(item.poster)" 
+              :alt="item.title" 
+              class="w-full h-full object-cover transition-transform group-hover:scale-105" 
+            />
           </div>
           <div class="p-3">
-            <h3 class="text-sm sm:text-base font-medium text-white truncate">{{ item.title || item.name }}</h3>
-            <div class="text-xs text-gray-400 mt-1">{{ item.year || '' }}</div>
+            <h3 class="text-sm sm:text-base font-medium text-white truncate">{{ item.title }}</h3>
+            <div class="text-xs text-gray-400 mt-1">{{ item.year }}</div>
           </div>
         </RouterLink>
       </div>
@@ -436,23 +463,60 @@ function resetForm() {
 
 const loadProfile = async () => {
   try {
-    // use auth/profile endpoint (see Backend/app/controllers/authController.js -> getProfile)
     const res = await api.get('/auth/profile')
     const u = res?.data?.data || res?.data || null
     if (u) {
       user.value = u
-      // history stored on user model (see Backend/app/models/User.js -> history subdocs)
-      watchHistory.value = Array.isArray(u.history) ? u.history.map(h => ({
-        id: h._id || h.id,
-        title: h.title || h.movieTitle || '',
-        poster: h.poster || h.moviePoster || '',
-        year: h.year || '',
-        duration: h.duration || '',
-        watchedAt: h.watchedAt || h.createdAt || null,
-        progress: h.progress ?? 0
-      })) : []
-      // favorites if available from API
-      favorites.value = Array.isArray(u.favorites) ? u.favorites : (u.favoriteMovies || [])
+      
+      // Fetch watch history từ API
+      try {
+        const historyRes = await api.get('/users/me/history')
+        watchHistory.value = (historyRes?.data?.data || []).map(h => ({
+          _id: h._id,
+          id: h.id || h._id,
+          title: h.title,
+          slug: h.slug, // <-- THÊM slug
+          poster: h.poster,
+          year: h.year,
+          duration: h.duration,
+          type: h.type,
+          rating: h.rating || 0,
+          progress: h.progress ?? 0,
+          watchedAt: h.watchedAt
+        }))
+      } catch (e) {
+        console.warn('Failed to load history', e)
+      }
+      
+      // Fetch favorites từ API
+      try {
+        const favRes = await api.get('/users/me/favorites')
+        favorites.value = (favRes?.data?.data || []).map(m => ({
+          _id: m._id,
+          id: m._id,
+          title: m.title,
+          slug: m.slug, // <-- THÊM slug
+          poster: m.poster,
+          year: m.year,
+          type: m.type
+        }))
+      } catch (e) {
+        console.warn('Failed to load favorites', e)
+      }
+      
+      // Fetch reviews (ratings + comments) từ API
+      try {
+        const reviewsRes = await api.get('/users/me/reviews')
+        const reviews = reviewsRes?.data?.data || []
+        user.value.stats = user.value.stats || {}
+        user.value.stats.watched = watchHistory.value.length
+        user.value.stats.favorites = favorites.value.length
+        user.value.stats.ratings = reviews.filter(r => r.rating).length
+        user.value.stats.comments = reviews.filter(r => r.comment).length
+      } catch (e) {
+        console.warn('Failed to load reviews', e)
+      }
+      
       resetForm()
     }
   } catch (err) {
@@ -517,26 +581,32 @@ async function updatePassword() {
 }
 
 // History management: call backend endpoints if available, fallback to local update
-async function removeFromHistory(id) {
+async function removeFromHistory(historyId) {
   try {
-    // support DELETE /users/me/history/:id
-    await api.delete(`/users/me/history/${id}`)
-    watchHistory.value = watchHistory.value.filter(item => (item.id || item._id) !== id)
+    await api.delete(`/users/me/history/${historyId}`)
+    watchHistory.value = watchHistory.value.filter(item => item._id !== historyId)
+    // Update stats
+    if (user.value.stats) {
+      user.value.stats.watched = watchHistory.value.length
+    }
   } catch (err) {
-    console.warn('removeFromHistory API failed, falling back to client-side filter', err)
-    watchHistory.value = watchHistory.value.filter(item => (item.id || item._id) !== id)
+    console.warn('removeFromHistory failed', err)
+    alert('Xóa lịch sử thất bại')
   }
 }
 
 async function clearHistory() {
   if (!confirm('Bạn có chắc muốn xóa toàn bộ lịch sử xem?')) return
   try {
-    // support DELETE /users/me/history (bulk)
     await api.delete('/users/me/history')
     watchHistory.value = []
+    // Update stats
+    if (user.value.stats) {
+      user.value.stats.watched = 0
+    }
   } catch (err) {
-    console.warn('clearHistory API failed, falling back to client-side clear', err)
-    watchHistory.value = []
+    console.warn('clearHistory failed', err)
+    alert('Xóa lịch sử thất bại')
   }
 }
 

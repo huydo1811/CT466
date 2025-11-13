@@ -41,22 +41,28 @@ const userSchema = new mongoose.Schema({
     default: null
   },
 
-  // watch history: lưu dưới dạng subdocuments để dễ truy vấn / xóa
-  history: [
-    {
-      _id: { type: mongoose.Schema.Types.ObjectId, auto: true },
-      movieId: { type: mongoose.Schema.Types.ObjectId, ref: 'Movie', required: true },
-      title: { type: String, default: '' },
-      poster: { type: String, default: '' },
-      watchedAt: { type: Date, default: Date.now },
-      progress: { type: Number, default: 0 }, // percent
-      duration: { type: String, default: '' } // optional
+  history: [{
+    movie: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Movie',
+      required: true
+    },
+    watchedAt: {
+      type: Date,
+      default: Date.now
+    },
+    progress: {
+      type: Number,
+      default: 0, 
+      min: 0,
+      max: 100
     }
-  ],
+  }],
   // favorite movies
-  favorites: [
-    { type: mongoose.Schema.Types.ObjectId, ref: 'Movie' }
-  ],
+  favorites: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Movie'
+  }],
   
   // profile fields
   phone: { type: String, default: null },
@@ -106,6 +112,19 @@ userSchema.pre('save', async function(next) {
   if (!this.passwordHash) return next();
   
   this.passwordHash = await bcrypt.hash(this.passwordHash, 12);
+  next();
+});
+
+// Auto-update stats based on actual data
+userSchema.pre('save', function(next) {
+  if (!this.stats) this.stats = {};
+  
+  // watched = history length
+  this.stats.watched = (this.history || []).length;
+  
+  // favorites = favorites array length
+  this.stats.favorites = (this.favorites || []).length;
+  
   next();
 });
 

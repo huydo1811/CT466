@@ -1,10 +1,13 @@
 <script setup>
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/services/api'
+import { useAuthStore } from '@/stores/auth'
+
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 
 // player state
 const videoPlayer = ref(null)
@@ -19,6 +22,7 @@ const volume = ref(100)
 const showControls = ref(true)
 const controlsTimeout = ref(null)
 const videoQuality = ref('1080p')
+let historyInterval = null
 
 // episode / series
 const episode = ref(null)
@@ -38,6 +42,8 @@ const getMediaUrl = (u) => {
 
 const videoSrc = computed(() => getMediaUrl(episode.value?.videoUrl || episode.value?.video || ''))
 const currentEpisodeId = computed(() => episode.value?._id || episode.value?.id || null)
+const isAuthenticated = computed(() => authStore.isAuthenticated)
+const isLoggedIn = computed(() => authStore.isAuthenticated)
 
 // fetch functions
 const fetchEpisode = async (id) => {
@@ -97,7 +103,6 @@ const fetchReviewsForEpisode = async (eid) => {
 }
 
 // review form / user state
-const isAuthenticated = computed(() => !!(localStorage.getItem('token') || api.defaults.headers.common['Authorization']))
 const currentUserId = ref(null)
 const myComment = ref('')
 const submittingReview = ref(false)
@@ -105,7 +110,7 @@ const submitError = ref(null)
 
 const fetchCurrentUser = async () => {
   try {
-    if (!isAuthenticated.value) { currentUserId.value = null; return }
+    if (!isLoggedIn.value) { currentUserId.value = null; return }
     const res = await api.get('/users/me')
     const u = res?.data?.data || res?.data || null
     currentUserId.value = u?._id || u?.id || null
@@ -116,26 +121,55 @@ const fetchCurrentUser = async () => {
 
 const submitEpisodeReview = async () => {
   submitError.value = null
+  
+  // Check login
   if (!isAuthenticated.value) {
     router.push({ name: 'login', query: { redirect: route.fullPath }})
     return
   }
-  if (!episode.value) return
+  
+  // Validate comment
+  const commentText = String(myComment.value || '').trim()
+  if (!commentText) {
+    submitError.value = 'Vui lòng nhập nội dung bình luận'
+    return
+  }
+  
+  // Validate episode
+  if (!episode.value) {
+    submitError.value = 'Không tìm thấy tập phim'
+    return
+  }
+  
   const eid = episode.value._id || episode.value.id
-  if (!eid) return
+  if (!eid) {
+    submitError.value = 'ID tập phim không hợp lệ'
+    return
+  }
+  
   try {
     submittingReview.value = true
-    const res = await api.post(`/reviews/episode/${eid}`, { comment: String(myComment.value || '').trim() })
+    console.log(' Submitting review for episode:', eid)
+    
+    const res = await api.post(`/reviews/episode/${eid}`, { 
+      comment: commentText 
+    })
+    
+    console.log(' Review submitted:', res?.data)
+    
     if (res?.data?.data) {
-      // add to top
+      // Add to top of reviews list
       reviews.value.unshift(res.data.data)
       myComment.value = ''
+      submitError.value = null
     } else {
+      // Fallback: reload all reviews
       await fetchReviewsForEpisode(eid)
+      myComment.value = ''
     }
   } catch (e) {
-    submitError.value = e?.response?.data?.message || 'Lỗi gửi đánh giá'
-    console.error('submitEpisodeReview error', e)
+    console.error('submitEpisodeReview error:', e)
+    submitError.value = e?.response?.data?.message || 'Lỗi khi gửi bình luận'
   } finally {
     submittingReview.value = false
   }
@@ -221,7 +255,7 @@ function showControlsOnMove() { showControls.value = true; hideControls() }
 const isFavorited = ref(false)
 const updateEpisodeFavorite = async () => {
   try {
-    if (!isAuthenticated.value || !episode.value) {
+    if (!isLoggedIn.value || !episode.value) {
       isFavorited.value = false
       return
     }
@@ -269,6 +303,7 @@ watch(episode, async (ep) => {
   const v = videoPlayer.value
   isLoading.value = true
   if (!v) { isLoading.value = false; return }
+  
   // reset player for new episode
   try { v.pause() } catch {
     console.warn('video pause error on episode change')
@@ -276,14 +311,27 @@ watch(episode, async (ep) => {
   v.src = videoSrc.value || ''
   try { v.load() } catch (e) { console.error('video load error', e) }
 
-  // do NOT autoplay — require explicit user gesture
   isPlaying.value = false
   needsUserGesture.value = true
   isLoading.value = false
 
-  // update favorite/reviews state
   updateEpisodeFavorite()
   await fetchReviewsForEpisode(ep?._id || ep?.id)
+  
+  // THÊM: Save initial history khi bắt đầu xem episode mới
+  await saveEpisodeToHistory(0)
+  
+  // THÊM: Setup interval để track progress
+  if (historyInterval) clearInterval(historyInterval)
+  historyInterval = setInterval(() => {
+    if (isPlaying.value && videoPlayer.value) {
+      const video = videoPlayer.value
+      if (video.duration && video.currentTime) {
+        const progress = (video.currentTime / video.duration) * 100
+        saveEpisodeToHistory(progress)
+      }
+    }
+  }, 30000) // 30 giây
 })
 
 
@@ -313,6 +361,27 @@ const togglePlay = async () => {
   }
 }
 
+// Auto-save history cho episode
+const saveEpisodeToHistory = async (progress = 0) => {
+  if (!isLoggedIn.value || !episode.value?.movie) return
+  
+  try {
+    const movieId = typeof episode.value.movie === 'object' 
+      ? (episode.value.movie._id || episode.value.movie.id) 
+      : episode.value.movie
+    
+    if (!movieId) return
+    
+    await api.post('/users/me/history', {
+      movieId: movieId,
+      progress: Math.round(progress),
+      episodeId: episode.value._id || episode.value.id // OPTIONAL: track current episode
+    })
+    console.log(`💾 Saved series history: ${Math.round(progress)}%`)
+  } catch (e) {
+    console.warn('Failed to save series history:', e)
+  }
+}
 
 // route params
 onMounted(() => {
@@ -325,6 +394,23 @@ onMounted(() => {
   void fetchCurrentUser()
 })
 watch(() => route.params.episodeId, (v) => { if (v) fetchEpisode(v) })
+
+onBeforeUnmount(() => {
+  // THÊM: Cleanup history interval
+  if (historyInterval) {
+    clearInterval(historyInterval)
+    historyInterval = null
+  }
+  
+  // THÊM: Save final progress
+  if (isPlaying.value && videoPlayer.value) {
+    const video = videoPlayer.value
+    if (video.duration && video.currentTime) {
+      const progress = (video.currentTime / video.duration) * 100
+      saveEpisodeToHistory(progress)
+    }
+  }
+})
 </script>
 
 <template>
@@ -443,12 +529,32 @@ watch(() => route.params.episodeId, (v) => { if (v) fetchEpisode(v) })
         <!-- Review form (per-episode) -->
         <div class="bg-dark-800 border border-gray-700 rounded-xl p-4 mb-6">
           <form @submit.prevent="submitEpisodeReview">
-            <div class="flex items-center gap-3 mb-3">
-              <div class="ml-auto text-sm text-gray-400" v-if="!isAuthenticated">Bạn cần <RouterLink :to="{name:'login'}" class="text-primary-400">đăng nhập</RouterLink> để bình luận</div>
-              <button class="btn-primary px-4 py-2" :disabled="submittingReview || !isAuthenticated">{{ submittingReview ? 'Đang gửi...' : 'Gửi bình luận' }}</button>
+            <textarea 
+              v-model="myComment" 
+              rows="3" 
+              placeholder="Viết nhận xét về tập này..." 
+              class="w-full bg-dark-900 text-white p-3 rounded mb-2 border border-gray-700 focus:border-primary-500 focus:outline-none"
+              :disabled="!isAuthenticated || submittingReview"
+            ></textarea>
+            
+            <div v-if="submitError" class="text-red-400 text-sm mb-2">{{ submitError }}</div>
+            
+            <div class="flex items-center justify-between gap-3">
+              <div v-if="!isAuthenticated" class="text-sm text-gray-400">
+                Bạn cần <RouterLink :to="{name:'login', query: { redirect: route.fullPath }}" class="text-primary-400 hover:underline">đăng nhập</RouterLink> để bình luận
+              </div>
+              <div v-else class="text-sm text-gray-400">
+                <!-- Empty spacer -->
+              </div>
+              
+              <button 
+                type="submit"
+                class="btn-primary px-4 py-2" 
+                :disabled="submittingReview || !isAuthenticated || !myComment.trim()"
+              >
+                {{ submittingReview ? 'Đang gửi...' : 'Gửi bình luận' }}
+              </button>
             </div>
-            <textarea v-model="myComment" rows="3" placeholder="Viết nhận xét..." class="w-full bg-dark-900 text-white p-3 rounded mb-2"></textarea>
-            <div v-if="submitError" class="text-red-400 text-sm">{{ submitError }}</div>
           </form>
         </div>
 

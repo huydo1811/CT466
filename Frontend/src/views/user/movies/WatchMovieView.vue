@@ -1,10 +1,14 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import api from '@/services/api'
 
 const router = useRouter()
 const route = useRoute()
+const authStore = useAuthStore()
+const isLoggedIn = computed(() => authStore.isAuthenticated)
+let progressInterval = null
 
 // UI / player states
 const isPlaying = ref(false)
@@ -332,6 +336,20 @@ onMounted(async () => {
     // now that movie.value.id is set, fetch reviews by real id
     if (movie.value?.id || movie.value?._id) {
       await fetchReviewsIfNeeded(movie.value.id || movie.value._id)
+      
+      // THÊM: Save initial history khi bắt đầu xem
+      await saveToHistory(0)
+      
+      // THÊM: Setup interval để update progress mỗi 30s
+      progressInterval = setInterval(() => {
+        if (isPlaying.value && videoPlayer.value) {
+          const video = videoPlayer.value
+          if (video.duration && video.currentTime) {
+            const progress = (video.currentTime / video.duration) * 100
+            saveToHistory(progress)
+          }
+        }
+      }, 30000) // 30 giây
     }
   } else {
     // still ensure user loaded for favorite UI
@@ -341,6 +359,20 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  if (progressInterval) {
+    clearInterval(progressInterval)
+    progressInterval = null
+  }
+  
+  // THÊM: Save final progress trước khi rời trang
+  if (isPlaying.value && videoPlayer.value) {
+    const video = videoPlayer.value
+    if (video.duration && video.currentTime) {
+      const progress = (video.currentTime / video.duration) * 100
+      saveToHistory(progress)
+    }
+  }
+  
   document.removeEventListener('keydown', () => {})
   if (controlsTimeout.value) clearTimeout(controlsTimeout.value)
   // remove any pointer listeners left
@@ -357,6 +389,22 @@ watch(isAuthenticated, (v) => {
     fetchCurrentUser().then(() => updateFavoriteStatus())
   } else { currentUser.value = null; currentUserId.value = null; isFavorited.value = false }
 })
+
+// THÊM vào phần <script setup> (sau dòng 330 - onMounted):
+
+// THÊM: Auto-save history
+const saveToHistory = async (progress = 0) => {
+  if (!isLoggedIn.value || !movie.value?.id) return
+  try {
+    await api.post('/users/me/history', {
+      movieId: movie.value.id,
+      progress: Math.round(progress)
+    })
+    console.log(`💾 Saved history: ${Math.round(progress)}%`)
+  } catch (e) {
+    console.warn('Failed to save history:', e)
+  }
+}
 </script>
 
 <template>

@@ -17,6 +17,10 @@ const categorySchema = new mongoose.Schema({
     type: String,
     unique: true,
     lowercase: true
+  },
+  image: {
+    type: String,
+    default: null
   }
 }, {
   timestamps: true,
@@ -28,6 +32,7 @@ categorySchema.pre('save', function(next) {
   if (this.isModified('name')) {
     this.slug = this.name
       .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // bỏ dấu tiếng Việt
       .replace(/[^a-z0-9]/g, '-')
       .replace(/-+/g, '-')
       .replace(/^-|-$/g, '');

@@ -126,6 +126,7 @@ class CategoryService {
       if (!category) {
         throw new Error('Không tìm thấy thể loại');
       }
+
       return category;
     } catch (error) {
       throw new Error(`Lỗi khi xóa thể loại: ${error.message}`);
