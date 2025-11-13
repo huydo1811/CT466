@@ -148,20 +148,30 @@ const router = createRouter({
 
 router.beforeEach(async (to, from, next) => {
   const auth = useAuthStore()
+
+  // ✅ 1. CHECK PUBLIC ROUTES TRƯỚC
+  if (to.meta?.public) {
+    // Nếu đã login admin và vào trang login → redirect về dashboard
+    if (to.name === 'admin.login' && auth.isAuthenticated && auth.user?.role === 'admin') {
+      return next({ name: 'admin.dashboard' })
+    }
+    return next()
+  }
+
+  // ✅ 2. VALIDATE MOVIE SLUG (nếu cần)
   const needsMovieSlug = (to.name === 'movie-detail' || to.name === 'watch-movie')
   if (needsMovieSlug && (!to.params || !to.params.slug)) {
-    return next({ name: 'movies' }) 
+    return next({ name: 'movies' })
   }
-  next()
 
-  if (to.meta?.public) return next()
-
+  // ✅ 3. LOAD USER PROFILE (nếu có token nhưng chưa có user)
   if (auth.token && !auth.user) {
     try {
       await auth.fetchProfile()
     } catch (e) {
       console.error('Failed to fetch user profile:', e)
       auth.logout()
+      
       if (to.path.startsWith('/admin')) {
         return next({ path: '/admin/login', query: { redirect: to.fullPath } })
       } else {
@@ -170,22 +180,29 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
-  // protect admin area
+  // ✅ 4. PROTECT ADMIN ROUTES
   if (to.path.startsWith('/admin')) {
+    // Check authentication
     if (!auth.isAuthenticated) {
       return next({ path: '/admin/login', query: { redirect: to.fullPath } })
     }
-    if (to.meta?.requiresAdmin && auth.user?.role !== 'admin') {
+
+    // Check admin role
+    if (auth.user?.role !== 'admin') {
+      console.warn('Non-admin user trying to access admin area')
       return next({ name: 'home' })
     }
+
+    // Passed all checks
     return next()
   }
 
-  // generic auth protection for other protected routes
+  // ✅ 5. PROTECT OTHER AUTH ROUTES (user profile, etc)
   if (to.meta?.requiresAuth && !auth.isAuthenticated) {
     return next({ name: 'login', query: { redirect: to.fullPath } })
   }
 
+  // ✅ 6. DEFAULT - ALLOW ACCESS
   next()
 })
 
