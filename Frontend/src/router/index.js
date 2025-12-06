@@ -149,7 +149,6 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   const auth = useAuthStore()
 
-  // ✅ 1. CHECK PUBLIC ROUTES TRƯỚC
   if (to.meta?.public) {
     // Nếu đã login admin và vào trang login → redirect về dashboard
     if (to.name === 'admin.login' && auth.isAuthenticated && auth.user?.role === 'admin') {
@@ -158,13 +157,11 @@ router.beforeEach(async (to, from, next) => {
     return next()
   }
 
-  // ✅ 2. VALIDATE MOVIE SLUG (nếu cần)
   const needsMovieSlug = (to.name === 'movie-detail' || to.name === 'watch-movie')
   if (needsMovieSlug && (!to.params || !to.params.slug)) {
     return next({ name: 'movies' })
   }
 
-  // ✅ 3. LOAD USER PROFILE (nếu có token nhưng chưa có user)
   if (auth.token && !auth.user) {
     try {
       await auth.fetchProfile()
@@ -179,12 +176,14 @@ router.beforeEach(async (to, from, next) => {
       }
     }
   }
-
-  // ✅ 4. PROTECT ADMIN ROUTES
   if (to.path.startsWith('/admin')) {
     // Check authentication
     if (!auth.isAuthenticated) {
-      return next({ path: '/admin/login', query: { redirect: to.fullPath } })
+      if (auth.user?.role === 'admin') {
+        return next({ path: '/admin/login', query: { redirect: to.fullPath } })
+      } else {
+        return next({ name: 'home' })
+      }
     }
 
     // Check admin role
@@ -197,12 +196,9 @@ router.beforeEach(async (to, from, next) => {
     return next()
   }
 
-  // ✅ 5. PROTECT OTHER AUTH ROUTES (user profile, etc)
   if (to.meta?.requiresAuth && !auth.isAuthenticated) {
     return next({ name: 'login', query: { redirect: to.fullPath } })
   }
-
-  // ✅ 6. DEFAULT - ALLOW ACCESS
   next()
 })
 

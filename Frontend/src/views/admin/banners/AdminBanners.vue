@@ -116,31 +116,37 @@
         </div>
 
         <div class="p-4 space-y-4 pb-6">
+          <!-- Thông tin cơ bản -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label class="text-sm text-slate-300">Tiêu đề</label>
-              <input v-model="form.title" class="w-full mt-1 px-3 py-2 rounded bg-slate-800 border border-slate-700 text-slate-200" />
+              <label class="text-sm text-slate-300">Tiêu đề *</label>
+              <input v-model="form.title" class="w-full mt-1 px-3 py-2 rounded bg-slate-800 border border-slate-700 text-slate-200" placeholder="VD: Khuyến mãi 50%" />
             </div>
             <div>
-              <label class="text-sm text-slate-300">Vị trí</label>
+              <label class="text-sm text-slate-300">Vị trí *</label>
               <select v-model="form.position" class="w-full mt-1 px-3 py-2 rounded bg-slate-800 border border-slate-700 text-slate-200">
-                <option v-for="p in positions" :key="p" :value="p">{{ p }}</option>
+                <option value="hero">Hero (Đầu trang)</option>
+                <option value="secondary">Secondary (Giữa trang)</option>
+                <option value="sidebar">Sidebar (Bên cạnh)</option>
+                <option value="footer">Footer (Cuối trang)</option>
+                <option value="pre-roll">Pre-roll (Video quảng cáo trước phim)</option>
               </select>
             </div>
 
             <div>
               <label class="text-sm text-slate-300">Phụ đề</label>
-              <input v-model="form.subtitle" class="w-full mt-1 px-3 py-2 rounded bg-slate-800 border border-slate-700 text-slate-200" />
+              <input v-model="form.subtitle" class="w-full mt-1 px-3 py-2 rounded bg-slate-800 border border-slate-700 text-slate-200" placeholder="Mô tả ngắn" />
             </div>
             <div>
-              <label class="text-sm text-slate-300">Ưu tiên</label>
+              <label class="text-sm text-slate-300">Ưu tiên (số càng cao càng ưu tiên)</label>
               <input type="number" v-model.number="form.priority" class="w-full mt-1 px-3 py-2 rounded bg-slate-800 border border-slate-700 text-slate-200" />
             </div>
           </div>
 
+          <!-- Ảnh -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label class="text-sm text-slate-300">Hình (desktop)</label>
+              <label class="text-sm text-slate-300">Hình (desktop) *</label>
               <input @change="handleImage($event, 'image')" type="file" accept="image/*" class="block mt-2 text-slate-300" />
               <div v-if="preview.image" class="mt-2"><img :src="preview.image" class="w-full h-28 object-cover rounded" /></div>
             </div>
@@ -151,26 +157,128 @@
             </div>
           </div>
 
-          <div>
-            <label class="text-sm text-slate-300">Link URL (tùy chọn)</label>
-            <input v-model="form.linkUrl" class="w-full mt-1 px-3 py-2 rounded bg-slate-800 border border-slate-700 text-slate-200" />
-            <div class="text-xs text-slate-400 mt-1">Chọn link nội bộ (movie/category) bằng linkType + targetId nếu cần.</div>
+          <!--  THÊM: Video quảng cáo -->
+          <div class="border-t border-slate-700 pt-4">
+            <h3 class="text-white font-medium mb-3">Video quảng cáo (Pre-roll)</h3>
+            
+            <div class="space-y-3">
+              <div>
+                <label class="text-sm text-slate-300">Upload video quảng cáo</label>
+                <input 
+                  @change="handleVideo" 
+                  type="file" 
+                  accept="video/mp4,video/webm" 
+                  class="block mt-2 text-slate-300" 
+                />
+                <p class="text-xs text-slate-400 mt-1">MP4 hoặc WebM, tối đa 50MB</p>
+                <div v-if="videoPreview" class="mt-2">
+                  <video :src="videoPreview" controls class="w-full max-h-40 rounded"></video>
+                </div>
+              </div>
+              
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-sm text-slate-300">Thời lượng video (giây)</label>
+                  <input 
+                    type="number" 
+                    v-model.number="form.videoDuration" 
+                    class="w-full mt-1 px-3 py-2 rounded bg-slate-800 border border-slate-700 text-slate-200" 
+                    placeholder="VD: 15"
+                  />
+                </div>
+                <div>
+                  <label class="text-sm text-slate-300">Cho phép bỏ qua sau (giây)</label>
+                  <input 
+                    type="number" 
+                    v-model.number="form.skipAfter" 
+                    class="w-full mt-1 px-3 py-2 rounded bg-slate-800 border border-slate-700 text-slate-200" 
+                    placeholder="VD: 5"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label class="text-sm text-slate-300">Ngày bắt đầu</label>
-              <input type="date" v-model="form.startDate" class="w-full mt-1 px-3 py-2 rounded bg-slate-800 border border-slate-700 text-slate-200" />
-            </div>
-            <div>
-              <label class="text-sm text-slate-300">Ngày kết thúc</label>
-              <input type="date" v-model="form.endDate" class="w-full mt-1 px-3 py-2 rounded bg-slate-800 border border-slate-700 text-slate-200" />
+          <!-- THÊM MỚI: Link Settings -->
+          <div class="border-t border-slate-700 pt-4">
+            <h3 class="text-white font-medium mb-3">Cài đặt Link (Chuyển hướng khi click)</h3>
+            
+            <div class="space-y-3">
+              <!-- Loại link -->
+              <div>
+                <label class="text-sm text-slate-300">Loại link</label>
+                <select v-model="form.linkType" class="w-full mt-1 px-3 py-2 rounded bg-slate-800 border border-slate-700 text-slate-200">
+                  <option value="none">Không có link (banner tĩnh)</option>
+                  <option value="external">Link ngoài (URL tùy chỉnh)</option>
+                  <option value="movie">Link đến phim</option>
+                  <option value="category">Link đến thể loại</option>
+                </select>
+              </div>
+
+              <!-- External URL -->
+              <div v-if="form.linkType === 'external'">
+                <label class="text-sm text-slate-300">URL quảng cáo *</label>
+                <input 
+                  v-model="form.linkUrl" 
+                  type="url"
+                  class="w-full mt-1 px-3 py-2 rounded bg-slate-800 border border-slate-700 text-slate-200" 
+                  placeholder="https://example.com/khuyen-mai"
+                />
+                <p class="text-xs text-slate-400 mt-1">
+                  VD: https://shopee.vn, https://lazada.vn/sale
+                </p>
+              </div>
+
+              <!-- Movie ID -->
+              <div v-if="form.linkType === 'movie'">
+                <label class="text-sm text-slate-300">ID Phim *</label>
+                <input 
+                  v-model="form.targetId" 
+                  class="w-full mt-1 px-3 py-2 rounded bg-slate-800 border border-slate-700 text-slate-200" 
+                  placeholder="VD: 507f1f77bcf86cd799439011"
+                />
+                <p class="text-xs text-slate-400 mt-1">
+                  Copy ID từ danh sách phim
+                </p>
+              </div>
+
+              <!-- Category ID -->
+              <div v-if="form.linkType === 'category'">
+                <label class="text-sm text-slate-300">ID Thể loại *</label>
+                <input 
+                  v-model="form.targetId" 
+                  class="w-full mt-1 px-3 py-2 rounded bg-slate-800 border border-slate-700 text-slate-200" 
+                  placeholder="VD: 507f1f77bcf86cd799439011"
+                />
+                <p class="text-xs text-slate-400 mt-1">
+                  Copy ID từ danh sách thể loại
+                </p>
+              </div>
             </div>
           </div>
 
-          <div class="flex justify-end gap-2">
-            <button @click="closeModal" class="px-3 py-2 bg-slate-700 rounded text-slate-200">Hủy</button>
-            <button @click="save" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded">{{ editing ? 'Lưu' : 'Tạo' }}</button>
+          <!-- Thời gian hiển thị -->
+          <div class="border-t border-slate-700 pt-4">
+            <h3 class="text-white font-medium mb-3">Lịch hiển thị</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="text-sm text-slate-300">Ngày bắt đầu</label>
+                <input type="date" v-model="form.startDate" class="w-full mt-1 px-3 py-2 rounded bg-slate-800 border border-slate-700 text-slate-200" />
+              </div>
+              <div>
+                <label class="text-sm text-slate-300">Ngày kết thúc</label>
+                <input type="date" v-model="form.endDate" class="w-full mt-1 px-3 py-2 rounded bg-slate-800 border border-slate-700 text-slate-200" />
+                <p class="text-xs text-slate-400 mt-1">Để trống = hiện mãi mãi</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex justify-end gap-2 pt-4 border-t border-slate-700">
+            <button @click="closeModal" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded text-slate-200">Hủy</button>
+            <button @click="save" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded">
+              {{ editing ? 'Cập nhật' : 'Tạo banner' }}
+            </button>
           </div>
         </div>
       </div>
@@ -189,7 +297,7 @@ const posFilter = ref('')
 const page = ref(1)
 const perPage = ref(8)
 
-const positions = ['hero', 'secondary', 'sidebar', 'footer']
+const positions = ['hero', 'secondary', 'sidebar', 'footer', 'pre-roll'] //  Thêm 'pre-roll'
 const banners = ref([])
 
 const showModal = ref(false)
@@ -212,6 +320,8 @@ const form = ref({
 
 const files = ref({ image: null, mobileImage: null })
 const preview = ref({ image: '', mobileImage: '' })
+const videoFile = ref(null)
+const videoPreview = ref('')
 
 const fetchBanners = async () => {
   loading.value = true
@@ -256,6 +366,8 @@ const openAdd = () => {
   form.value = { id: null, title:'', subtitle:'', image:'', mobileImage:'', linkUrl:'', linkType:'none', targetId:null, position:'hero', priority:0, isActive:true, startDate:'', endDate:'' }
   files.value = { image: null, mobileImage: null }
   preview.value = { image: '', mobileImage: '' }
+  videoFile.value = null
+  videoPreview.value = ''
   showModal.value = true
 }
 
@@ -264,6 +376,8 @@ const openEdit = (b) => {
   form.value = { ...b }
   files.value = { image: null, mobileImage: null }
   preview.value = { image: getMediaUrl(b.image), mobileImage: getMediaUrl(b.mobileImage) }
+  videoFile.value = null
+  videoPreview.value = ''
   showModal.value = true
 }
 
@@ -272,6 +386,7 @@ const closeModal = () => {
   // revoke objectURLs
   if (preview.value.image && preview.value.image.startsWith('blob:')) URL.revokeObjectURL(preview.value.image)
   if (preview.value.mobileImage && preview.value.mobileImage.startsWith('blob:')) URL.revokeObjectURL(preview.value.mobileImage)
+  if (videoPreview.value && videoPreview.value.startsWith('blob:')) URL.revokeObjectURL(videoPreview.value)
 }
 
 const handleImage = (e, key) => {
@@ -281,33 +396,63 @@ const handleImage = (e, key) => {
   preview.value[key] = f ? URL.createObjectURL(f) : ''
 }
 
+const handleVideo = (e) => {
+  const f = e.target.files?.[0] || null
+  videoFile.value = f
+  if (videoPreview.value && videoPreview.value.startsWith('blob:')) {
+    URL.revokeObjectURL(videoPreview.value)
+  }
+  videoPreview.value = f ? URL.createObjectURL(f) : ''
+}
+
 const save = async () => {
-  if (!form.value.title || (!form.value.image && !files.value.image)) return alert('Cần có tiêu đề và hình ảnh')
+  // Validate
+  if (!form.value.title) {
+    return alert('Vui lòng nhập tiêu đề banner')
+  }
+  if (!form.value.image && !files.value.image) {
+    return alert('Vui lòng chọn ảnh desktop')
+  }
+  if (form.value.linkType === 'external' && !form.value.linkUrl) {
+    return alert('Vui lòng nhập URL quảng cáo')
+  }
+  if ((form.value.linkType === 'movie' || form.value.linkType === 'category') && !form.value.targetId) {
+    return alert('Vui lòng nhập ID')
+  }
+
   try {
     const fd = new FormData()
     fd.append('title', form.value.title)
     fd.append('subtitle', form.value.subtitle || '')
     fd.append('position', form.value.position || 'hero')
     fd.append('priority', String(form.value.priority || 0))
+    fd.append('isActive', String(!!form.value.isActive))
+    
+    fd.append('linkType', form.value.linkType || 'none')
     fd.append('linkUrl', form.value.linkUrl || '')
+    if (form.value.targetId) {
+      fd.append('targetId', form.value.targetId)
+    }
+    
+    // Schedule
     fd.append('startDate', form.value.startDate || '')
     fd.append('endDate', form.value.endDate || '')
-    fd.append('isActive', String(!!form.value.isActive))
 
+    // Files
     if (files.value.image) fd.append('image', files.value.image)
     if (files.value.mobileImage) fd.append('mobileImage', files.value.mobileImage)
+    if (videoFile.value) fd.append('video', videoFile.value)
+    if (form.value.videoDuration) fd.append('videoDuration', String(form.value.videoDuration))
+    if (form.value.skipAfter) fd.append('skipAfter', String(form.value.skipAfter))
 
     if (editing.value && form.value.id) {
-      // update
-      await api.put(`/banners/${form.value.id}`, fd) // backend should accept multipart
-      await fetchBanners()
-      closeModal()
+      await api.put(`/banners/${form.value.id}`, fd)
     } else {
-      // create
       await api.post('/banners', fd)
-      await fetchBanners()
-      closeModal()
     }
+    
+    await fetchBanners()
+    closeModal()
   } catch (err) {
     console.error('save banner failed', err)
     alert(err?.response?.data?.message || 'Lưu banner thất bại')

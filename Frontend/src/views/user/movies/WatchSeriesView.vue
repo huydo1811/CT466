@@ -3,11 +3,15 @@ import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
-
+import VideoAdOverlay from '@/components/common/VideoAdOverlay.vue'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+
+//  THÊM: Ad state
+const showPreRoll = ref(false)
+const adCompleted = ref(false)
 
 // player state
 const videoPlayer = ref(null)
@@ -29,7 +33,7 @@ const episode = ref(null)
 const series = ref(null)
 const episodes = ref([])
 const epPage = ref(1)
-const epLimit = ref(1000) // load many episodes for selector
+const epLimit = ref(1000)
 
 // helpers
 const getMediaUrl = (u) => {
@@ -45,9 +49,39 @@ const currentEpisodeId = computed(() => episode.value?._id || episode.value?.id 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const isLoggedIn = computed(() => authStore.isAuthenticated)
 
+
+const onAdComplete = () => {
+  console.log(' Ad complete for series')
+  adCompleted.value = true
+  showPreRoll.value = false
+  
+  needsUserGesture.value = false
+  
+  setTimeout(() => {
+    if (videoPlayer.value && !isPlaying.value) {
+      videoPlayer.value.play()
+        .then(() => {
+          isPlaying.value = true
+          console.log('▶Video auto-playing after ad')
+        })
+        .catch(err => {
+          console.warn('Auto-play failed:', err)
+          // Nếu autoplay fail, hiện lại nút play
+          isPlaying.value = false
+          needsUserGesture.value = true
+        })
+    }
+  }, 300)
+}
+
 // fetch functions
 const fetchEpisode = async (id) => {
   isLoading.value = true
+  
+  //  THÊM: Reset ad state khi load episode mới
+  adCompleted.value = false
+  showPreRoll.value = false
+  
   try {
     const res = await api.get(`/episodes/${id}`)
     episode.value = res?.data?.data || res?.data || null
@@ -66,6 +100,12 @@ const fetchEpisode = async (id) => {
       await fetchEpisodesForSeries(movieId, episode.value?.season || 1)
     }
     await fetchReviewsForEpisode(episode.value?._id || episode.value?.id)
+    
+
+    await new Promise(resolve => setTimeout(resolve, 100))
+    console.log('🎬 Showing pre-roll ad for episode...')
+    showPreRoll.value = true
+    
   } catch (e) {
     console.error('fetchEpisode error', e)
     episode.value = null
@@ -97,7 +137,6 @@ const fetchReviewsForEpisode = async (eid) => {
     reviews.value = res?.data?.data || res?.data || []
   } catch (e) {
     console.error('fetchReviewsForEpisode error', e)
-    // fallback: some backends keep episode reviews under movie reviews; ignore silently
     reviews.value = []
   }
 }
@@ -116,26 +155,24 @@ const fetchCurrentUser = async () => {
     currentUserId.value = u?._id || u?.id || null
   } catch (e) { 
     console.error('fetchCurrentUser error', e)
-    currentUserId.value = null }
+    currentUserId.value = null 
+  }
 }
 
 const submitEpisodeReview = async () => {
   submitError.value = null
   
-  // Check login
   if (!isAuthenticated.value) {
     router.push({ name: 'login', query: { redirect: route.fullPath }})
     return
   }
   
-  // Validate comment
   const commentText = String(myComment.value || '').trim()
   if (!commentText) {
     submitError.value = 'Vui lòng nhập nội dung bình luận'
     return
   }
   
-  // Validate episode
   if (!episode.value) {
     submitError.value = 'Không tìm thấy tập phim'
     return
@@ -149,21 +186,13 @@ const submitEpisodeReview = async () => {
   
   try {
     submittingReview.value = true
-    console.log(' Submitting review for episode:', eid)
-    
-    const res = await api.post(`/reviews/episode/${eid}`, { 
-      comment: commentText 
-    })
-    
-    console.log(' Review submitted:', res?.data)
+    const res = await api.post(`/reviews/episode/${eid}`, { comment: commentText })
     
     if (res?.data?.data) {
-      // Add to top of reviews list
       reviews.value.unshift(res.data.data)
       myComment.value = ''
       submitError.value = null
     } else {
-      // Fallback: reload all reviews
       await fetchReviewsForEpisode(eid)
       myComment.value = ''
     }
@@ -176,8 +205,22 @@ const submitEpisodeReview = async () => {
 }
 
 // playback controls
-const toggleMute = () => { const v = videoPlayer.value; if (!v) return; v.muted = !v.muted; isMuted.value = v.muted }
-const toggleFullscreen = () => { if (!document.fullscreenElement) { videoContainer.value.requestFullscreen(); isFullscreen.value = true } else { document.exitFullscreen(); isFullscreen.value = false } }
+const toggleMute = () => { 
+  const v = videoPlayer.value
+  if (!v) return
+  v.muted = !v.muted
+  isMuted.value = v.muted 
+}
+
+const toggleFullscreen = () => { 
+  if (!document.fullscreenElement) { 
+    videoContainer.value.requestFullscreen()
+    isFullscreen.value = true 
+  } else { 
+    document.exitFullscreen()
+    isFullscreen.value = false 
+  } 
+}
 
 const handleVolumeChange = (e) => {
   const v = videoPlayer.value
@@ -187,18 +230,22 @@ const handleVolumeChange = (e) => {
   isMuted.value = v.volume === 0
 }
 
-const onLoadedMetadata = () => { duration.value = videoPlayer.value.duration; isLoading.value = false }
+const onLoadedMetadata = () => { 
+  duration.value = videoPlayer.value.duration
+  isLoading.value = false 
+}
+
 const onTimeUpdate = (e) => {
-  const v = e?.target ?? (videoPlayer.value ?? null)
+  const v = e?.target ?? videoPlayer.value
   if (!v) return
   const ct = (typeof v.currentTime === 'number' && isFinite(v.currentTime)) ? v.currentTime : 0
   currentTime.value = ct
-  // keep duration in sync (safe guard)
   duration.value = (typeof v.duration === 'number' && isFinite(v.duration)) ? v.duration : duration.value
 }
+
 const onVideoEnded = () => { isPlaying.value = false }
 
-// seek logic (pointer)
+// seek logic
 let seeking = false
 const startSeek = (ev) => {
   seeking = true
@@ -206,6 +253,7 @@ const startSeek = (ev) => {
   window.addEventListener('pointermove', onPointerMove)
   window.addEventListener('pointerup', onPointerUp, { once: true })
 }
+
 const onPointerMove = (ev) => {
   if (!seeking || !ev) return
   const bar = document.querySelector('.series-progress-bar')
@@ -218,7 +266,12 @@ const onPointerMove = (ev) => {
     currentTime.value = videoPlayer.value.currentTime
   }
 }
-const onPointerUp = () => { seeking = false; window.removeEventListener('pointermove', onPointerMove) }
+
+const onPointerUp = () => { 
+  seeking = false
+  window.removeEventListener('pointermove', onPointerMove) 
+}
+
 const seekVideo = (e) => {
   const el = e.currentTarget || e.target
   const rect = el.getBoundingClientRect()
@@ -240,17 +293,25 @@ const formatTime = (s) => {
   if (hrs > 0) return `${String(hrs).padStart(2,'0')}:${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`
   return `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`
 }
+
 const progressPercentage = computed(() => {
   if (!duration.value || duration.value === 0) return 0
   return Math.min(100, Math.max(0, (currentTime.value / duration.value) * 100))
 })
+
 const timeDisplay = computed(() => `${formatTime(currentTime.value)} / ${formatTime(duration.value)}`)
 
 function hideControls() {
   if (controlsTimeout.value) clearTimeout(controlsTimeout.value)
-  controlsTimeout.value = setTimeout(() => { if (isPlaying.value) showControls.value = false }, 3000)
+  controlsTimeout.value = setTimeout(() => { 
+    if (isPlaying.value) showControls.value = false 
+  }, 3000)
 }
-function showControlsOnMove() { showControls.value = true; hideControls() }
+
+function showControlsOnMove() { 
+  showControls.value = true
+  hideControls() 
+}
 
 const isFavorited = ref(false)
 const updateEpisodeFavorite = async () => {
@@ -265,7 +326,6 @@ const updateEpisodeFavorite = async () => {
     isFavorited.value = favs.some(f => String(f._id || f.id || f) === String(eid))
   } catch (e) {
     isFavorited.value = false
-    // ignore auth errors (401) silently, log others
     if (e?.response?.status !== 401) console.error('updateEpisodeFavorite error', e)
   }
 }
@@ -284,18 +344,13 @@ async function incrementEpisodeViewOnce(episodeId, ttlMinutes = 60) {
   }
 }
 
-
-
-/* khi user nhấn chọn tập (navigate), có thể gọi increment lạc quan */
 const playEpisode = (ep) => {
   const id = ep._id || ep.id
   if (!id) return
   router.push({ name: 'watch-series', params: { seriesId: ep.movie || series.value?.id, episodeId: id }})
-  // optimistic increment (sẽ được kiểm tra TTL)
   incrementEpisodeViewOnce(id, 60)
 }
 
-// watch handlers — require user to press Play (no autoplay)
 const needsUserGesture = ref(true)
 
 watch(episode, async (ep) => {
@@ -304,7 +359,6 @@ watch(episode, async (ep) => {
   isLoading.value = true
   if (!v) { isLoading.value = false; return }
   
-  // reset player for new episode
   try { v.pause() } catch {
     console.warn('video pause error on episode change')
   }
@@ -317,11 +371,8 @@ watch(episode, async (ep) => {
 
   updateEpisodeFavorite()
   await fetchReviewsForEpisode(ep?._id || ep?.id)
-  
-  // THÊM: Save initial history khi bắt đầu xem episode mới
   await saveEpisodeToHistory(0)
   
-  // THÊM: Setup interval để track progress
   if (historyInterval) clearInterval(historyInterval)
   historyInterval = setInterval(() => {
     if (isPlaying.value && videoPlayer.value) {
@@ -331,28 +382,35 @@ watch(episode, async (ep) => {
         saveEpisodeToHistory(progress)
       }
     }
-  }, 30000) // 30 giây
+  }, 30000)
 })
 
-
 const togglePlay = async () => {
+  if (!adCompleted.value) {
+    showPreRoll.value = true
+    return
+  }
+  
   const v = videoPlayer.value
   if (!v) return
+  
   try {
     if (v.paused) {
       await v.play()
-      isPlaying.value = !v.paused
-      needsUserGesture.value = v.paused 
+      isPlaying.value = true 
+      needsUserGesture.value = false
+      
       const eid = episode.value?._id || episode.value?.id
       if (eid) {
-        try { await incrementEpisodeViewOnce(eid,30) } catch (e) { 
-          /* ignore */ 
+        try { 
+          await incrementEpisodeViewOnce(eid, 30) 
+        } catch (e) { 
           console.warn('incrementEpisodeViewOnce error', e)
         }
       }
     } else {
       v.pause()
-      isPlaying.value = false
+      isPlaying.value = false 
     }
   } catch (err) {
     console.warn('Play prevented or error:', err)
@@ -361,7 +419,6 @@ const togglePlay = async () => {
   }
 }
 
-// Auto-save history cho episode
 const saveEpisodeToHistory = async (progress = 0) => {
   if (!isLoggedIn.value || !episode.value?.movie) return
   
@@ -375,7 +432,7 @@ const saveEpisodeToHistory = async (progress = 0) => {
     await api.post('/users/me/history', {
       movieId: movieId,
       progress: Math.round(progress),
-      episodeId: episode.value._id || episode.value.id // OPTIONAL: track current episode
+      episodeId: episode.value._id || episode.value.id
     })
     console.log(`💾 Saved series history: ${Math.round(progress)}%`)
   } catch (e) {
@@ -383,8 +440,25 @@ const saveEpisodeToHistory = async (progress = 0) => {
   }
 }
 
-// route params
+watch(() => route.params.episodeId, async (newEpisodeId) => {
+  if (newEpisodeId) {
+    // Reset ad state
+    adCompleted.value = false
+    showPreRoll.value = false
+    
+    await fetchEpisode(newEpisodeId)
+    
+    // Show ad sau khi load xong
+    await new Promise(resolve => setTimeout(resolve, 100))
+    showPreRoll.value = true
+  }
+})
+
 onMounted(() => {
+
+  adCompleted.value = false
+  showPreRoll.value = false
+  
   const eid = route.params.episodeId || route.params.id
   if (eid) fetchEpisode(eid)
   else {
@@ -393,16 +467,13 @@ onMounted(() => {
   }
   void fetchCurrentUser()
 })
-watch(() => route.params.episodeId, (v) => { if (v) fetchEpisode(v) })
 
 onBeforeUnmount(() => {
-  // THÊM: Cleanup history interval
   if (historyInterval) {
     clearInterval(historyInterval)
     historyInterval = null
   }
   
-  // THÊM: Save final progress
   if (isPlaying.value && videoPlayer.value) {
     const video = videoPlayer.value
     if (video.duration && video.currentTime) {
@@ -421,30 +492,50 @@ onBeforeUnmount(() => {
         class="relative w-full aspect-video max-h-[85vh]"
         @mousemove="showControlsOnMove"
         @mouseleave="showControls = false"
-        :class="{'cursor-none': !showControls && isPlaying}"
       >
+
+        <div 
+          v-if="!adCompleted"
+          class="absolute inset-0 bg-black/70 flex items-center justify-center z-30"
+        >
+          <button 
+            @click="showPreRoll = true"
+            class="bg-primary-600 hover:bg-primary-700 text-white px-8 py-4 rounded-lg text-lg font-medium"
+          >
+            Xem quảng cáo để tiếp tục
+          </button>
+        </div>
+
+
+        <VideoAdOverlay 
+          :show="showPreRoll && !adCompleted"
+          @complete="onAdComplete"
+        />
+        
         <video
           ref="videoPlayer"
           class="w-full h-full object-contain bg-black"
+          :class="{ 'pointer-events-none': !adCompleted }"
           :src="videoSrc"
           @click="togglePlay"
           @loadedmetadata="onLoadedMetadata"
           @timeupdate="onTimeUpdate"
           @ended="onVideoEnded"
+          @pause="isPlaying = false"
+          @play="isPlaying = true"
         ></video>
 
-        <!-- central Play button (require user gesture to start) -->
-        <div v-if="!isLoading && needsUserGesture" class="absolute inset-0 flex items-center justify-center">
+        <div v-if="!isLoading && needsUserGesture && adCompleted" class="absolute inset-0 flex items-center justify-center z-10">
           <button @click="togglePlay" class="w-20 h-20 bg-black/60 rounded-full flex items-center justify-center text-white hover:bg-black/70 transition">
             <svg class="w-10 h-10 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
           </button>
         </div>
 
-        <div v-if="isLoading" class="absolute inset-0 flex items-center justify-center bg-black/70">
+        <div v-if="isLoading" class="absolute inset-0 flex items-center justify-center bg-black/70 z-20">
           <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
         </div>
 
-        <div v-if="!isLoading" class="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
+        <div v-if="!isLoading && adCompleted" class="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent z-10">
           <div class="mb-2 relative">
             <div class="text-xs text-gray-300 mb-2 text-right pr-1 select-none" v-if="showControls">{{ timeDisplay }}</div>
             <div class="h-1.5 bg-gray-600/50 rounded-full cursor-pointer series-progress-bar" @click="seekVideo" @pointerdown.prevent="startSeek">
@@ -489,6 +580,8 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </div>
+
+    <!-- Rest of template (không thay đổi) -->
     <div class="container py-6">
       <div class="flex items-center justify-between gap-4 mt-6 mb-2">
         <h1 class="text-2xl sm:text-3xl font-bold text-white m-0 flex-1">
@@ -507,6 +600,7 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </div>
+
     <div class="container py-2">
       <h1 class="text-xl text-white mb-4">Danh sách tập</h1>
       <div class="mb-6">
@@ -526,7 +620,6 @@ onBeforeUnmount(() => {
       <div class="mb-8">
         <h2 class="text-xl font-bold text-white mb-4">Bình luận ({{ reviews.length }})</h2>
 
-        <!-- Review form (per-episode) -->
         <div class="bg-dark-800 border border-gray-700 rounded-xl p-4 mb-6">
           <form @submit.prevent="submitEpisodeReview">
             <textarea 
@@ -543,9 +636,7 @@ onBeforeUnmount(() => {
               <div v-if="!isAuthenticated" class="text-sm text-gray-400">
                 Bạn cần <RouterLink :to="{name:'login', query: { redirect: route.fullPath }}" class="text-primary-400 hover:underline">đăng nhập</RouterLink> để bình luận
               </div>
-              <div v-else class="text-sm text-gray-400">
-                <!-- Empty spacer -->
-              </div>
+              <div v-else class="text-sm text-gray-400"></div>
               
               <button 
                 type="submit"
@@ -558,7 +649,6 @@ onBeforeUnmount(() => {
           </form>
         </div>
 
-        <!-- Reviews list -->
         <div class="space-y-4">
           <div v-for="comment in reviews" :key="comment._id || comment.id" class="bg-dark-800 border border-gray-700 rounded-xl p-4">
             <div class="flex items-start">
@@ -574,7 +664,6 @@ onBeforeUnmount(() => {
                     </h4>
                     <p class="text-gray-400 text-xs">{{ new Date(comment.createdAt || comment.date || comment.time).toLocaleString() }}</p>
                   </div>
-                  <!-- episode comments: no rating for episode -->
                 </div>
                 <p class="text-gray-300 mt-1">{{ comment.comment || comment.content || '' }}</p>
                 <div class="mt-2 flex items-center text-gray-500 text-sm">

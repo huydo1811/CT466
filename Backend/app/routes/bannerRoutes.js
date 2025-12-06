@@ -14,48 +14,64 @@ import {
   incrementClick,
   getBannerStats
 } from '../controllers/bannerController.js';
-import { protect, authorize } from '../middleware/auth.js'; 
+import { protect, authorize } from '../middleware/auth.js';
 
-// multer config: lưu vào uploads/banners
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const dest = path.join(process.cwd(), 'uploads', 'banners')
+    const dest = path.join(process.cwd(), 'uploads', 'banners');
     try {
-      if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true })
+      if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
     } catch (err) {
-      console.warn('mkdir failed', dest, err)
+      console.warn('mkdir failed', dest, err);
     }
-    cb(null, dest)
+    cb(null, dest);
   },
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname)
-    const name = `${Date.now()}-${Math.round(Math.random()*1e6)}${ext}`
-    cb(null, name)
+    const ext = path.extname(file.originalname);
+    const name = `${Date.now()}-${Math.round(Math.random() * 1e6)}${ext}`;
+    cb(null, name);
   }
-})
-const upload = multer({ storage })
+});
+const upload = multer({ storage });
 
 const router = express.Router();
 
-// Public routes
-router.get('/active', getActiveBanners);        
-router.get('/:id', getBannerById);              
-router.post('/:id/view', incrementView);        
-router.post('/:id/click', incrementClick);      
+router.get('/public', getAllBanners);          
+router.get('/active', getActiveBanners);
+router.post('/:id/view', incrementView);
+router.post('/:id/click', incrementClick);
 
-// Protected routes - Chỉ admin
-router.use(protect, authorize('admin')); 
+router.get('/admin/stats', protect, authorize('admin'), getBannerStats);
+router.get('/', protect, authorize('admin'), getAllBanners);
 
-router.route('/')
-  .get(getAllBanners)
-  // accept multipart with fields "image" and "mobileImage"
-  .post(upload.fields([{ name: 'image' }, { name: 'mobileImage' }]), createBanner);                        
+router.post(
+  '/',
+  protect,
+  authorize('admin'),
+  upload.fields([
+    { name: 'image' }, 
+    { name: 'mobileImage' },
+    { name: 'video', maxCount: 1 } 
+  ]),
+  createBanner
+);
 
-router.route('/:id')
-  .put(upload.fields([{ name: 'image' }, { name: 'mobileImage' }]), updateBanner)
-  .delete(deleteBanner);                     
+router.put(
+  '/:id',
+  protect,
+  authorize('admin'),
+  upload.fields([
+    { name: 'image' }, 
+    { name: 'mobileImage' },
+    { name: 'video', maxCount: 1 } //  Thêm video upload
+  ]),
+  updateBanner
+);
 
-router.patch('/:id/toggle', toggleBannerStatus); 
-router.get('/admin/stats', getBannerStats);    
+router.delete('/:id', protect, authorize('admin'), deleteBanner);
+router.patch('/:id/toggle', protect, authorize('admin'), toggleBannerStatus);
+
+
+router.get('/:id', getBannerById);
 
 export default router;

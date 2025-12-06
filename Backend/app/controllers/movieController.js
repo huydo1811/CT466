@@ -142,6 +142,11 @@ export const createMovie = asyncHandler(async (req, res) => {
     data.backdrop = buildFileUrl(req, req.files.backdrop[0].filename, 'movies')
   }
 
+  if (req.files?.video?.[0]) {
+    data.videoUrl = buildFileUrl(req, req.files.video[0].filename, 'movies')
+  }
+  // ===========================================
+
   // If user requested splitting seasons into separate entries
   const createSeparate = (String(data.createSeparateSeasons || '') === 'true')
 

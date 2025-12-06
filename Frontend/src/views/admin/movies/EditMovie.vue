@@ -198,7 +198,7 @@ const handleSubmit = async () => {
     fd.append('isPublished', movieForm.isPublished ? 'true' : 'false')
     fd.append('isFeatured', movieForm.isFeatured ? 'true' : 'false')
     fd.append('isHot', movieForm.isHot ? 'true' : 'false')
-    fd.append('isHero', movieForm.isHero ? 'true' : 'false'); 
+    fd.append('isHero', movieForm.isHero ? 'true' : 'false')
     movieForm.categories.forEach(id => fd.append('categories[]', id))
     movieForm.actors.forEach(id => fd.append('actors[]', id))
 
@@ -208,8 +208,8 @@ const handleSubmit = async () => {
 
     await api.put(`/movies/${id}`, fd)
 
-    // revoke previews
-    _revokePoster(); _revokeVideo()
+    // KHÔNG revoke ở đây! Để onBeforeUnmount tự động revoke khi chuyển trang
+    // _revokePoster(); _revokeVideo() // <-- XÓA DÒNG NÀY
 
     alert('Cập nhật thành công')
     router.push('/admin/movies')

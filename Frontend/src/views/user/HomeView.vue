@@ -72,7 +72,7 @@ const fetchHero = async () => {
 const fetchLatest = async () => {
   try {
     // Fetch movies (type=movie)
-    const resMovies = await api.get('/movies/latest?limit=12&type=movie')
+    const resMovies = await api.get('/movies/latest?limit=6&type=movie')
     latestMovies.value = (resMovies?.data?.data || []).map(m => ({
       id: m._id || m.id,
       slug: m.slug || slugify(m.title),
@@ -84,7 +84,7 @@ const fetchLatest = async () => {
     }))
 
     // Fetch series (type=series)
-    const resSeries = await api.get('/movies/latest?limit=12&type=series')
+    const resSeries = await api.get('/movies/latest?limit=6&type=series')
     latestSeries.value = (resSeries?.data?.data || []).map(m => ({
       id: m._id || m.id,
       slug: m.slug || slugify(m.title),
@@ -102,7 +102,7 @@ const fetchLatest = async () => {
 const fetchTrending = async () => {
   try {
     // Chỉ lấy phim lẻ (type=movie) cho trending
-    const res = await api.get('/movies/hot?limit=12&type=movie')
+    const res = await api.get('/movies/hot?limit=6&type=movie')
     trendingMovies.value = (res?.data?.data || []).map(m => ({
       id: m._id || m.id,
       slug: m.slug || slugify(m.title),

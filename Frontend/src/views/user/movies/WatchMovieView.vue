@@ -3,12 +3,15 @@ import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/services/api'
+import VideoAdOverlay from '@/components/common/VideoAdOverlay.vue'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const isLoggedIn = computed(() => authStore.isAuthenticated)
 let progressInterval = null
+const showPreRoll = ref(false)
+const adCompleted = ref(false)
 
 // UI / player states
 const isPlaying = ref(false)
@@ -223,12 +226,17 @@ async function incrementMovieViewOnce(movieId, ttlMinutes = 60) {
 
 /* thay thế togglePlay để gọi increment khi bắt đầu play */
 function togglePlay() {
+  // Nếu chưa xem quảng cáo, hiển thị lại
+  if (!adCompleted.value) {
+    showPreRoll.value = true
+    return
+  }
+  
   const video = videoPlayer.value
   if (!video) return
   if (video.paused) {
     video.play()
     isPlaying.value = true
-    // gọi increment 1 lần khi bắt đầu phát — ưu tiên movie.value.id (ObjectId)
     const mid = movie.value.id || movie.value._id || movie.value.slug
     if (mid) incrementMovieViewOnce(mid, 60)
   } else {
@@ -236,6 +244,7 @@ function togglePlay() {
     isPlaying.value = false
   }
 }
+
 function toggleMute() { const video = videoPlayer.value; if (!video) return; video.muted = !video.muted; isMuted.value = video.muted }
 function toggleFullscreen() { if (!document.fullscreenElement) { videoContainer.value.requestFullscreen(); isFullscreen.value = true } else { document.exitFullscreen(); isFullscreen.value = false } }
 function handleVolumeChange(e) { const video = videoPlayer.value; if (!video) return; volume.value = e.target.value; video.volume = volume.value / 100; isMuted.value = video.volume === 0 }
@@ -329,18 +338,24 @@ const fetchRelatedMovies = async (movieObj) => {
 // lifecycle
 onMounted(async () => {
   const slug = route.params.slug
-  // load movie first (by slug) so we have real movie.id, then fetch reviews/favorites
+  
+  //  Reset ad state mỗi lần mount
+  adCompleted.value = false
+  showPreRoll.value = false
+  
   if (slug) {
     await fetchMovieBySlug(slug)
     await updateFavoriteStatus()
-    // now that movie.value.id is set, fetch reviews by real id
+    
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
+    console.log('🎬 Showing pre-roll ad...')
+    showPreRoll.value = true
+    
     if (movie.value?.id || movie.value?._id) {
       await fetchReviewsIfNeeded(movie.value.id || movie.value._id)
-      
-      // THÊM: Save initial history khi bắt đầu xem
       await saveToHistory(0)
       
-      // THÊM: Setup interval để update progress mỗi 30s
       progressInterval = setInterval(() => {
         if (isPlaying.value && videoPlayer.value) {
           const video = videoPlayer.value
@@ -349,14 +364,11 @@ onMounted(async () => {
             saveToHistory(progress)
           }
         }
-      }, 30000) // 30 giây
+      }, 30000)
     }
-  } else {
-    // still ensure user loaded for favorite UI
-    await fetchCurrentUser()
-    await updateFavoriteStatus()
   }
 })
+
 
 onBeforeUnmount(() => {
   if (progressInterval) {
@@ -379,11 +391,22 @@ onBeforeUnmount(() => {
   window.removeEventListener('pointermove', onPointerMove)
 })
 
-watch(() => route.params.slug, (newSlug) => { 
+watch(() => route.params.slug, async (newSlug) => { 
   if (newSlug) {
-    void fetchMovieBySlug(newSlug).then(() => updateFavoriteStatus())
+    //  Reset ad state khi chuyển phim mới
+    adCompleted.value = false
+    showPreRoll.value = false
+    
+    await fetchMovieBySlug(newSlug)
+    await updateFavoriteStatus()
+    
+    //  Hiển thị quảng cáo sau khi load phim mới
+    await new Promise(resolve => setTimeout(resolve, 100))
+    console.log('🎬 Showing pre-roll ad for new movie...')
+    showPreRoll.value = true
   }
 })
+
 watch(isAuthenticated, (v) => { 
   if (v) {
     fetchCurrentUser().then(() => updateFavoriteStatus())
@@ -405,6 +428,20 @@ const saveToHistory = async (progress = 0) => {
     console.warn('Failed to save history:', e)
   }
 }
+
+const onAdComplete = () => {
+  console.log('Ad complete')
+  adCompleted.value = true
+  showPreRoll.value = false
+  
+  // Auto-play video chính sau khi xem quảng cáo
+  setTimeout(() => {
+    if (videoPlayer.value && !isPlaying.value) {
+      videoPlayer.value.play()
+      isPlaying.value = true
+    }
+  }, 300)
+}
 </script>
 
 <template>
@@ -416,12 +453,31 @@ const saveToHistory = async (progress = 0) => {
         class="relative w-full aspect-video max-h-[85vh]"
         @mousemove="showControlsOnMove"
         @mouseleave="showControls = false"
-        :class="{'cursor-none': !showControls && isPlaying}"
       >
-        <!-- Video element -->
+        <!--  Overlay button "Xem quảng cáo" (chỉ hiện khi chưa xem) -->
+        <div 
+          v-if="!adCompleted"
+          class="absolute inset-0 bg-black/70 flex items-center justify-center z-30"
+        >
+          <button 
+            @click="showPreRoll = true"
+            class="bg-primary-600 hover:bg-primary-700 text-white px-8 py-4 rounded-lg text-lg font-medium"
+          >
+            Xem quảng cáo để tiếp tục
+          </button>
+        </div>
+
+        <!--  Component quảng cáo (z-40, cao hơn overlay button) -->
+        <VideoAdOverlay 
+          :show="showPreRoll && !adCompleted"
+          @complete="onAdComplete"
+        />
+        
+        <!-- Video chính -->
         <video 
           ref="videoPlayer"
           class="w-full h-full object-contain bg-black"
+          :class="{ 'pointer-events-none': !adCompleted }"
           @click="togglePlay"
           @loadedmetadata="onLoadedMetadata"
           @timeupdate="onTimeUpdate"
@@ -432,14 +488,14 @@ const saveToHistory = async (progress = 0) => {
         ></video>
         
         <!-- Loading overlay -->
-        <div v-if="isLoading" class="absolute inset-0 flex items-center justify-center bg-black/70">
+        <div v-if="isLoading" class="absolute inset-0 flex items-center justify-center bg-black/70 z-20">
           <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary-500"></div>
         </div>
         
-        <!-- Play/Pause big button overlay (shown briefly when toggling) -->
+        <!-- Play/Pause big button overlay -->
         <div 
-          v-if="!isLoading" 
-          class="absolute inset-0 flex items-center justify-center pointer-events-none"
+          v-if="!isLoading && adCompleted" 
+          class="absolute inset-0 flex items-center justify-center pointer-events-none z-10"
           :class="{'opacity-0': !showControls || isLoading}"
         >
           <button class="w-20 h-20 bg-black/30 backdrop-blur-sm rounded-full flex items-center justify-center text-white transition-opacity">
@@ -454,8 +510,8 @@ const saveToHistory = async (progress = 0) => {
         
         <!-- Video controls (bottom bar) -->
         <div 
-          v-if="!isLoading"
-          class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 transition-opacity duration-300"
+          v-if="!isLoading && adCompleted"
+          class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 transition-opacity duration-300 z-10"
           :class="{'opacity-0': !showControls && isPlaying}"
         >
           <!-- Progress bar -->
@@ -472,7 +528,6 @@ const saveToHistory = async (progress = 0) => {
                 <div class="absolute -right-1 top-1/2 -translate-y-1/2 w-3 h-3 bg-primary-500 rounded-full"></div>
               </div>
 
-              <!-- floating time label over thumb -->
               <div
                 v-if="showControls"
                 class="absolute -top-7 transform -translate-x-1/2 px-2 py-0.5 bg-black/80 text-xs text-white rounded"
@@ -502,10 +557,10 @@ const saveToHistory = async (progress = 0) => {
                   <svg v-if="isMuted" class="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12,4L9.91,6.09L12,8.18M4.27,3L3,4.27L7.73,9H3V15H7L12,20V13.27L16.25,17.53C15.58,18.04 14.83,18.46 14,18.7V20.77C15.38,20.45 16.63,19.82 17.68,18.96L19.73,21L21,19.73L12,10.73M19,12C19,12.94 18.8,13.82 18.46,14.64L19.97,16.15C20.62,14.91 21,13.5 21,12C21,7.72 18,4.14 14,3.23V5.29C16.89,6.15 19,8.83 19,12M16.5,12C16.5,10.23 15.5,8.71 14,7.97V10.18L16.45,12.63C16.5,12.43 16.5,12.21 16.5,12Z" />
                   </svg>
-                  <svg v-else-if="volume.value === 0" class="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
+                  <svg v-else-if="volume === 0" class="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M3,9H7L12,4V20L7,15H3V9M16.59,12L14,9.41L15.41,8L18,10.59L20.59,8L22,9.41L19.41,12L22,14.59L20.59,16L18,13.41L15.41,16L14,14.59L16.59,12Z" />
                   </svg>
-                  <svg v-else-if="volume.value < 50" class="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
+                  <svg v-else-if="volume < 50" class="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M5,9V15H9L14,20V4L9,9M18.5,12C18.5,10.23 17.5,8.71 16,7.97V16C17.5,15.29 18.5,13.76 18.5,12Z" />
                   </svg>
                   <svg v-else class="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
@@ -522,7 +577,6 @@ const saveToHistory = async (progress = 0) => {
                 >
               </div>
               
-              <!-- Time display -->
               <span class="text-white text-sm hidden sm:block">{{ timeDisplay }}</span>
             </div>
             
@@ -547,7 +601,7 @@ const saveToHistory = async (progress = 0) => {
                 </div>
               </div>
               
-              <!-- Fullscreen toggle -->
+              <!-- Fullscreen -->
               <button @click="toggleFullscreen" class="text-white hover:text-primary-400 transition">
                 <svg v-if="isFullscreen" class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M5,5H10V7H7V10H5V5M14,5H19V10H17V7H14V5M17,14H19V19H14V17H17V14M10,17V19H5V14H7V17H10Z" />
@@ -562,6 +616,7 @@ const saveToHistory = async (progress = 0) => {
       </div>
     </div>
 
+    <!-- Movie info section -->
     <div class="container py-6">
       <!-- Movie info -->
       <div class="mb-8">
@@ -583,7 +638,6 @@ const saveToHistory = async (progress = 0) => {
             </div>
           </div>
           
-          <!-- Actions -->
           <div class="flex flex-wrap gap-2 sm:gap-3">
             <button @click="toggleFavorite" :class="['py-3 px-6 flex items-center', isFavorited ? 'btn-primary' : 'btn-outline']">
               <svg class="w-5 h-5 mr-2" :fill="isFavorited ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24">
@@ -601,45 +655,28 @@ const saveToHistory = async (progress = 0) => {
               </svg>
               Thông tin phim
             </RouterLink>
-            <span v-else class="btn-outline px-3 py-1 sm:px-5 sm:py-2 text-sm sm:text-base text-gray-400">Thông tin phim</span>
           </div>
         </div>
         
-        <!-- Description -->
         <p class="text-gray-300 mt-4">{{ movie.description }}</p>
-      </div>
-      
-      <!-- Episode selector (if series) -->
-      <div v-if="isSeries" class="mb-8">
-        <h2 class="text-xl font-bold text-white mb-4">Các tập phim</h2>
-        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-          <button 
-            v-for="(ep, index) in movie.episodes" 
-            :key="index"
-            class="bg-gray-800 hover:bg-gray-700 text-white rounded-lg py-3 transition"
-          >
-            Tập {{ index + 1 }}
-          </button>
-        </div>
       </div>
       
       <!-- Comments section -->
       <div class="mb-8">
         <h2 class="text-xl font-bold text-white mb-4">Bình luận ({{ movie.reviews.length }})</h2>
         
-         <!-- Comment form -->
-         <div class="bg-dark-800 border border-gray-700 rounded-xl p-4 mb-6">
+        <div class="bg-dark-800 border border-gray-700 rounded-xl p-4 mb-6">
           <form @submit.prevent="submitReview">
             <textarea 
               v-model="userComment"
               rows="3"
               placeholder="Viết bình luận của bạn..."
-              class="w-full bg-dark-700 text-black border border-gray-700/60 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+              class="w-full bg-dark-700 text-white border border-gray-700/60 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
             ></textarea>
             <div class="flex justify-end mt-3">
               <button 
                 type="submit"
-                class="btn-primary px-5 py-2 flex items-center"
+                class="btn-primary px-5 py-2"
                 :disabled="!userComment.trim() || submittingReview"
               >
                 {{ submittingReview ? 'Đang gửi...' : 'Gửi bình luận' }}
@@ -648,37 +685,27 @@ const saveToHistory = async (progress = 0) => {
           </form>
         </div>
         
-         <!-- Comments list -->
-         <div class="space-y-4">
+        <div class="space-y-4">
           <div v-for="comment in movie.reviews" :key="comment._id || comment.id" class="bg-dark-800 border border-gray-700 rounded-xl p-4">
             <div class="flex items-start">
               <div class="w-10 h-10 bg-primary-600/80 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0">
-                {{ String(comment.user?.fullName || comment.author || comment.user || 'U').charAt(0).toUpperCase() }}
+                {{ String(comment.user?.fullName || comment.author || 'U').charAt(0).toUpperCase() }}
               </div>
               <div class="ml-3 flex-1">
                 <div class="flex justify-between items-center mb-1">
                   <div>
                     <h4 class="text-white font-medium">
-                      {{ comment.user?.fullName || comment.author || comment.user || 'Người dùng' }}
+                      {{ comment.user?.fullName || comment.author || 'Người dùng' }}
                       <span v-if="currentUserId && String(comment.user?._id || comment.user?.id) === String(currentUserId)" class="ml-2 text-xs text-primary-400">(bạn)</span>
                     </h4>
-                    <p class="text-gray-400 text-xs">{{ new Date(comment.createdAt || comment.date || comment.time).toLocaleString() }}</p>
+                    <p class="text-gray-400 text-xs">{{ new Date(comment.createdAt || comment.date).toLocaleString() }}</p>
                   </div>
                 </div>
-                <p class="text-gray-300 mt-1">{{ comment.comment || comment.content || '' }}</p>
-                <div class="mt-2 flex items-center text-gray-500 text-sm">
-                  <button class="flex items-center hover:text-primary-400">
-                    <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z" />
-                    </svg>
-                    <span>{{ comment.likes || 0 }}</span>
-                  </button>
-                  <button class="ml-4 hover:text-primary-400">Trả lời</button>
-                </div>
+                <p class="text-gray-300 mt-1">{{ comment.comment || comment.content }}</p>
               </div>
             </div>
           </div>
-         </div>
+        </div>
       </div>
       
       <!-- Related movies -->
@@ -687,20 +714,20 @@ const saveToHistory = async (progress = 0) => {
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
           <RouterLink 
             v-for="rel in relatedList" 
-            :key="rel.id || rel._id || rel.slug"
-            :to="{ name: 'movie-detail', params: { slug: rel.slug || rel._id || rel.id } }"
+            :key="rel.id || rel._id"
+            :to="{ name: 'movie-detail', params: { slug: rel.slug || rel._id } }"
             class="movie-card group"
           >
-             <div class="relative overflow-hidden rounded-xl aspect-[2/3] bg-gray-800">
-               <img :src="rel.poster || rel.thumbnail || rel.image" :alt="rel.title || rel.name" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
-               <div class="absolute top-2 right-2 bg-black/70 backdrop-blur-sm px-2 py-1 rounded-lg text-xs text-white">
-                 {{ rel.duration || rel.length }}
-               </div>
-             </div>
-             <div class="mt-2">
-               <h3 class="text-white font-medium truncate">{{ rel.title || rel.name }}</h3>
-               <p class="text-gray-400 text-sm">{{ rel.year }}</p>
-             </div>
+            <div class="relative overflow-hidden rounded-xl aspect-[2/3] bg-gray-800">
+              <img :src="rel.poster" :alt="rel.title" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+              <div class="absolute top-2 right-2 bg-black/70 backdrop-blur-sm px-2 py-1 rounded-lg text-xs text-white">
+                {{ rel.duration }}
+              </div>
+            </div>
+            <div class="mt-2">
+              <h3 class="text-white font-medium truncate">{{ rel.title }}</h3>
+              <p class="text-gray-400 text-sm">{{ rel.year }}</p>
+            </div>
           </RouterLink>
         </div>
       </div>
