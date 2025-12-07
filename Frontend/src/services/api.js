@@ -4,17 +4,22 @@ const BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000/api'
 
 const api = axios.create({
   baseURL: BASE,
-  timeout: 30000,
+  timeout: 300000,
 })
-
-api.interceptors.request.use(cfg => {
-  const token = localStorage.getItem('token')
-  if (token) cfg.headers.Authorization = `Bearer ${token}`
-  
-  console.log('API Request:', cfg.baseURL + cfg.url)
-  
-  return cfg
-})
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type']
+    }
+    
+    return config
+  },
+  (error) => Promise.reject(error)
+)
 
 api.interceptors.response.use(
   response => response,

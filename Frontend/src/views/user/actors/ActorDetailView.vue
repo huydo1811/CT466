@@ -170,8 +170,8 @@ const fetchActor = async (slug) => {
         id: data._id || data.id || '',
         slug: data.slug || slug,
         name: data.name || data.fullName || '',
-        profile: getMediaUrl(data.photoUrl || data.profile || data.avatar || ''),  // ✅ Dùng getMediaUrl
-        backdrop: getMediaUrl(data.backdrop || ''),  // ✅ Dùng getMediaUrl
+        profile: getMediaUrl(data.photoUrl || data.profile || data.avatar || ''), 
+        backdrop: getMediaUrl(data.backdrop || ''),  
         birthdate: data.birthDate || data. birthdate || '',
         age: data.age ?? null,
         birthplace: data.birthplace || data.placeOfBirth || '',
@@ -199,7 +199,7 @@ const fetchFilmography = async () => {
       id: m._id || m.id,
       slug: m.slug || m._id || m.id,
       title: m.title || m.name || '',
-      poster: getMediaUrl(m.poster || m.image || ''),  // ✅ Dùng getMediaUrl
+      poster: getMediaUrl(m.poster || m.image || ''), 
       year: m.year || (m.releaseDate ? new Date(m.releaseDate).getFullYear() : ''),
       genre: (m.categories && m.categories[0]?.name) || (m.genre || ''),
       character: (m.role || m.character) || '',

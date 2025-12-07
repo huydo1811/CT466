@@ -468,7 +468,7 @@ const saveToHistory = async (progress = 0) => {
 
 // Tìm dòng ~456 - SỬA hàm onAdComplete
 const onAdComplete = () => {
-  console.log('✅ Ad complete')
+  console.log('Ad complete')
   adCompleted.value = true
   showPreRoll.value = false
   
@@ -514,7 +514,6 @@ const onAdComplete = () => {
         //   console.warn('⚠️ Autoplay bị chặn')
         // }
         
-        // ✅ CHỈ LOG - Không hiện alert
         console.warn('⚠️ Video error:', err.name, err.message)
       })
   }, 300)
@@ -523,7 +522,7 @@ const onAdComplete = () => {
 </script>
 
 <template>
-  <div class="bg-dark-900 min-h-screen pb-10">
+<div class="bg-dark-900 min-h-screen pb-10 pt-16 md:pt-0">
     <!-- Player section -->
     <div class="relative bg-black">
       <div 

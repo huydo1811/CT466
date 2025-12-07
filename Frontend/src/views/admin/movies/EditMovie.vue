@@ -184,6 +184,9 @@ const removeCategory = (id) => {
   selectedCategories.value = selectedCategories.value.filter(c => c.id !== id)
 }
 
+const uploadProgress = ref(0) 
+const uploading = ref(false) 
+
 // submit update
 const handleSubmit = async () => {
   try {
@@ -214,16 +217,35 @@ const handleSubmit = async () => {
     if (movieForm.backdropFile) fd.append('backdrop', movieForm.backdropFile)
     if (movieForm.videoFile) fd.append('video', movieForm.videoFile)
 
-    await api.put(`/movies/${id}`, fd)
+    uploading.value = true 
+    uploadProgress.value = 0
 
-    // KHÔNG revoke ở đây! Để onBeforeUnmount tự động revoke khi chuyển trang
-    // _revokePoster(); _revokeVideo() // <-- XÓA DÒNG NÀY
+    await api.put(`/movies/${id}`, fd, {
+      timeout: 600000, 
+      onUploadProgress: (progressEvent) => {
+        const percentCompleted = Math.round(
+          (progressEvent.loaded * 100) / progressEvent.total
+        )
+        uploadProgress.value = percentCompleted
+        console.log(`📤 Upload progress: ${percentCompleted}%`)
+      }
+    })
 
     alert('Cập nhật thành công')
     router.push('/admin/movies')
   } catch (err) {
     console.error('update failed', err)
-    alert(err?.response?.data?.message || 'Cập nhật thất bại')
+    
+    if (err.code === 'ECONNABORTED') {
+      alert('⏱️ Tải lên bị timeout. File video có thể quá lớn.\n\nGợi ý:\n- Nén video xuống < 500MB\n- Hoặc upload lên Google Drive/YouTube rồi paste link.')
+    } else if (err.response?.status === 413) {
+      alert('📦 File quá lớn! Server không chấp nhận.\n\nHãy nén video xuống < 500MB.')
+    } else {
+      alert(err?.response?.data?.message || `Cập nhật thất bại: ${err.message}`)
+    }
+  } finally {
+    uploading.value = false
+    uploadProgress.value = 0
   }
 }
 
@@ -241,6 +263,25 @@ const handleCancel = () => {
         <p class="text-slate-400">Cập nhật thông tin phim</p>
       </div>
       <button @click="handleCancel" class="bg-slate-600 hover:bg-slate-500 text-white px-4 py-2 rounded-lg">Hủy</button>
+    </div>
+
+    <div v-if="uploading" class="fixed inset-0 z-50 bg-black/70 flex items-center justify-center">
+      <div class="bg-slate-800 rounded-xl p-8 max-w-md w-full mx-4">
+        <div class="text-center mb-4">
+          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
+          <h3 class="text-xl font-semibold text-white mb-2">Đang tải phim lên...</h3>
+          <p class="text-slate-400 text-sm">Vui lòng không đóng trang</p>
+        </div>
+        
+        <!-- Progress bar -->
+        <div class="w-full bg-slate-700 rounded-full h-3 overflow-hidden">
+          <div 
+            class="bg-gradient-to-r from-blue-500 to-purple-500 h-full transition-all duration-300"
+            :style="`width: ${uploadProgress}%`"
+          ></div>
+        </div>
+        <p class="text-center text-white font-medium mt-3">{{ uploadProgress }}%</p>
+      </div>
     </div>
 
     <div class="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6 shadow-lg">
@@ -379,8 +420,24 @@ const handleCancel = () => {
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-slate-300 mb-2">File phim (upload)</label>
-              <input type="file" accept="video/*" @change="onVideoChange" class="w-full text-sm text-white" />
+              <label class="block text-sm font-medium text-slate-300 mb-2">
+                File phim (upload)
+                <span v-if="movieForm.videoFile" class="text-blue-400 text-xs ml-2">
+                  ({{ (movieForm.videoFile.size / 1024 / 1024).toFixed(1) }} MB)
+                </span>
+              </label>
+              <input 
+                type="file" 
+                accept="video/*" 
+                @change="onVideoChange" 
+                :disabled="uploading"
+                class="w-full text-sm text-white" 
+              />
+              <!--  Cảnh báo nếu file > 500MB -->
+              <p v-if="movieForm.videoFile && movieForm.videoFile.size > 500 * 1024 * 1024" class="text-yellow-400 text-xs mt-2">
+                 File lớn hơn 500MB, upload có thể mất nhiều thời gian
+              </p>
+              
               <div v-if="videoPreview" class="mt-2">
                 <video :src="videoPreview" controls class="w-full h-48 object-cover rounded bg-black"></video>
                 </div>
@@ -393,13 +450,26 @@ const handleCancel = () => {
             </div>
 
             <div class="mt-4">
-              <button type="submit" class="w-full btn-primary px-4 py-2 rounded">Lưu thay đổi</button>
+              <button 
+                type="submit" 
+                :disabled="uploading"
+                class="w-full btn-primary px-4 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {{ uploading ? 'Đang tải lên...' : 'Lưu thay đổi' }}
+              </button>
             </div>
           </div>
         </div>
 
         <div class="flex justify-end space-x-4">
-          <button type="button" @click="handleCancel" class="bg-slate-600 hover:bg-slate-500 text-white px-6 py-2 rounded-lg">Hủy</button>
+          <button 
+            type="button" 
+            @click="handleCancel" 
+            :disabled="uploading"
+            class="bg-slate-600 hover:bg-slate-500 text-white px-6 py-2 rounded-lg disabled:opacity-50"
+          >
+            Hủy
+          </button>
         </div>
       </form>
     </div>
@@ -407,6 +477,8 @@ const handleCancel = () => {
 </template>
 
 <style scoped>
-@keyframes fade-in { from { opacity: 0; transform: translateY(20px) } to { opacity: 1; transform: translateY(0) } }
+@keyframes fade-in { from { opacity: 0; transform: translateY(20px) } to { opacity: 1;transform: translateY(0) } }
 .animate-fade-in { animation: fade-in .5s ease-out }
+
+/* ...existing styles... */
 </style>

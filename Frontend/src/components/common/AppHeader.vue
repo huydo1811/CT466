@@ -172,12 +172,14 @@ const getMediaUrl = (u) => {
 
  function goToProfile() {
    showProfileMenu.value = false
+   mobileOpen.value = false  
    router.push('/profile')
  }
 
  function logout() {
    auth.logout()
    showProfileMenu.value = false
+   mobileOpen.value = false  
    router.push('/')
  }
 
@@ -346,7 +348,7 @@ const getMediaUrl = (u) => {
                     class="flex items-center p-3 hover:bg-gray-700/30 transition"
                     @click="onSuggestionClick(result)"
                   >
-                    <img :src="result.poster" :alt="result.title" class="w-10 h-15 object-cover rounded" />
+                    <img :src="getMediaUrl(result.poster)" :alt="result.title" class="w-10 h-15 object-cover rounded" />
                     <div class="ml-3">
                       <div class="text-white font-medium truncate max-w-[12rem]">{{ result.title }}</div>
                       <div class="text-xs text-gray-400">{{ result.genre }} · {{ result.year }}</div>
@@ -422,7 +424,7 @@ const getMediaUrl = (u) => {
             <ul>
               <li v-for="result in searchResults" :key="result.id" class="border-b border-gray-700/50 last:border-0">
                 <a href="#" class="flex items-center p-3 hover:bg-gray-700/30 transition">
-                  <img :src="result.poster" :alt="result.title" class="w-10 h-15 object-cover rounded" />
+                  <img :src="getMediaUrl(result.poster)" :alt="result.title" class="w-10 h-15 object-cover rounded" />
                   <div class="ml-3">
                     <div class="text-white font-medium">{{ result.title }}</div>
                     <div class="text-xs text-gray-400">{{ result.year }}</div>
@@ -445,27 +447,39 @@ const getMediaUrl = (u) => {
         class="lg:hidden absolute left-0 right-0 top-full mt-0 z-40"
       >
         <div
-          class="bg-dark-900/95 border-t border-gray-800 p-4 max-h-[calc(100vh-64px)] overflow-y-auto rounded-b-xl shadow-xl"
+          class="bg-dark-900/95 border-t border-gray-800 p-4 max-h-[calc(100vh-120px)] overflow-y-auto rounded-b-xl shadow-xl"
           style="-webkit-overflow-scrolling: touch;"
         >
           <div class="flex flex-col space-y-2">
-            <RouterLink to="/" exact-active-class="nav-link-active" class="mobile-nav-link" @click="mobileOpen = false">Trang chủ</RouterLink>
-            <RouterLink to="/movies" class="mobile-nav-link" @click="mobileOpen = false">Phim lẻ</RouterLink>
-            <RouterLink to="/series" class="mobile-nav-link" @click="mobileOpen = false">Phim bộ</RouterLink>
-
-            <div class="text-gray-400 px-4 mt-2 text-xs uppercase">Thể loại</div>
-            <RouterLink
-              v-for="c in categories"
-              :key="c.id"
-              :to="{ name: 'category-detail', params: { slug: c.slug } }"
-              class="block px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white"
-              @click="mobileOpen = false"
-            >
-              {{ c.name }}
+            <!-- Navigation Links -->
+            <RouterLink to="/" exact-active-class="nav-link-active" class="mobile-nav-link" @click="mobileOpen = false">
+              Trang chủ
+            </RouterLink>
+            <RouterLink to="/movies" class="mobile-nav-link" @click="mobileOpen = false">
+              Phim lẻ
+            </RouterLink>
+            <RouterLink to="/series" class="mobile-nav-link" @click="mobileOpen = false">
+              Phim bộ
+            </RouterLink>
+            <RouterLink to="/actors" class="mobile-nav-link" @click="mobileOpen = false">
+              Diễn viên
             </RouterLink>
 
-            <div class="text-gray-400 px-4 mt-3 text-xs uppercase">Quốc gia</div>
-            <div class="grid grid-cols-2 gap-1">
+            <div class="text-gray-400 px-4 mt-3 text-xs uppercase font-semibold">Thể loại</div>
+            <div class="grid grid-cols-2 gap-1 px-2">
+              <RouterLink
+                v-for="c in categories"
+                :key="c._id || c.id"
+                :to="{ name: 'category-detail', params: { slug: c.slug } }"
+                class="px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white rounded-md truncate"
+                @click="mobileOpen = false"
+              >
+                {{ c.name }}
+              </RouterLink>
+            </div>
+
+            <div class="text-gray-400 px-4 mt-3 text-xs uppercase font-semibold">Quốc gia</div>
+            <div class="grid grid-cols-2 gap-1 px-2">
               <RouterLink
                 v-for="n in countries"
                 :key="n._id || n.id"
@@ -477,19 +491,46 @@ const getMediaUrl = (u) => {
                   v-if="n.flag"
                   :src="getMediaUrl(n.flag)"
                   :alt="n.name"
-                  class="w-4 h-3 mr-1.5 object-cover"
+                  class="w-4 h-3 mr-1.5 object-cover flex-shrink-0"
                 />
                 <span class="truncate">{{ n.name }}</span>
               </RouterLink>
-              <RouterLink to="/actors" class="mobile-nav-link" @click="mobileOpen = false">Diễn viên</RouterLink>
             </div>
 
-            <div class="flex space-x-3 mt-4 px-4">
-              <RouterLink v-if="!auth.isAuthenticated" to="/login" class="btn-outline flex-1 text-center py-2 text-sm" @click="mobileOpen = false">Đăng nhập</RouterLink>
-              <RouterLink v-if="!auth.isAuthenticated" to="/register" class="btn-primary flex-1 text-center py-2 text-sm" @click="mobileOpen = false">Đăng ký</RouterLink>
+            <div class="sticky bottom-0 bg-dark-900/95 backdrop-blur-md pt-4 mt-4 border-t border-gray-700">
+              <div class="flex gap-3 px-4">
+                <template v-if="!auth.isAuthenticated">
+                  <RouterLink 
+                    to="/login" 
+                    class="flex-1 text-center py-2.5 px-4 rounded-lg bg-gray-800 hover:bg-gray-700 text-white font-medium transition-colors" 
+                    @click="mobileOpen = false"
+                  >
+                    Đăng nhập
+                  </RouterLink>
+                  <RouterLink 
+                    to="/register" 
+                    class="flex-1 text-center py-2.5 px-4 rounded-lg bg-gradient-to-r from-primary-500 to-red-600 hover:from-primary-600 hover:to-red-700 text-white font-medium transition-all" 
+                    @click="mobileOpen = false"
+                  >
+                    Đăng ký
+                  </RouterLink>
+                </template>
 
-              <button v-if="auth.isAuthenticated" @click="goToProfile" class="btn-outline flex-1 text-center py-2 text-sm">Hồ sơ</button>
-              <button v-if="auth.isAuthenticated" @click="logout" class="btn-primary flex-1 text-center py-2 text-sm">Đăng xuất</button>
+                <template v-else>
+                  <button 
+                    @click="goToProfile" 
+                    class="flex-1 text-center py-2.5 px-4 rounded-lg bg-gray-800 hover:bg-gray-700 text-white font-medium transition-colors"
+                  >
+                    Hồ sơ
+                  </button>
+                  <button 
+                    @click="logout" 
+                    class="flex-1 text-center py-2.5 px-4 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium transition-colors"
+                  >
+                    Đăng xuất
+                  </button>
+                </template>
+              </div>
             </div>
           </div>
         </div>
@@ -511,4 +552,23 @@ img.flag {
 }
 @keyframes fadeIn { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
 .text-gradient { @apply bg-gradient-to-r from-primary-500 to-red-600 bg-clip-text text-transparent; }
+/* Sticky auth buttons with blur backdrop */
+.sticky {
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+/* Smooth scroll for mobile menu */
+.overflow-y-auto {
+  scroll-behavior: smooth;
+}
+
+/* Category/Country grid hover effect */
+.grid > a {
+  transition: all 0.2s ease;
+}
+
+.grid > a:active {
+  transform: scale(0.98);
+}
 </style>

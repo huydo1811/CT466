@@ -291,10 +291,21 @@ const mapSortOption = (opt) => {
   }
 }
 
+const fetchCategories = async () => {
+  try {
+    const res = await api.get('/categories')
+    const data = res?. data?.data || res?.data || []
+    categories. value = Array.isArray(data) ? data : []
+  } catch (e) {
+    console.warn('fetch categories failed', e)
+    categories.value = []
+  }
+}
 // build years
 onMounted(() => {
   const now = new Date().getFullYear()
   for (let y = now; y >= 1950; y--) years.value.push(y)
+  fetchCategories()
 })
 
 // fetch country info via search endpoint (fallback if no slug route)

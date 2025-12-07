@@ -340,7 +340,7 @@ const normalizeActor = (a) => {
   return {
     ... a,
     id: a._id || a.id,
-    photo: getMediaUrl(a.photoUrl || a.photo || ''),  // ✅ Dùng getMediaUrl thay vì placeholder
+    photo: getMediaUrl(a.photoUrl || a.photo || ''),  
     knownFor: (a.knownFor && Array.isArray(a.knownFor) ? a.knownFor.slice(0,2).map(x => x.title || x.name).join(', ') : (a.knownFor || ''))
   }
 }

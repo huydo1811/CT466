@@ -1,4 +1,5 @@
 import express from 'express';
+import fs from 'fs';
 import {
   getAllMovies,
   getMovieBySlug,
@@ -22,25 +23,40 @@ import {
 import { protect, authorize } from '../middleware/auth.js';
 
 import multer from 'multer'
-import fs from 'fs'
 import path from 'path'
 
-// ensure uploads folder exists
+
 const uploadsDir = path.join(process.cwd(), 'uploads', 'movies')
 fs.mkdirSync(uploadsDir, { recursive: true })
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadsDir),
+  destination: (req, file, cb) => {
+    const folderMap = {
+      poster: 'movies',
+      backdrop: 'movies',
+      video: 'movies'
+    }
+    const folder = folderMap[file.fieldname] || 'movies'
+    cb(null, `uploads/${folder}`)
+  },
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname)
-    const name = `${Date.now()}-${Math.random().toString(36).slice(2,8)}${ext}`
-    cb(null, name)
+    cb(null, Date.now() + '-' + Math.round(Math.random()*1E9) + path.extname(file.originalname))
   }
 })
-// allow large uploads (video)
-const upload = multer({
+
+const upload = multer({ 
   storage,
-  limits: { fileSize: 1024 * 1024 * 1024 } // 1GB
+  limits: { 
+    fileSize: 500 * 1024 * 1024 // 500MB
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.fieldname === 'video') {
+      if (!file.mimetype.startsWith('video/')) {
+        return cb(new Error('Chỉ chấp nhận file video!'), false)
+      }
+    }
+    cb(null, true)
+  }
 })
 
 const router = express.Router();
@@ -62,10 +78,20 @@ router.get('/', getAllMovies);
 // Protected routes - Admin only
 router.use(protect, authorize('admin'));
 
-// accept poster (image) and video (mp4) via multipart/form-data
-router.post('/', upload.fields([{ name: 'poster', maxCount: 1 }, { name: 'backdrop', maxCount: 1 }, { name: 'video', maxCount: 1 }]), createMovie);
+router.post('/', upload.fields([
+  { name: 'poster', maxCount: 1 }, 
+  { name: 'backdrop', maxCount: 1 }, 
+  { name: 'video', maxCount: 1 }
+]), createMovie);
+
 router.get('/admin/stats', getMovieStats);
-router.put('/:id', upload.fields([{ name: 'poster', maxCount: 1 }, { name: 'backdrop', maxCount: 1 }, { name: 'video', maxCount: 1 }]), updateMovie);
+
+router.put('/:id', upload.fields([
+  { name: 'poster', maxCount: 1 }, 
+  { name: 'backdrop', maxCount: 1 }, 
+  { name: 'video', maxCount: 1 }
+]), updateMovie);
+
 router.delete('/:id', deleteMovie);
 router.patch('/:id/toggle', togglePublishStatus);
 router.patch('/:id/toggle-hero', toggleHeroStatus); 

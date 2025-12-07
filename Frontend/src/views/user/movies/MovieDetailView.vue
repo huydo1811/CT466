@@ -516,8 +516,7 @@ const submitReport = async () => {
 </script>
 
 <template>
-  <div class="bg-dark-900 min-h-screen pb-20">
-    <!-- Hero Section with Backdrop -->
+  <div class="bg-dark-900 min-h-screen pb-20 pt-16 md:pt-0">
     <div class="relative h-[75vh] overflow-hidden">
       <!-- Backdrop Image -->
       <div class="absolute inset-0" v-if="movie && (movie.backdrop || movie.poster)">
@@ -531,11 +530,9 @@ const submitReport = async () => {
         <div class="absolute inset-0 bg-gradient-to-t from-dark-900 via-transparent to-transparent"></div>
       </div>
 
-      <!-- Movie Info -->
-      <div class="container relative h-full flex items-end py-16">
-        <div class="flex flex-col md:flex-row gap-8 w-full">
-          <!-- Poster -->
-          <div class="w-64 flex-shrink-0">
+      <div class="container relative h-full flex items-end py-8 md:py-16">
+        <div class="flex flex-col md:flex-row gap-4 md:gap-8 w-full">
+          <div class="w-full sm:w-48 md:w-64 flex-shrink-0 mx-auto sm:mx-0">
             <div class="rounded-2xl overflow-hidden border-2 border-gray-800 shadow-2xl aspect-[2/3] bg-gray-800">
               <img :src="movie.poster" :alt="movie.title" class="w-full h-full object-cover" />
             </div>
@@ -543,22 +540,22 @@ const submitReport = async () => {
 
           <!-- Details -->
           <div class="flex-1">
-            <div class="flex flex-wrap gap-3 mb-2">
+            <div class="flex flex-wrap gap-2 md:gap-3 mb-2">
               <span v-for="genre in movie.genres" :key="genre" 
-                class="px-3 py-1 bg-white/10 backdrop-blur-sm text-white text-xs rounded-full border border-white/20">
+                class="px-2 py-1 md:px-3 md:py-1 bg-white/10 backdrop-blur-sm text-white text-xs rounded-full border border-white/20">
                 {{ genre }}
               </span>
             </div>
 
-            <h1 class="text-4xl md:text-5xl font-bold text-white mb-2">{{ movie.title }}</h1>
-            <p class="text-lg text-gray-300 italic mb-4">{{ movie.tagline }}</p>
+            <h1 class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-2">{{ movie.title }}</h1>
+            <p class="text-sm md:text-lg text-gray-300 italic mb-4">{{ movie.tagline }}</p>
             
-            <div class="flex items-center gap-4 mb-6 text-sm text-gray-300 flex-wrap">
+            <div class="flex items-center gap-2 md:gap-4 mb-4 md:mb-6 text-xs md:text-sm text-gray-300 flex-wrap">
               <div class="flex items-center">
                 <div class="flex items-center text-yellow-400 mr-1">
                   <!-- star -->
-                  <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                  <svg class="w-4 h-4 md:w-5 md:h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9.049 2.927c. 3-.921 1.603-. 921 1.902 0l1.07 3.292a1 1 0 00. 95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1. 118l1.07 3. 292c.3.921-.755 1.688-1.54 1.118l-2. 8-2.034a1 1 0 00-1. 175 0l-2.8 2.034c-.784. 57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-. 364-1.118L2. 98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
                   </svg>
                   <span class="font-bold">{{ movie.rating }}</span>
                 </div>
@@ -571,30 +568,31 @@ const submitReport = async () => {
                 <span>{{ movie.duration }} phút</span>
               </div>
               <div class="flex items-center">
-                <span>{{ movie.ageRating }}</span>
+                <span>{{ movie. ageRating }}</span>
               </div>
             </div>
 
-            <!-- Action Buttons -->
-            <div class="flex flex-wrap gap-4 mb-6">
-              <button @click="watchMovie" class="btn-primary py-3 px-6 flex items-center">
-                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+            <div class="flex flex-wrap gap-2 md:gap-4 mb-6">
+              <button @click="watchMovie" class="btn-primary py-2 md:py-3 px-4 md:px-6 flex items-center text-sm md:text-base">
+                <svg class="w-4 h-4 md:w-5 md:h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
                   <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path>
                 </svg>
                 Xem phim
               </button>
-              <button @click="openTrailer" class="btn-secondary py-3 px-6 flex items-center">
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+              <button @click="openTrailer" class="btn-secondary py-2 md:py-3 px-4 md:px-6 flex items-center text-sm md:text-base">
+                <svg class="w-4 h-4 md:w-5 md:h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14. 752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3. 197-2.132a1 1 0 000-1. 664z"></path>
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
-                Xem Trailer
+                <span class="hidden sm:inline">Xem Trailer</span>
+                <span class="sm:hidden">Trailer</span>
               </button>
-              <button @click="toggleFavorite" :class="['py-3 px-6 flex items-center', isFavorited ? 'btn-primary' : 'btn-outline']">
-                <svg class="w-5 h-5 mr-2" :fill="isFavorited ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+              <button @click="toggleFavorite" :class="['py-2 md:py-3 px-4 md:px-6 flex items-center text-sm md:text-base', isFavorited ? 'btn-primary' : 'btn-outline']">
+                <svg class="w-4 h-4 md:w-5 md:h-5 mr-2" :fill="isFavorited ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4. 318 6.318a4. 5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
                 </svg>
-                {{ isFavorited ? 'Đã yêu thích' : 'Yêu thích' }}
+                <span class="hidden sm:inline">{{ isFavorited ? 'Đã yêu thích' : 'Yêu thích' }}</span>
+                <span class="sm:hidden">{{ isFavorited ? 'Thích' : 'Thích' }}</span>
               </button>
             </div>
           </div>
@@ -604,7 +602,7 @@ const submitReport = async () => {
 
     <!-- Trailer Modal -->
     <div v-if="showTrailer" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" @click="closeTrailer">
-      <div class="relative max-w-5xl w-full aspect-video rounded-xl overflow-hidden shadow-2xl" @click.stop>
+      <div class="relative max-w-5xl w-full aspect-video rounded-xl overflow-hidden shadow-2xl mx-4" @click.stop>
         <button @click="closeTrailer" class="absolute top-3 right-3 z-50 bg-black/60 text-white p-2 rounded-full hover:bg-black/80">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -626,22 +624,22 @@ const submitReport = async () => {
       <div class="flex border-b border-gray-800 mb-6 overflow-x-auto scrollbar-hide">
         <button 
           @click="activeTab = 'overview'" 
-          :class="['px-6 py-3 font-medium whitespace-nowrap', activeTab === 'overview' ? 'text-primary-500 border-b-2 border-primary-500' : 'text-gray-400 hover:text-white']">
+          :class="['px-4 md:px-6 py-3 font-medium whitespace-nowrap text-sm md:text-base', activeTab === 'overview' ? 'text-primary-500 border-b-2 border-primary-500' : 'text-gray-400 hover:text-white']">
           Tổng quan
         </button>
         <button 
           @click="activeTab = 'cast'" 
-          :class="['px-6 py-3 font-medium whitespace-nowrap', activeTab === 'cast' ? 'text-primary-500 border-b-2 border-primary-500' : 'text-gray-400 hover:text-white']">
+          :class="['px-4 md:px-6 py-3 font-medium whitespace-nowrap text-sm md:text-base', activeTab === 'cast' ? 'text-primary-500 border-b-2 border-primary-500' : 'text-gray-400 hover:text-white']">
           Diễn viên
         </button>
         <button 
           @click="activeTab = 'reviews'" 
-          :class="['px-6 py-3 font-medium whitespace-nowrap', activeTab === 'reviews' ? 'text-primary-500 border-b-2 border-primary-500' : 'text-gray-400 hover:text-white']">
-          Đánh giá <span class="text-gray-500">({{ movie.reviews.length }})</span>
+          :class="['px-4 md:px-6 py-3 font-medium whitespace-nowrap text-sm md:text-base', activeTab === 'reviews' ? 'text-primary-500 border-b-2 border-primary-500' : 'text-gray-400 hover:text-white']">
+          Đánh giá <span class="text-gray-500">({{ movie.reviews. length }})</span>
         </button>
         <button 
           @click="activeTab = 'similar'" 
-          :class="['px-6 py-3 font-medium whitespace-nowrap', activeTab === 'similar' ? 'text-primary-500 border-b-2 border-primary-500' : 'text-gray-400 hover:text-white']">
+          :class="['px-4 md:px-6 py-3 font-medium whitespace-nowrap text-sm md:text-base', activeTab === 'similar' ? 'text-primary-500 border-b-2 border-primary-500' : 'text-gray-400 hover:text-white']">
           Phim tương tự
         </button>
       </div>
@@ -652,10 +650,10 @@ const submitReport = async () => {
         <div v-if="activeTab === 'overview'" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <!-- Left Column - Synopsis -->
           <div class="lg:col-span-2">
-            <h2 class="text-2xl font-bold text-white mb-4">Nội dung phim</h2>
-            <p class="text-gray-300 leading-relaxed mb-8 text-lg">{{ movie.description }}</p>
+            <h2 class="text-xl md:text-2xl font-bold text-white mb-4">Nội dung phim</h2>
+            <p class="text-gray-300 leading-relaxed mb-8 text-base md:text-lg">{{ movie.description }}</p>
 
-            <h2 class="text-2xl font-bold text-white mb-4">Trailer chính thức</h2>
+            <h2 class="text-xl md:text-2xl font-bold text-white mb-4">Trailer chính thức</h2>
             <div v-if="movie.trailerKey" class="aspect-video rounded-xl overflow-hidden mb-8 bg-gray-800">
               <iframe 
                 :src="`https://www.youtube.com/embed/${movie.trailerKey}?rel=0`" 
@@ -670,10 +668,10 @@ const submitReport = async () => {
 
           <!-- Right Column - Details -->
           <div>
-            <div class="bg-dark-800 border border-gray-800 rounded-2xl p-6">
-              <h2 class="text-lg font-semibold text-white mb-4">Thông tin phim</h2>
+            <div class="bg-dark-800 border border-gray-800 rounded-2xl p-4 md:p-6">
+              <h2 class="text-base md:text-lg font-semibold text-white mb-4">Thông tin phim</h2>
               
-              <div class="space-y-4">
+              <div class="space-y-3 md:space-y-4 text-sm md:text-base">
                 <div class="flex justify-between">
                   <span class="text-gray-400">Đạo diễn</span>
                   <span class="text-white text-right">{{ movie.director }}</span>
@@ -694,7 +692,7 @@ const submitReport = async () => {
 
                 <div class="flex justify-between">
                   <span class="text-gray-400">Quốc gia</span>
-                  <span class="text-white text-right">{{ movie.countries.join(', ') }}</span>
+                  <span class="text-white text-right">{{ movie. countries. join(', ') }}</span>
                 </div>
                 <div class="border-b border-gray-700"></div>
               </div>
@@ -704,14 +702,15 @@ const submitReport = async () => {
 
         <!-- Cast Tab -->
         <div v-else-if="activeTab === 'cast'">
-          <h2 class="text-2xl font-bold text-white mb-6">Diễn viên</h2>
-          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
-            <div v-for="actor in movie.cast" :key="actor.id || actor._id" class="bg-dark-800 border border-gray-800 rounded-xl overflow-hidden group cursor-pointer" @click="viewActorDetails(actor)">              <div class="aspect-[2/3] overflow-hidden bg-gray-700">
+          <h2 class="text-xl md:text-2xl font-bold text-white mb-6">Diễn viên</h2>
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 md:gap-6">
+            <div v-for="actor in movie.cast" :key="actor.id || actor._id" class="bg-dark-800 border border-gray-800 rounded-xl overflow-hidden group cursor-pointer" @click="viewActorDetails(actor)">
+              <div class="aspect-[2/3] overflow-hidden bg-gray-700">
                 <img :src="actor.image || '/images/placeholder-actor.png'" :alt="actor.name" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
               </div>
-              <div class="p-4">
-                <h3 class="text-white font-medium truncate">{{ actor.name }}</h3>
-                <p class="text-gray-400 text-sm truncate">{{ actor.character }}</p>
+              <div class="p-3 md:p-4">
+                <h3 class="text-white font-medium truncate text-sm md:text-base">{{ actor.name }}</h3>
+                <p class="text-gray-400 text-xs md:text-sm truncate">{{ actor.character }}</p>
               </div>
             </div>
           </div>
@@ -720,77 +719,77 @@ const submitReport = async () => {
         <!-- Reviews Tab -->
         <div v-else-if="activeTab === 'reviews'">
           <div class="flex justify-between items-center mb-8">
-            <h2 class="text-2xl font-bold text-white">Đánh giá từ người dùng</h2>
-            <button v-if="!isAuthenticated" @click="$router.push({ name: 'login', query: { redirect: route.fullPath } })" class="btn-outline py-2 px-4">Đăng nhập để viết đánh giá</button>
-            <button v-else @click="window.scrollTo({ top: 0, behavior: 'smooth' })" class="btn-outline py-2 px-4">Viết đánh giá</button>
+            <h2 class="text-xl md:text-2xl font-bold text-white">Đánh giá từ người dùng</h2>
+            <button v-if="! isAuthenticated" @click="$router.push({ name: 'login', query: { redirect: route.fullPath } })" class="btn-outline py-2 px-3 md:px-4 text-xs md:text-sm">Đăng nhập để viết đánh giá</button>
+            <button v-else @click="window.scrollTo({ top: 0, behavior: 'smooth' })" class="btn-outline py-2 px-3 md:px-4 text-xs md:text-sm">Viết đánh giá</button>
           </div>
 
           <!-- SHOW all reviews first -->
-          <div class="space-y-6 mb-6">
-            <div v-for="review in movie.reviews" :key="review._id || review.id" class="relative bg-dark-800 border border-gray-800 rounded-xl p-6 overflow-hidden">
+          <div class="space-y-4 md:space-y-6 mb-6">
+            <div v-for="review in movie.reviews" :key="review._id || review. id" class="relative bg-dark-800 border border-gray-800 rounded-xl p-4 md:p-6 overflow-hidden">
               <!-- avatar + meta -->
               <div class="flex items-start gap-3 mb-3">
-                <div class="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
-                  <img v-if="review.user?.avatar" :src="getMediaUrl(review.user.avatar)" alt="avatar" class="w-full h-full object-cover" />
-                  <div v-else class="w-full h-full bg-primary-600 flex items-center justify-center text-white font-medium">
-                    {{ (review.user?.fullName || review.author || 'U').charAt(0).toUpperCase() }}
+                <div class="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden flex-shrink-0">
+                  <img v-if="review.user?. avatar" :src="getMediaUrl(review.user.avatar)" alt="avatar" class="w-full h-full object-cover" />
+                  <div v-else class="w-full h-full bg-primary-600 flex items-center justify-center text-white font-medium text-sm md:text-base">
+                    {{ (review.user?.fullName || review.author || 'U'). charAt(0). toUpperCase() }}
                   </div>
                 </div>
                 <div class="flex-1">
-                  <h4 class="text-white font-medium">
+                  <h4 class="text-white font-medium text-sm md:text-base">
                     {{ review.user?.fullName || review.author || 'Người dùng' }}
-                    <span v-if="currentUserId && String(review.user?._id || review.user?.id) === String(currentUserId)" class=" text-xs text-primary-400">(bạn)</span>
+                    <span v-if="currentUserId && String(review.user?._id || review.user?.id) === String(currentUserId)" class="text-xs text-primary-400">(bạn)</span>
                   </h4>
-                  <p class="text-gray-400 text-sm">{{ new Date(review.updatedAt || review.date).toLocaleDateString() }}</p>
+                  <p class="text-gray-400 text-xs md:text-sm">{{ new Date(review.updatedAt || review.date).toLocaleDateString() }}</p>
                 </div>
               </div>
 
               <!-- comment -->
-              <p class="text-gray-300 mb-4 leading-relaxed whitespace-pre-line">{{ review.comment || review.content }}</p>
+              <p class="text-gray-300 mb-4 leading-relaxed whitespace-pre-line text-sm md:text-base">{{ review.comment || review.content }}</p>
 
               <!-- rating badge + report button (absolute top-right) -->
-              <div class="absolute top-4 right-4 flex items-center gap-3">
-                <div class="flex items-center gap-2 bg-black/70 px-3 py-1 rounded-full shadow-sm">
-                  <svg class="w-4 h-4 text-yellow-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+              <div class="absolute top-3 md:top-4 right-3 md:right-4 flex items-center gap-2 md:gap-3">
+                <div class="flex items-center gap-1 md:gap-2 bg-black/70 px-2 md:px-3 py-1 rounded-full shadow-sm">
+                  <svg class="w-3 h-3 md:w-4 md:h-4 text-yellow-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path d="M9. 049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c. 969 0 1.371 1.24.588 1. 81l-2.8 2. 034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1. 539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-. 57-. 38-1.81.588-1.81h3.461a1 1 0 00. 951-.69l1.07-3.292z"/>
                   </svg>
-                  <span class="text-white font-semibold text-sm">{{ review.rating }}/5</span>
+                  <span class="text-white font-semibold text-xs md:text-sm">{{ review.rating }}/5</span>
                 </div>
 
-                <button type="button" @click="openReportModal(review)" class="w-9 h-9 bg-red-600 hover:bg-red-500 text-white rounded-full flex items-center justify-center shadow" title="Báo cáo bình luận">
-                  <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.681-1.36 3.446 0l6.518 11.59c.75 1.334-.213 2.95-1.724 2.95H3.463c-1.51 0-2.475-1.616-1.724-2.95L8.257 3.1zM11 13a1 1 0 10-2 0 1 1 0 002 0zm-1-8a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5z" clip-rule="evenodd"/>
+                <button type="button" @click="openReportModal(review)" class="w-7 h-7 md:w-9 md:h-9 bg-red-600 hover:bg-red-500 text-white rounded-full flex items-center justify-center shadow" title="Báo cáo bình luận">
+                  <svg class="w-3 h-3 md:w-4 md:h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M8. 257 3.099c.765-1.36 2.681-1.36 3.446 0l6.518 11.59c.75 1.334-.213 2.95-1.724 2.95H3.463c-1.51 0-2.475-1.616-1.724-2.95L8.257 3.1zM11 13a1 1 0 10-2 0 1 1 0 002 0zm-1-8a. 75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A. 75.75 0 0110 5z" clip-rule="evenodd"/>
                   </svg>
                 </button>
               </div>
             </div>
-             <div v-if="!movie.reviews || movie.reviews.length === 0" class="text-gray-500">Chưa có đánh giá nào.</div>
+            <div v-if="! movie.reviews || movie.reviews.length === 0" class="text-gray-500 text-center py-8">Chưa có đánh giá nào. </div>
           </div>
 
           <!-- Then show user's form -->
-          <div v-if="isAuthenticated" class="bg-dark-800 border border-gray-800 rounded-xl p-6 mb-6">
+          <div v-if="isAuthenticated" class="bg-dark-800 border border-gray-800 rounded-xl p-4 md:p-6 mb-6">
             <div class="mb-4">
               <label class="text-sm text-gray-300 block mb-2">Đánh giá của bạn</label>
               <div class="flex items-center gap-2">
                 <div class="flex items-center">
-                  <button v-for="n in 5" :key="n" type="button" @click="userRating = n" class="px-1">
-                    <svg v-if="n <= userRating" class="w-6 h-6 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                  <button v-for="n in 5" :key="n" type="button" @click="userRating = n" class="px-0. 5 md:px-1">
+                    <svg v-if="n <= userRating" class="w-5 h-5 md:w-6 md:h-6 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M9.049 2. 927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24. 588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3. 921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1. 81h3.461a1 1 0 00.951-. 69l1.07-3. 292z"/>
                     </svg>
-                    <svg v-else class="w-6 h-6 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                    <svg v-else class="w-5 h-5 md:w-6 md:h-6 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M9.049 2. 927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24. 588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3. 921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1. 81h3.461a1 1 0 00.951-. 69l1.07-3. 292z"/>
                     </svg>
                   </button>
                 </div>
-                <span class="text-gray-400">({{ userRating }})</span>
+                <span class="text-gray-400 text-sm">({{ userRating }})</span>
               </div>
             </div>
             <div class="mb-4">
               <label class="text-sm text-gray-300 block mb-2">Bình luận</label>
-              <textarea v-model="userComment" rows="4" class="w-full bg-dark-700 text-black p-3 rounded resize-none" placeholder="Viết cảm nhận của bạn..."></textarea>
+              <textarea v-model="userComment" rows="4" class="w-full bg-dark-700 text-white p-3 rounded resize-none text-sm md:text-base" placeholder="Viết cảm nhận của bạn..."></textarea>
             </div>
             <div class="flex justify-end">
-              <button @click="submitReview" :disabled="submittingReview" class="btn-primary py-2 px-4">
+              <button @click="submitReview" :disabled="submittingReview" class="btn-primary py-2 px-4 text-sm md:text-base">
                 {{ submittingReview ? 'Đang gửi...' : 'Gửi đánh giá' }}
               </button>
             </div>
@@ -799,10 +798,10 @@ const submitReport = async () => {
 
         <!-- Similar Movies Tab -->
         <div v-else-if="activeTab === 'similar'">
-          <h2 class="text-2xl font-bold text-white mb-6">Phim tương tự</h2>
-          <div v-if="loadingSimilar" class="text-gray-400 py-8">Đang tải...</div>
-          <div v-else class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
-            <div v-for="s in movie.similar" :key="s.id" class="movie-card group cursor-pointer" @click="$router.push({ name: 'movie-detail', params: { slug: s.slug || s.id } })">
+          <h2 class="text-xl md:text-2xl font-bold text-white mb-6">Phim tương tự</h2>
+          <div v-if="loadingSimilar" class="text-gray-400 py-8">Đang tải... </div>
+          <div v-else class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 md:gap-6">
+            <div v-for="s in movie.similar" :key="s. id" class="movie-card group cursor-pointer" @click="$router.push({ name: 'movie-detail', params: { slug: s.slug || s. id } })">
               <div class="relative overflow-hidden rounded-xl aspect-[2/3] bg-gray-800">
                 <img :src="s.poster" :alt="s.title" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                 <div class="absolute top-2 right-2 bg-black/70 backdrop-blur-sm px-2 py-1 rounded-lg">
@@ -810,8 +809,8 @@ const submitReport = async () => {
                 </div>
               </div>
               <div class="mt-2">
-                <h3 class="text-white font-medium truncate">{{ s.title }}</h3>
-                <p class="text-gray-400 text-sm">{{ s.year }}</p>
+                <h3 class="text-white font-medium truncate text-sm md:text-base">{{ s.title }}</h3>
+                <p class="text-gray-400 text-xs md:text-sm">{{ s.year }}</p>
               </div>
             </div>
           </div>
@@ -820,29 +819,30 @@ const submitReport = async () => {
     </div>
 
     <!-- Report Modal -->
-    <div v-if="reportModalVisible" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div class="bg-dark-800 rounded-xl p-6 w-full max-w-md">
-        <h3 class="text-lg font-semibold text-white mb-3">Báo cáo bình luận</h3>
-        <p class="text-black-400 mb-3">Chọn lý do báo cáo cho bình luận của <strong>{{ reportTarget?.user?.fullName || 'Người dùng' }}</strong></p>
+    <div v-if="reportModalVisible" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+      <div class="bg-dark-800 rounded-xl p-4 md:p-6 w-full max-w-md">
+        <h3 class="text-base md:text-lg font-semibold text-white mb-3">Báo cáo bình luận</h3>
+        <p class="text-gray-400 mb-3 text-sm md:text-base">Chọn lý do báo cáo cho bình luận của <strong>{{ reportTarget?. user?.fullName || 'Người dùng' }}</strong></p>
         <div class="mb-3">
-          <select v-model="reportReason" class="w-full p-2 bg-dark-700 text-black rounded">
+          <select v-model="reportReason" class="w-full p-2 bg-dark-700 text-white rounded text-sm md:text-base">
             <option value="" disabled>Chọn lý do</option>
             <option v-for="opt in reportOptions" :key="opt" :value="opt">{{ opt }}</option>
           </select>
         </div>
         <div class="mb-4">
-          <textarea v-model="reportDetails" rows="4" class="w-full p-2 bg-dark-700 text-black rounded" placeholder="Mô tả chi tiết (tùy chọn)"></textarea>
+          <textarea v-model="reportDetails" rows="4" class="w-full p-2 bg-dark-700 text-white rounded text-sm md:text-base" placeholder="Mô tả chi tiết (tùy chọn)"></textarea>
         </div>
         <div class="flex justify-end gap-2">
-          <button @click="closeReportModal" class="btn-outline py-2 px-4">Hủy</button>
-          <button @click="submitReport" :disabled="reportSubmitting" class="btn-primary py-2 px-4">
-            {{ reportSubmitting ? 'Đang gửi...' : 'Gửi báo cáo' }}
+          <button @click="closeReportModal" class="btn-outline py-2 px-3 md:px-4 text-sm md:text-base">Hủy</button>
+          <button @click="submitReport" :disabled="reportSubmitting" class="btn-primary py-2 px-3 md:px-4 text-sm md:text-base">
+            {{ reportSubmitting ? 'Đang gửi.. .' : 'Gửi báo cáo' }}
           </button>
         </div>
       </div>
     </div>
   </div>
 </template>
+
 <style scoped>
 .scrollbar-hide {
   -ms-overflow-style: none;
