@@ -112,7 +112,6 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-
 import api from '@/services/api'
 
 const route = useRoute()
@@ -122,6 +121,15 @@ const actorSlug = ref(route.params.slug || '')
 const loading = ref(false)
 const error = ref(null)
 
+const getMediaUrl = (u) => {
+  if (!u) return ''
+  if (/^data:|^https?:\/\//.test(u)) return u
+  
+  const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:3000/api'
+  const baseUrl = apiBase.replace(/\/api\/?$/, '')
+  
+  return `${baseUrl}${u. startsWith('/') ? u : '/' + u}`
+}
 
 const actor = ref({
   id: null,
@@ -145,87 +153,82 @@ const formatDate = (value) => {
 
 const filmography = ref([])
 const getMediaRoute = (m) => {
-  // m may contain type/ kind to decide series vs movie
-  const slug = m?.slug || m?._id || m?.id
+  const slug = m?. slug || m?._id || m?.id
   const isSeries = (m?.type && String(m.type).toLowerCase() === 'series') || m?.isSeries
   if (isSeries) return { name: 'series-detail', params: { slug } }
   return { name: 'movie-detail', params: { slug } }
 }
 
 const fetchActor = async (slug) => {
-   loading.value = true
-   error.value = null
-   try {
+  loading.value = true
+  error.value = null
+  try {
     const res = await api.get(`/actors/slug/${encodeURIComponent(slug)}`)
-    const data = res?.data?.data ?? res?.data ?? null
-     if (data) {
-       actor.value = {
-         id: data._id || data.id || '',
-         slug: data.slug || slug,
-         name: data.name || data.fullName || '',
-         profile: data.photoUrl || data.profile || data.avatar || '',
-         backdrop: data.backdrop || '',
-         birthdate: data.birthDate || data.birthdate || '',
-         age: data.age ?? null,
-         birthplace: data.birthplace || data.placeOfBirth || '',
-         nationality: data.nationality || '',
-         occupation: data.occupation || data.job || '',
-         biography: data.bio || data.biography || ''
-       }
-     } else {
-       error.value = 'Không tìm thấy diễn viên'
-     }
-   } catch (e) {
-     console.error('fetchActor error', e)
-     error.value = 'Lỗi khi tải thông tin diễn viên'
-   } finally {
-     loading.value = false
-   }
- }
+    const data = res?.data?.data ?? res?. data ?? null
+    if (data) {
+      actor.value = {
+        id: data._id || data.id || '',
+        slug: data.slug || slug,
+        name: data.name || data.fullName || '',
+        profile: getMediaUrl(data.photoUrl || data.profile || data.avatar || ''),  // ✅ Dùng getMediaUrl
+        backdrop: getMediaUrl(data.backdrop || ''),  // ✅ Dùng getMediaUrl
+        birthdate: data.birthDate || data. birthdate || '',
+        age: data.age ?? null,
+        birthplace: data.birthplace || data.placeOfBirth || '',
+        nationality: data.nationality || '',
+        occupation: data. occupation || data.job || '',
+        biography: data.bio || data.biography || ''
+      }
+    } else {
+      error. value = 'Không tìm thấy diễn viên'
+    }
+  } catch (e) {
+    console.error('fetchActor error', e)
+    error.value = 'Lỗi khi tải thông tin diễn viên'
+  } finally {
+    loading.value = false
+  }
+}
 
 const fetchFilmography = async () => {
   try {
-    // only fetch movies where this actor appears (use real id from actor.value)
     if (!actor.value.id) { filmography.value = []; return }
     const res = await api.get('/movies', { params: { actor: actor.value.id, limit: 100 } })
-     const movies = res?.data?.movies ?? res?.data?.data?.movies ?? res?.data?.data ?? res?.data ?? []
-     filmography.value = Array.isArray(movies) ? movies.map(m => ({
-       id: m._id || m.id,
-       slug: m.slug || m._id || m.id, // ensure slug field if backend provides it
-       title: m.title || m.name || '',
-       poster: m.poster || m.image || '',
-       year: m.year || (m.releaseDate ? new Date(m.releaseDate).getFullYear() : ''),
-       genre: (m.categories && m.categories[0]?.name) || (m.genre || ''),
-       character: (m.role || m.character) || '',
-       rating: (m.rating?.average ?? m.rating) || '',
-       type: m.type || (m.isSeries ? 'series' : 'movie') // help decide route
-     })) : []
-   } catch (e) {
-     console.warn('fetchFilmography failed', e)
-     filmography.value = []
-   }
- }
+    const movies = res?.data?.movies ?? res?.data?.data?.movies ?? res?.data?.data ?? res?.data ?? []
+    filmography.value = Array.isArray(movies) ? movies.map(m => ({
+      id: m._id || m.id,
+      slug: m.slug || m._id || m.id,
+      title: m.title || m.name || '',
+      poster: getMediaUrl(m.poster || m.image || ''),  // ✅ Dùng getMediaUrl
+      year: m.year || (m.releaseDate ? new Date(m.releaseDate).getFullYear() : ''),
+      genre: (m.categories && m.categories[0]?.name) || (m.genre || ''),
+      character: (m.role || m.character) || '',
+      rating: (m.rating?. average ??  m.rating) || '',
+      type: m.type || (m.isSeries ? 'series' : 'movie')
+    })) : []
+  } catch (e) {
+    console.warn('fetchFilmography failed', e)
+    filmography.value = []
+  }
+}
 
 onMounted(async () => {
   const s = actorSlug.value || route.params.slug
-  if (!s) {
+  if (! s) {
     router.replace({ name: 'actors' })
     return
   }
   await fetchActor(s)
   await fetchFilmography()
 })
- 
+
 watch(() => route.params.slug, async (v) => {
-   actorSlug.value = v || ''
-   if (actorSlug.value) {
-     await fetchActor(actorSlug.value)
-     await fetchFilmography()
-   } else {
-     actor.value = {}
-     filmography.value = []
-   }
- })
+  actorSlug.value = v || ''
+  if (actorSlug.value) {
+    await fetchActor(actorSlug.value)
+    await fetchFilmography()
+  }
+})
 </script>
 <style scoped>
 /* Nếu cần thêm styles riêng */

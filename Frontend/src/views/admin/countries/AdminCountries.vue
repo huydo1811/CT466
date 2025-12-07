@@ -2,7 +2,13 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import api from '@/services/api'
 
-
+const getMediaUrl = (u) => {
+  if (!u) return ''
+  if (/^data:|^https?:\/\//.test(u)) return u
+  const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:3000/api'
+  const baseUrl = apiBase.replace(/\/api\/?$/, '')
+  return `${baseUrl}${u.startsWith('/') ? u : '/' + u}`
+}
 // always use real backend
 const countries = ref([])
 const loading = ref(false)
@@ -163,7 +169,9 @@ const next = () => { page.value = Math.min(pages.value, page.value + 1) }
               </td>
               <td class="px-4 py-3 text-slate-200">{{ c.code }}</td>
               <td class="px-4 py-3">
-                <img :src="c.flag || '/placeholder-flag.png'" alt="flag" class="w-10 h-6 object-cover rounded" />
+                <div class="w-10 h-6 rounded overflow-hidden bg-slate-700 flex-shrink-0">
+                  <img :src="getMediaUrl(c.flag) || '/default-flag.png'" alt="flag" class="w-full h-full object-cover" />
+                </div>
               </td>
               <td class="px-4 py-3 text-center">
                 <span :class="c.isActive ? 'text-emerald-400' : 'text-rose-400'">{{ c.isActive ? 'Hoạt động' : 'Ẩn' }}</span>
@@ -225,7 +233,7 @@ const next = () => { page.value = Math.min(pages.value, page.value + 1) }
 
           <div class="flex items-start gap-4">
             <div class="w-36 h-24 bg-slate-800 rounded overflow-hidden flex items-center justify-center border border-slate-700">
-              <img v-if="form.flag" :src="form.flag" class="w-full h-full object-cover" />
+              <img v-if="form.flag" :src="getMediaUrl(form.flag)" class="w-full h-full object-cover" />
               <div v-else class="text-slate-400 text-xs px-2 text-center">Không có cờ</div>
             </div>
 

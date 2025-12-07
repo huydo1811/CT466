@@ -273,8 +273,10 @@ const hasActiveFilters = computed(() => !!(filters.value.category || filters.val
 // helpers
 const getMediaUrl = (u) => {
   if (!u) return ''
-  if (/^data:|^https?:\/\//.test(u)) return u
-  return `${window.location.origin}${u}`
+  if (/^data:|^https? :\/\//.test(u)) return u
+  const apiBase = import.meta.env. VITE_API_BASE || 'http://localhost:3000/api'
+  const baseUrl = apiBase.replace(/\/api\/?$/, '')
+  return `${baseUrl}${u.startsWith('/') ?  u : '/' + u}`
 }
 
 const mapSortOption = (opt) => {

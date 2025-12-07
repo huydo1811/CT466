@@ -35,13 +35,12 @@ const episodes = ref([])
 const epPage = ref(1)
 const epLimit = ref(1000)
 
-// helpers
 const getMediaUrl = (u) => {
   if (!u) return ''
-  if (/^data:|^https?:\/\//.test(u)) return u
-  const baseRaw = api?.defaults?.baseURL || ''
-  const base = baseRaw ? baseRaw.replace(/\/api\/?$/i, '') : window.location.origin
-  return `${base}${u.startsWith('/') ? u : '/' + u}`
+  if (/^data:|^https? :\/\//.test(u)) return u
+  const apiBase = import.meta.env. VITE_API_BASE || 'http://localhost:3000/api'
+  const baseUrl = apiBase.replace(/\/api\/?$/, '')
+  return `${baseUrl}${u.startsWith('/') ?  u : '/' + u}`
 }
 
 const videoSrc = computed(() => getMediaUrl(episode.value?.videoUrl || episode.value?.video || ''))

@@ -7,6 +7,14 @@ const router = useRouter()
 const route = useRoute()
 const id = route.params.id
 
+const getMediaUrl = (u) => {
+  if (!u) return ''
+  if (/^data:|^https?:\/\//.test(u)) return u
+  const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:3000/api'
+  const baseUrl = apiBase.replace(/\/api\/?$/, '')
+  return `${baseUrl}${u.startsWith('/') ? u : '/' + u}`
+}
+
 // form model (same fields as AddMovie)
 const movieForm = reactive({
   title: '',
@@ -350,7 +358,7 @@ const handleCancel = () => {
                 <img :src="posterPreview" class="w-full h-48 object-cover rounded" />
               </div>
               <div v-else-if="movieForm.posterUrl" class="mt-3">
-                <img :src="movieForm.posterUrl" class="w-full h-48 object-cover rounded" />
+                <img :src="getMediaUrl(movieForm.posterUrl)" class="w-full h-48 object-cover rounded" />
               </div>
             </div>
 
@@ -361,7 +369,7 @@ const handleCancel = () => {
                 <img :src="backdropPreview" class="w-full h-28 object-cover rounded" />
               </div>
               <div v-else-if="movieForm.backdropUrl" class="mt-3">
-                <img :src="movieForm.backdropUrl" class="w-full h-28 object-cover rounded" />
+                <img :src="getMediaUrl(movieForm.backdropUrl)" class="w-full h-28 object-cover rounded" />
               </div>
             </div>
 
@@ -375,8 +383,13 @@ const handleCancel = () => {
               <input type="file" accept="video/*" @change="onVideoChange" class="w-full text-sm text-white" />
               <div v-if="videoPreview" class="mt-2">
                 <video :src="videoPreview" controls class="w-full h-48 object-cover rounded bg-black"></video>
-              </div>
-              <div v-else-if="movieForm.videoUrl" class="mt-2 text-slate-300 text-sm">Hiện tại: <a :href="movieForm.videoUrl" target="_blank" class="text-blue-300 underline">Xem file</a></div>
+                </div>
+                <div v-else-if="movieForm.videoUrl" class="mt-2 text-slate-300 text-sm">
+                  Hiện tại: 
+                  <a :href="getMediaUrl(movieForm.videoUrl)" target="_blank" class="text-blue-300 underline">
+                    Xem file
+                  </a>
+                </div>
             </div>
 
             <div class="mt-4">

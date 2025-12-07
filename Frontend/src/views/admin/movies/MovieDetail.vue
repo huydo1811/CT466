@@ -12,6 +12,14 @@ const loading = ref(true)
 const error = ref(null)
 const showTrailer = ref(false)
 
+const getMediaUrl = (u) => {
+  if (!u) return ''
+  if (/^data:|^https?:\/\//.test(u)) return u
+  const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:3000/api'
+  const baseUrl = apiBase.replace(/\/api\/?$/, '')
+  return `${baseUrl}${u.startsWith('/') ? u : '/' + u}`
+}
+
 const mockMovie = (idVal = id) => ({
   id: idVal ?? 'demo-1',
   title: 'Avengers: Endgame (Demo)',
@@ -86,7 +94,7 @@ const fetchMovie = async () => {
 
 onMounted(fetchMovie)
 
-const posterSrc = computed(() => movie.value?.poster || '/placeholder-portrait.png')
+const posterSrc = computed(() => getMediaUrl(movie.value?.poster) || '/placeholder-portrait.png')
 
 const trailerEmbed = computed(() => {
   const t = movie.value?.trailer || ''
@@ -150,8 +158,7 @@ const handleDelete = async () => {
     <div v-else-if="error" class="text-red-400">{{ error }}</div>
     <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div class="md:col-span-1 bg-slate-800/40 p-4 rounded-lg border border-slate-700">
-        <img :src="posterSrc" alt="poster" class="w-full h-72 object-cover rounded-md shadow-md" />
-        <div class="mt-4 space-y-3">
+        <img :src="posterSrc" alt="poster" class="w-full h-72 object-cover rounded-md shadow-md" />        <div class="mt-4 space-y-3">
           <div class="flex flex-wrap gap-2">
             <span class="px-2 py-1 bg-slate-700 text-slate-200 text-xs rounded">Thời lượng: {{ movie.duration }} phút</span>
             <span class="px-2 py-1 bg-slate-700 text-slate-200 text-xs rounded">Loại: {{ movie.type === 'movie' ? 'Phim điện ảnh' : 'Series' }}</span>
@@ -175,8 +182,9 @@ const handleDelete = async () => {
 
           <div v-if="movie.video" class="mt-3 text-sm text-slate-300">
             <div>File phim:</div>
-            <a :href="movie.video" target="_blank" class="text-blue-400 hover:underline break-all">{{ movie.video }}</a>
-          </div>
+              <a :href="getMediaUrl(movie.video)" target="_blank" class="text-blue-400 hover:underline break-all">
+                {{ movie.video }}</a>
+            </div>
         </div>
       </div>
 

@@ -231,7 +231,7 @@ function handleGoogleCredentialResponse(response) {
     .catch(err => {
       console.error('Google register/login failed', err?.response?.data || err)
       if (err?.code === 'ERR_NETWORK' || err?.message === 'Network Error') {
-        errorMsg.value = 'Không kết nối tới server. Khởi động backend (http://localhost:3000).'
+        errorMsg.value = 'Không kết nối tới server. Khởi động backend '
       } else {
         errorMsg.value = err?.response?.data?.message || 'Đăng nhập bằng Google thất bại'
       }

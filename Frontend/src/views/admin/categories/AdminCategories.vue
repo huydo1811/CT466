@@ -45,12 +45,7 @@
             <tr v-for="c in items" :key="c._id || c.id" class="hover:bg-slate-700/20">
               <td class="px-4 py-3">
                 <div class="w-16 h-16 rounded overflow-hidden bg-slate-700">
-                  <img 
-                    v-if="c.image" 
-                    :src="c.image" 
-                    :alt="c.name" 
-                    class="w-full h-full object-cover" 
-                  />
+                  <img v-if="c.image" :src="getMediaUrl(c.image)" alt="category image" class="w-full h-full object-cover" />
                   <div v-else class="w-full h-full flex items-center justify-center text-slate-500 text-xs">
                     No Image
                   </div>
@@ -119,12 +114,7 @@
             <div class="flex items-start gap-4">
               <!-- Preview -->
               <div class="w-32 h-32 rounded-lg overflow-hidden bg-slate-800 border border-slate-700 flex-shrink-0">
-                <img 
-                  v-if="imagePreview" 
-                  :src="imagePreview" 
-                  alt="Preview" 
-                  class="w-full h-full object-cover" 
-                />
+                <img v-if="imagePreview" :src="getMediaUrl(imagePreview)" class="w-full h-full object-cover" />
                 <div v-else class="w-full h-full flex items-center justify-center text-slate-500 text-xs">
                   No Image
                 </div>
@@ -208,6 +198,14 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '@/services/api'
+
+const getMediaUrl = (u) => {
+  if (!u) return ''
+  if (/^data:|^https?:\/\//.test(u)) return u
+  const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:3000/api'
+  const baseUrl = apiBase.replace(/\/api\/?$/, '')
+  return `${baseUrl}${u.startsWith('/') ? u : '/' + u}`
+}
 
 // state
 const loading = ref(false)

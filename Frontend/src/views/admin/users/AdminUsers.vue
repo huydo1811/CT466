@@ -53,7 +53,9 @@
             <tr v-for="u in users" :key="u._id || u.id" class="hover:bg-slate-700/20">
               <td class="px-4 py-3">
                 <div class="flex items-center gap-3">
-                  <img :src="u.avatar || '/placeholder-avatar.png'" alt="avatar" class="w-10 h-10 rounded object-cover" />
+                  <div class="w-10 h-10 rounded-full overflow-hidden bg-slate-700 flex-shrink-0">
+                    <img :src="getMediaUrl(u.avatar) || '/default-avatar.png'" alt="avatar" class="w-full h-full object-cover" />
+                  </div>
                   <div>
                     <div class="text-sm font-medium text-white">{{ u.username }}</div>
                     <div class="text-xs text-slate-400">{{ u.role }}</div>
@@ -155,6 +157,14 @@ import { ref, onMounted } from 'vue'
 import api from '@/services/api.js'
 import { useRouter } from 'vue-router'
 const router = useRouter()
+
+const getMediaUrl = (u) => {
+  if (!u) return ''
+  if (/^data:|^https?:\/\//.test(u)) return u
+  const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:3000/api'
+  const baseUrl = apiBase.replace(/\/api\/?$/, '')
+  return `${baseUrl}${u.startsWith('/') ? u : '/' + u}`
+}
 
 const loading = ref(false)
 const users = ref([])

@@ -3,10 +3,8 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 
 // helper to build public URL for uploaded file
 const buildFlagUrl = (req, file) => {
-  if (!file) return undefined;
-  // assuming server serves /uploads static as above
-  const url = `${req.protocol}://${req.get('host')}/uploads/countries/${file.filename}`;
-  return url;
+  if (! file) return undefined;
+  return `/uploads/countries/${file.filename}`;
 }
 
 // Lấy tất cả quốc gia

@@ -5,7 +5,7 @@ import path from 'path';
 // helper: build public URL for uploaded photo
 const buildPhotoUrl = (req, file) => {
   if (!file) return undefined
-  return `${req.protocol}://${req.get('host')}/uploads/actors/${file.filename}`
+  return `/uploads/actors/${file.filename}`
 }
 
 // Lấy tất cả diễn viên

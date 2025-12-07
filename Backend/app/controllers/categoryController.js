@@ -5,10 +5,9 @@ import path from 'path';
 
 // Helper: build full URL
 const buildFileUrl = (req, filename, folder = 'categories') => {
-  if (!filename) return ''
-  const rel = `/uploads/${folder}/${filename}`
-  return `${req.protocol}://${req.get('host')}${rel}`
-}
+  if (!filename) return undefined;
+  return `/uploads/${folder}/${filename}`; // Chỉ lưu đường dẫn tương đối
+};
 
 // Helper: delete file từ URL đầy đủ hoặc relative path
 const deleteUploadedFile = (fileUrl, folder = 'categories') => {

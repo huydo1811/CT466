@@ -128,11 +128,13 @@ const movieLink = (r) => {
  const categories = ref([])
  const countries = ref([])
 
- const getMediaUrl = (u) => {
-   if (!u) return ''
-   if (/^data:|^https?:\/\//.test(u)) return u
-   return `${window.location.origin}${u}`
- }
+const getMediaUrl = (u) => {
+  if (!u) return ''
+  if (/^data:|^https? :\/\//.test(u)) return u
+  const apiBase = import.meta.env. VITE_API_BASE || 'http://localhost:3000/api'
+  const baseUrl = apiBase.replace(/\/api\/?$/, '')
+  return `${baseUrl}${u.startsWith('/') ?  u : '/' + u}`
+}
 
  const fetchCategories = async () => {
    try {
@@ -448,7 +450,7 @@ const movieLink = (r) => {
         >
           <div class="flex flex-col space-y-2">
             <RouterLink to="/" exact-active-class="nav-link-active" class="mobile-nav-link" @click="mobileOpen = false">Trang chủ</RouterLink>
-            <RouterLink to="/movies" class="mobile-nav-link" @click="mobileOpen = false">Phim điện ảnh</RouterLink>
+            <RouterLink to="/movies" class="mobile-nav-link" @click="mobileOpen = false">Phim lẻ</RouterLink>
             <RouterLink to="/series" class="mobile-nav-link" @click="mobileOpen = false">Phim bộ</RouterLink>
 
             <div class="text-gray-400 px-4 mt-2 text-xs uppercase">Thể loại</div>

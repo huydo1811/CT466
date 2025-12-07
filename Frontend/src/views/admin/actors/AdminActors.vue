@@ -49,7 +49,9 @@
             <tr v-for="a in actors" :key="a._id || a.id" class="hover:bg-slate-700/30">
               <td class="px-4 py-3">
                 <div class="flex items-center gap-3">
-                  <img :src="a.photoUrl || '/placeholder-avatar.png'" alt="photo" class="w-10 h-10 rounded object-cover" />
+                  <div class="w-10 h-10 rounded-full overflow-hidden bg-slate-700 flex-shrink-0">
+                    <img :src="getMediaUrl(a.photoUrl) || '/default-avatar.png'" alt="photo" class="w-full h-full object-cover" />
+                  </div>
                   <div>
                     <div class="text-sm font-medium text-white">{{ a.name }}</div>
                     <div class="text-xs text-slate-400">{{ a.bio ? (a.bio.slice(0,60) + (a.bio.length>60? '…':'')) : '' }}</div>
@@ -135,7 +137,7 @@
             <label class="text-sm text-slate-300">Ảnh (URL)</label>
             <div class="flex gap-3 items-start">
               <div class="w-24 h-24 bg-slate-800 rounded overflow-hidden border border-slate-700 flex items-center justify-center">
-                <img v-if="form.photoUrl" :src="form.photoUrl" class="w-full h-full object-cover" />
+                <img v-if="form.photoUrl" :src="getMediaUrl(form.photoUrl)" class="w-full h-full object-cover" />
                 <div v-else class="text-slate-400 text-xs px-2 text-center">Không có ảnh</div>
               </div>
 
@@ -160,6 +162,14 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import api from '@/services/api'
+
+const getMediaUrl = (u) => {
+  if (!u) return ''
+  if (/^data:|^https?:\/\//.test(u)) return u
+  const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:3000/api'
+  const baseUrl = apiBase.replace(/\/api\/?$/, '')
+  return `${baseUrl}${u.startsWith('/') ? u : '/' + u}`
+}
 
 const loading = ref(false)
 const q = ref('')

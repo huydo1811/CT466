@@ -29,7 +29,7 @@
         <input v-model="form.logo" class="w-full mt-2 px-3 py-2 rounded bg-slate-900 border border-slate-700 text-slate-200" placeholder="https://..." />
         <div class="flex items-center gap-3 mt-3">
           <div class="w-24 h-12 bg-slate-700 rounded flex items-center justify-center overflow-hidden border border-slate-600">
-            <img v-if="form.logo" :src="form.logo" alt="logo" class="object-contain w-full h-full" />
+            <img v-if="form.logo" :src="getMediaUrl(form.logo)" class="w-full h-full object-cover" />
             <div v-else class="text-slate-400 text-xs px-2">No logo</div>
           </div>
           <div>
@@ -67,6 +67,13 @@
 import { ref, onMounted } from 'vue'
 import api from '@/services/api'
 
+const getMediaUrl = (u) => {
+  if (!u) return ''
+  if (/^data:|^https?:\/\//.test(u)) return u
+  const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:3000/api'
+  const baseUrl = apiBase.replace(/\/api\/?$/, '')
+  return `${baseUrl}${u.startsWith('/') ? u : '/' + u}`
+}
 const saving = ref(false)
 const form = ref({
   siteName: '',

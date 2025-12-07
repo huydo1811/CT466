@@ -13,7 +13,7 @@ import userRoutes from './routes/userRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import bannerRoutes from './routes/bannerRoutes.js';
 import movieRoutes from './routes/movieRoutes.js';
-import seriesRoutes from './routes/seriesRoutes.js' 
+import seriesRoutes from './routes/seriesRoutes.js';
 import episodeRoutes from './routes/episodeRoute.js';
 import reviewRoutes from './routes/reviewRoutes.js';
 import settingRoutes from './routes/settingRoutes.js';
@@ -26,7 +26,7 @@ const app = express();
 
 // Middleware
 app.use(cors());
-app.use(express.json({ limit: '10mb' }));
+app. use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Logging middleware
@@ -35,22 +35,23 @@ app.use((req, res, next) => {
   next();
 });
 
-// Serve uploaded files
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
-// Routes
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+app.use('/api/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+// Routes API
 app.use('/api/countries', countryRoutes);
-app.use('/api/categories', categoryRoutes);
+app. use('/api/categories', categoryRoutes);
 app.use('/api/actors', actorRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/auth', authRoutes);
+app. use('/api/auth', authRoutes);
 app.use('/api/banners', bannerRoutes);
 app.use('/api/movies', movieRoutes);
 app.use('/api/episodes', episodeRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/series', seriesRoutes);
 app.use('/api/settings', settingRoutes);
-app.use('/api/admin', adminRoutes);
+app. use('/api/admin', adminRoutes);
 
 // Route mặc định
 app.get('/', (req, res) => {
@@ -73,20 +74,18 @@ app.get('/', (req, res) => {
   });
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Error:', err.message);
-  res.status(500).json({
+app. use((err, req, res, next) => {
+  console. error('Error:', err.message);
+  res.status(500). json({
     success: false,
     message: err.message || 'Internal Server Error'
   });
 });
 
-// 404 handler
 app.use('*', (req, res) => {
   res.status(404).json({
     success: false,
-    message: `Route ${req.originalUrl} not found`
+    message: `Route ${req. originalUrl} not found`
   });
 });
 
@@ -97,4 +96,4 @@ app.listen(PORT, () => {
   console.log(`API URL: http://localhost:${PORT}`);
 });
 
-export default app
+export default app;

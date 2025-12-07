@@ -71,13 +71,14 @@ const getImageUrl = (banner) => {
   if (!banner) return ''
   
   const isMobile = window.innerWidth < 768
-  const url = isMobile ? (banner.mobileImage || banner.image) : banner.image
+  const url = isMobile ? (banner.mobileImage || banner.image) : banner. image
   
   if (!url) return ''
-  if (url.startsWith('http')) return url
-  
-  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000'
-  return `${baseUrl}${url}`
+  if (/^data:|^https? :\/\//.test(url)) return url
+  const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:3000/api'
+  const baseUrl = apiBase.replace(/\/api\/?$/, '')
+    
+  return `${baseUrl}${url.startsWith('/') ?  url : '/' + url}`
 }
 
 // Tạo href

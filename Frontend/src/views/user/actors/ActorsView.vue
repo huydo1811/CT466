@@ -252,6 +252,25 @@ import { useRouter } from 'vue-router'
 import api from '@/services/api' // axios instance
 
 const router = useRouter()
+const getMediaUrl = (u) => {
+  if (!u) return ''
+  if (/^data:|^https?:\/\//.test(u)) return u
+  
+
+  const apiBase = (import.meta && import.meta.env && import.meta.env.VITE_API_BASE) || 'http://localhost:3000/api'
+  const baseUrl = apiBase.replace(/\/api\/?$/, '')
+  
+  return `${baseUrl}${u.startsWith('/') ? u : '/' + u}`
+}
+
+
+const hasActiveFilters = computed(() => {
+  return ! !(
+    filters.value.nationality ||
+    filters.value.ageRange ||
+    filters.value. genre
+  )
+})
 
 // UI state
 const searchQuery = ref('')
@@ -319,9 +338,9 @@ const mapSortOption = (opt) => {
 
 const normalizeActor = (a) => {
   return {
-    ...a,
+    ... a,
     id: a._id || a.id,
-    photo: a.photoUrl || a.photo || '/placeholder-avatar.png',
+    photo: getMediaUrl(a.photoUrl || a.photo || ''),  // ✅ Dùng getMediaUrl thay vì placeholder
     knownFor: (a.knownFor && Array.isArray(a.knownFor) ? a.knownFor.slice(0,2).map(x => x.title || x.name).join(', ') : (a.knownFor || ''))
   }
 }

@@ -3,11 +3,10 @@ import { asyncHandler } from '../utils/asyncHandler.js'
 import fs from 'fs'
 import path from 'path'
 
-const buildFileUrl = (req, filename, folder = 'avatars') => {
-  if (!filename) return ''
-  const rel = `/uploads/${folder}/${filename}`
-  return `${req.protocol}://${req.get('host')}${rel}`
-}
+const buildFileUrl = (req, filename, folder = 'users') => {
+  if (!filename) return undefined;
+  return `/uploads/${folder}/${filename}`; // Chỉ lưu đường dẫn tương đối
+};
 
 const deleteUploadedFile = (fileUrl, folder = 'avatars') => {
   try {

@@ -64,11 +64,12 @@ const fetchCurrentUser = async () => {
   }
 }
 
-// helpers
 const getMediaUrl = (u) => {
   if (!u) return ''
-  if (/^data:|^https?:\/\//.test(u)) return u
-  return `${window.location.origin}${u}`
+  if (/^data:|^https? :\/\//.test(u)) return u
+  const apiBase = import.meta.env. VITE_API_BASE || 'http://localhost:3000/api'
+  const baseUrl = apiBase.replace(/\/api\/?$/, '')
+  return `${baseUrl}${u.startsWith('/') ?  u : '/' + u}`
 }
 
 const extractYouTubeId = (s) => {
@@ -148,6 +149,16 @@ const fetchMovieBySlug = async (slug) => {
     loading.value = false
   }
 }
+const videoSrcUrl = computed(() => {
+  const src = movie.value?.videoSrc || movie.value?.videoUrl || ''
+  if (!src) {
+    console.warn('⚠️ No video source')
+    return ''
+  }
+  const fullUrl = getMediaUrl(src)
+  console.log('🎬 Video URL computed:', { src, fullUrl })
+  return fullUrl
+})
 
 // favorite + review actions
 const isFavorited = ref(false)
@@ -272,7 +283,33 @@ const formatTime = (s) => {
   if (hrs > 0) return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
   return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
 }
-
+// Thêm sau onVideoEnded (dòng ~283)
+const onVideoError = (e) => {
+  console.error('❌ Video error:', {
+    error: e,
+    src: videoPlayer.value?.src,
+    readyState: videoPlayer.value?.readyState,
+    networkState: videoPlayer.value?.networkState,
+    errorCode: videoPlayer.value?.error?.code,
+    errorMessage: videoPlayer.value?.error?.message
+  })
+  
+  isLoading.value = false
+  
+  const error = videoPlayer.value?.error
+  if (error) {
+    const errorMessages = {
+      1: 'MEDIA_ERR_ABORTED: Tải video bị hủy',
+      2: 'MEDIA_ERR_NETWORK: Lỗi mạng khi tải video',
+      3: 'MEDIA_ERR_DECODE: Lỗi giải mã video',
+      4: 'MEDIA_ERR_SRC_NOT_SUPPORTED: Video không được hỗ trợ hoặc không tồn tại'
+    }
+    
+    const errorMsg = errorMessages[error.code] || 'Lỗi không xác định'
+    console.error(`Video error code ${error.code}: ${errorMsg}`)
+    
+  }
+}
 const timeDisplay = computed(() => {
   return `${formatTime(currentTime.value)} / ${formatTime(duration.value)}`
 })
@@ -429,19 +466,60 @@ const saveToHistory = async (progress = 0) => {
   }
 }
 
+// Tìm dòng ~456 - SỬA hàm onAdComplete
 const onAdComplete = () => {
-  console.log('Ad complete')
+  console.log('✅ Ad complete')
   adCompleted.value = true
   showPreRoll.value = false
   
-  // Auto-play video chính sau khi xem quảng cáo
   setTimeout(() => {
-    if (videoPlayer.value && !isPlaying.value) {
-      videoPlayer.value.play()
-      isPlaying.value = true
+    const video = videoPlayer.value
+    
+    if (!video) {
+      console.error('❌ Video player ref not found')
+      return
     }
+    
+    const videoSrc = movie.value?.videoSrc || movie.value?.videoUrl || ''
+    
+    console.log('🎬 Video data after ad:', {
+      hasMovie: !!movie.value,
+      movieTitle: movie.value?.title,
+      rawVideoSrc: videoSrc,
+      computedVideoSrcUrl: videoSrcUrl.value,
+      currentSrc: video.src
+    })
+    
+    if (!videoSrc) {
+      console.error('❌ No video source found')
+      // ❌ XÓA ALERT - Chỉ log
+      // alert('❌ Không tìm thấy video.\n\nPhim này chưa có video. Vui lòng chọn phim khác.')
+      return
+    }
+    
+    // Auto-play
+    video.play()
+      .then(() => {
+        console.log('▶️ Video playing')
+        isPlaying.value = true
+      })
+      .catch(err => {
+        console.error('❌ Auto-play failed:', err)
+        isPlaying.value = false
+        
+        // ❌ XÓA ALERT - Chỉ log vào console
+        // if (err.name === 'NotSupportedError') {
+        //   alert('❌ Video không được hỗ trợ...')
+        // } else if (err.name === 'NotAllowedError') {
+        //   console.warn('⚠️ Autoplay bị chặn')
+        // }
+        
+        // ✅ CHỈ LOG - Không hiện alert
+        console.warn('⚠️ Video error:', err.name, err.message)
+      })
   }, 300)
 }
+
 </script>
 
 <template>
@@ -484,7 +562,8 @@ const onAdComplete = () => {
           @ended="onVideoEnded"
           @pause="isPlaying = false"
           @play="isPlaying = true"
-          :src="movie.videoSrc"
+          @error="onVideoError"
+          :src="videoSrcUrl"
         ></video>
         
         <!-- Loading overlay -->

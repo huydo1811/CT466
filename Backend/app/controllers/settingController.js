@@ -4,10 +4,9 @@ import fs from 'fs'
 import path from 'path'
 
 const buildFileUrl = (req, filename, folder = 'settings') => {
-  if (!filename) return ''
-  const rel = `/uploads/${folder}/${filename}`
-  return `${req.protocol}://${req.get('host')}${rel}`
-}
+  if (!filename) return undefined;
+  return `/uploads/${folder}/${filename}`; // Chỉ lưu đường dẫn tương đối
+};
 
 const deleteUploadedFile = (fileUrl, folder = 'settings') => {
   try {

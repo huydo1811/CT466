@@ -4,12 +4,10 @@ import Banner from '../models/Banner.js';
 import fs from 'fs';
 import path from 'path';
 
-// Helper function
+
 const buildFileUrl = (req, filename, folder = 'banners') => {
   if (!filename) return undefined;
-  const protocol = req.protocol || 'http';
-  const host = req.get('host') || 'localhost:3000';
-  return `${protocol}://${host}/uploads/${folder}/${filename}`;
+  return `/uploads/${folder}/${filename}`; 
 };
 
 const deleteUploadedFile = (url, folder = 'banners') => {

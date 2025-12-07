@@ -163,7 +163,11 @@
 
         <div class="p-4 space-y-4 pb-6">
           <div class="flex items-start gap-4">
-            <img :src="current?.user.avatar || '/placeholder-avatar.png'" class="w-16 h-16 rounded object-cover" />
+            <div class="flex-shrink-0">
+              <div class="w-16 h-16 rounded-full overflow-hidden bg-slate-700">
+                <img :src="getMediaUrl(current?.user.photoUrl) || '/default-avatar.png'" alt="user photo" class="w-full h-full object-cover" />
+              </div>
+            </div>
             <div>
               <div class="text-white font-medium">{{ current?.user.name }} • <span class="text-slate-400 text-sm">@{{ current?.user.username }}</span></div>
               <div class="text-slate-400 text-sm">Movie: <span class="text-slate-200">{{ current?.movie.title }}</span></div>
@@ -225,6 +229,13 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import api from '@/services/api' // axios instance with baseURL '/api' and auth
 
+const getMediaUrl = (u) => {
+  if (!u) return ''
+  if (/^data:|^https?:\/\//.test(u)) return u
+  const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:3000/api'
+  const baseUrl = apiBase.replace(/\/api\/?$/, '')
+  return `${baseUrl}${u.startsWith('/') ? u : '/' + u}`
+}
 const loading = ref(true)
 const q = ref('')
 const ratingFilter = ref('')

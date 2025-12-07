@@ -12,9 +12,9 @@ const isValidObjectId = (id) => {
 };
 
 const buildFileUrl = (req, filename, folder = 'movies') => {
-  if (!filename) return undefined
-  return `${req.protocol}://${req.get('host')}/uploads/${folder}/${filename}`
-}
+  if (!filename) return undefined;
+  return `/uploads/${folder}/${filename}`; // Chỉ lưu đường dẫn tương đối
+};
 
 // Lấy tất cả phim với filters (Public)
 export const getAllMovies = asyncHandler(async (req, res) => {

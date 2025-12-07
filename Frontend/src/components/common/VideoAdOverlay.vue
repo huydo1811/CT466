@@ -93,7 +93,7 @@ const progress = computed(() => {
 const getVideoUrl = (url) => {
   if (!url) return ''
   if (url.startsWith('http')) return url
-  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+  const baseUrl = import.meta.env.VITE_API_BASE || 'http://localhost:3000'
   return `${baseUrl}${url}`
 }
 
