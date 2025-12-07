@@ -27,8 +27,16 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URLS?.split(',') || ['http://localhost:5173'],
-  credentials: true
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:3000',
+    'http://127.0.0.1:5173',
+    'https://movie.huyquang.site'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 app.use(express.json({ limit: '500mb' }));
@@ -110,9 +118,9 @@ app.use('*', (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 const server = app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📁 Serving uploads from: ${path.join(process.cwd(), 'uploads')}`);
-  console.log(`🌍 CORS enabled for: ${process.env.FRONTEND_URLS || 'http://localhost:5173'}`);
+  console.log(`Server running on port ${PORT}`);
+  console.log(`Serving uploads from: ${path.join(process.cwd(), 'uploads')}`);
+  console.log(`CORS enabled for: ${process.env.FRONTEND_URLS || 'http://localhost:5173'}`);
 });
 
 server.timeout = 600000; // 10 phút

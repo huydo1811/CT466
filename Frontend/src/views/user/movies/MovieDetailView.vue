@@ -571,30 +571,22 @@ const submitReport = async () => {
                 <span>{{ movie. ageRating }}</span>
               </div>
             </div>
-
-            <div class="flex flex-wrap gap-2 md:gap-4 mb-6">
-              <button @click="watchMovie" class="btn-primary py-2 md:py-3 px-4 md:px-6 flex items-center text-sm md:text-base">
-                <svg class="w-4 h-4 md:w-5 md:h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path>
-                </svg>
-                Xem phim
-              </button>
-              <button @click="openTrailer" class="btn-secondary py-2 md:py-3 px-4 md:px-6 flex items-center text-sm md:text-base">
-                <svg class="w-4 h-4 md:w-5 md:h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14. 752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3. 197-2.132a1 1 0 000-1. 664z"></path>
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                <span class="hidden sm:inline">Xem Trailer</span>
-                <span class="sm:hidden">Trailer</span>
-              </button>
-              <button @click="toggleFavorite" :class="['py-2 md:py-3 px-4 md:px-6 flex items-center text-sm md:text-base', isFavorited ? 'btn-primary' : 'btn-outline']">
-                <svg class="w-4 h-4 md:w-5 md:h-5 mr-2" :fill="isFavorited ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4. 318 6.318a4. 5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
-                </svg>
-                <span class="hidden sm:inline">{{ isFavorited ? 'Đã yêu thích' : 'Yêu thích' }}</span>
-                <span class="sm:hidden">{{ isFavorited ? 'Thích' : 'Thích' }}</span>
-              </button>
-            </div>
+             <div class="flex flex-wrap gap-4 mb-6">
+                <button @click="watchMovie" class="btn-primary py-3 px-6 flex items-center">
+                  <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
+                            Xem phim
+                </button>
+            
+                <button @click="openTrailer" class="btn-secondary py-3 px-6 flex items-center">
+                  <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                     Xem Trailer
+                  </button>
+            
+                <button @click="toggleFavorite" :class="['py-3 px-6 flex items-center', isFavorited ? 'btn-primary' : 'btn-outline']">
+                  <svg class="w-5 h-5 mr-2" :fill="isFavorited ? 'currentColor' : 'none'" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
+                  {{ isFavorited ? 'Đã yêu thích' : 'Yêu thích' }}
+                </button>
+              </div>
           </div>
         </div>
       </div>
@@ -756,9 +748,9 @@ const submitReport = async () => {
                   <span class="text-white font-semibold text-xs md:text-sm">{{ review.rating }}/5</span>
                 </div>
 
-                <button type="button" @click="openReportModal(review)" class="w-7 h-7 md:w-9 md:h-9 bg-red-600 hover:bg-red-500 text-white rounded-full flex items-center justify-center shadow" title="Báo cáo bình luận">
-                  <svg class="w-3 h-3 md:w-4 md:h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path fill-rule="evenodd" d="M8. 257 3.099c.765-1.36 2.681-1.36 3.446 0l6.518 11.59c.75 1.334-.213 2.95-1.724 2.95H3.463c-1.51 0-2.475-1.616-1.724-2.95L8.257 3.1zM11 13a1 1 0 10-2 0 1 1 0 002 0zm-1-8a. 75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A. 75.75 0 0110 5z" clip-rule="evenodd"/>
+                <button type="button" @click="openReportModal(review)" class="w-9 h-9 bg-red-600 hover:bg-red-500 text-white rounded-full flex items-center justify-center shadow" title="Báo cáo bình luận">
+                  <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.681-1.36 3.446 0l6.518 11.59c.75 1.334-.213 2.95-1.724 2.95H3.463c-1.51 0-2.475-1.616-1.724-2.95L8.257 3.1zM11 13a1 1 0 10-2 0 1 1 0 002 0zm-1-8a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5z" clip-rule="evenodd"/>
                   </svg>
                 </button>
               </div>
@@ -772,12 +764,12 @@ const submitReport = async () => {
               <label class="text-sm text-gray-300 block mb-2">Đánh giá của bạn</label>
               <div class="flex items-center gap-2">
                 <div class="flex items-center">
-                  <button v-for="n in 5" :key="n" type="button" @click="userRating = n" class="px-0. 5 md:px-1">
-                    <svg v-if="n <= userRating" class="w-5 h-5 md:w-6 md:h-6 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M9.049 2. 927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24. 588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3. 921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1. 81h3.461a1 1 0 00.951-. 69l1.07-3. 292z"/>
+                 <button v-for="n in 5" :key="n" type="button" @click="userRating = n" class="px-1">
+                    <svg v-if="n <= userRating" class="w-6 h-6 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
                     </svg>
-                    <svg v-else class="w-5 h-5 md:w-6 md:h-6 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M9.049 2. 927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24. 588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3. 921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1. 81h3.461a1 1 0 00.951-. 69l1.07-3. 292z"/>
+                    <svg v-else class="w-6 h-6 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
                     </svg>
                   </button>
                 </div>
@@ -786,7 +778,7 @@ const submitReport = async () => {
             </div>
             <div class="mb-4">
               <label class="text-sm text-gray-300 block mb-2">Bình luận</label>
-              <textarea v-model="userComment" rows="4" class="w-full bg-dark-700 text-white p-3 rounded resize-none text-sm md:text-base" placeholder="Viết cảm nhận của bạn..."></textarea>
+              <textarea v-model="userComment" rows="4" class="w-full bg-dark-700 text-black p-3 rounded resize-none text-sm md:text-base" placeholder="Viết cảm nhận của bạn..."></textarea>
             </div>
             <div class="flex justify-end">
               <button @click="submitReview" :disabled="submittingReview" class="btn-primary py-2 px-4 text-sm md:text-base">
@@ -824,13 +816,13 @@ const submitReport = async () => {
         <h3 class="text-base md:text-lg font-semibold text-white mb-3">Báo cáo bình luận</h3>
         <p class="text-gray-400 mb-3 text-sm md:text-base">Chọn lý do báo cáo cho bình luận của <strong>{{ reportTarget?. user?.fullName || 'Người dùng' }}</strong></p>
         <div class="mb-3">
-          <select v-model="reportReason" class="w-full p-2 bg-dark-700 text-white rounded text-sm md:text-base">
+          <select v-model="reportReason" class="w-full p-2 bg-dark-700 text-black rounded text-sm md:text-base">
             <option value="" disabled>Chọn lý do</option>
             <option v-for="opt in reportOptions" :key="opt" :value="opt">{{ opt }}</option>
           </select>
         </div>
         <div class="mb-4">
-          <textarea v-model="reportDetails" rows="4" class="w-full p-2 bg-dark-700 text-white rounded text-sm md:text-base" placeholder="Mô tả chi tiết (tùy chọn)"></textarea>
+          <textarea v-model="reportDetails" rows="4" class="w-full p-2 bg-dark-700 text-black rounded text-sm md:text-base" placeholder="Mô tả chi tiết (tùy chọn)"></textarea>
         </div>
         <div class="flex justify-end gap-2">
           <button @click="closeReportModal" class="btn-outline py-2 px-3 md:px-4 text-sm md:text-base">Hủy</button>

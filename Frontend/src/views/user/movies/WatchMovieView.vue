@@ -749,7 +749,7 @@ const onAdComplete = () => {
               v-model="userComment"
               rows="3"
               placeholder="Viết bình luận của bạn..."
-              class="w-full bg-dark-700 text-white border border-gray-700/60 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+              class="w-full bg-dark-700 text-black border border-gray-700/60 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
             ></textarea>
             <div class="flex justify-end mt-3">
               <button 

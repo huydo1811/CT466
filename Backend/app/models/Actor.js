@@ -29,17 +29,21 @@ const actorSchema = new mongoose.Schema({
       message: 'Ngày sinh không được trong tương lai'
     }
   },
-  photoUrl: {
-    type: String,
-    trim: true,
-    validate: {
-      validator: function(url) {
-        if (!url) return true;
-        return /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)$/i.test(url);
-      },
-      message: 'URL ảnh không hợp lệ (phải là jpg, jpeg, png, gif, webp)'
-    }
-  },
+
+photoUrl: {
+  type: String,
+  trim: true,
+  validate: {
+    validator: function(url) {
+      if (!url) return true;
+      const relativePathRegex = /^\/uploads\/.+\.(jpg|jpeg|png|gif|webp)$/i;
+      const absoluteUrlRegex = /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)$/i;
+      
+      return relativePathRegex.test(url) || absoluteUrlRegex.test(url);
+    },
+    message: 'URL ảnh không hợp lệ (phải là /uploads/... hoặc http://... với định dạng jpg, jpeg, png, gif, webp)'
+  }
+},
   nationality: {
     type: String,
     trim: true,
